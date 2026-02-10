@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Equipment</title>
+  <style> table { border-collapse: collapse; } th, td { border: 1px solid black; padding: 8px; } </style>
+</head>
+<body>
+  <h1>Equipment</h1>
+  <table>
+    <tr>
+      <th>Item Row ID</th><th>List Name</th><th>Item Name</th><th>Description</th><th>Location</th>
+      <th>Notes</th><th>Quantity</th><th>Condition</th><th>Broken</th><th>Purchase Date</th><th>Renewal Price</th>
+    </tr>
+    <% equipment.forEach(item => { %>
+      <tr>
+        <td><%= item.itemRowId %></td><td><%= item.listName %></td><td><%= item.itemName %></td>
+        <td><%= item.description %></td><td><%= item.location %></td><td><%= item.notes %></td>
+        <td><%= item.quantity %></td><td><%= item.condition %></td><td><%= item.broken %></td>
+        <td><%= item.purchaseDate %></td><td><%= item.renewalPrice %></td>
+      </tr>
+    <% }); %>
+  </table>
+
+  <h2>Update Equipment</h2>
+  <form action="/update-equipment" method="post">
+    <label>List ID: <input type="text" name="listId" required></label><br> <!-- Hardcode or dropdown in phase 2 -->
+    <label>Item Row ID: <input type="text" name="itemRowId" required></label><br>
+    <label>New Name: <input type="text" name="name"></label><br>
+    <label>New Description: <input type="text" name="description"></label><br>
+    <label>New Location: <select name="location">
+      <option value="">Select</option>
+      <option value="Rack 1, Shelf 1">Rack 1, Shelf 1</option>
+      <!-- Add other options from script -->
+    </select></label><br>
+    <label>New Notes: <input type="text" name="notes"></label><br>
+    <label>New Condition: <select name="condition">
+      <option value="">Select</option>
+      <option value="Excellent">Excellent</option>
+      <!-- Add others -->
+    </select></label><br>
+    <label>New Quantity: <input type="number" name="quantity"></label><br>
+    <label>New Broken: <input type="text" name="broken"></label><br>
+    <label>New Purchase Date: <input type="date" name="purchaseDate"></label><br>
+    <label>New Renewal Price: <input type="text" name="renewalPrice"></label><br>
+    <button type="submit">Update</button>
+  </form>
+
+  <h2>Add New Equipment</h2>
+  <form action="/add-equipment" method="post">
+    <!-- Similar fields, without itemRowId -->
+    <label>List ID: <input type="text" name="listId" required></label><br>
+    <label>Name: <input type="text" name="name" required></label><br>
+    <!-- Add other fields as above -->
+    <button type="submit">Add</button>
+  </form>
+
+  <a href="/">Back to Dashboard</a>
+</body>
+</html>

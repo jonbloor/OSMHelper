@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>4th Ashby Scout Group - Membership Dashboard</title>
+  <link rel="stylesheet" href="/styles.css">
+<style>
+  table { width: 100%; border-collapse: collapse; margin: 20px 0; font-family: Arial, sans-serif; }
+  th, td { padding: 12px 15px; border: 1px solid #ddd; text-align: right; }
+  th { background: #34495e; color: white; text-align: left; }
+  tr:nth-child(even) { background: #f9f9f9; }
+  .section-header { background: #ecf0f1; font-weight: bold; }
+  .grand-total { background: #2c3e50; color: white; font-weight: bold; font-size: 1.1em; }
+  .projected { margin-top: 40px; border-top: 2px solid #34495e; padding-top: 20px; }
+  .projected th { background: #2980b9; }
+  .back { margin: 30px auto; display: block; text-align: center; font-size: 1.1em; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>4th Ashby Scout Group<br>Membership Dashboard</h1>
+    <p>Members Updated: <%= membersUpdated %><br>Waiting List Updated: <%= waitingUpdated %></p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Section Type</th>
+          <th>Members</th>
+          <th>Leaders</th>
+          <th>Young Leaders</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% for (const [type, data] of Object.entries(grouped)) { %>
+          <tr class="section-header">
+            <td><%= type %></td>
+            <td><%= data.members %></td>
+            <td><%= data.leaders %></td>
+            <td><%= data.youngLeaders %></td>
+          </tr>
+        <% } %>
+
+        <tr class="grand-total">
+          <td>TOTAL</td>
+          <td><%= totalMembers %></td>
+          <td><%= totalLeaders %></td>
+          <td><%= totalYLs %></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="projected">
+      <h2>Waiting List Age Projections</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Projected</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Too Young</td><td><%= projected.tooYoung %></td></tr>
+          <tr><td>Squirrels</td><td><%= projected.squirrels %></td></tr>
+          <tr><td>Beavers</td><td><%= projected.beavers %></td></tr>
+          <tr><td>Cubs</td><td><%= projected.cubs %></td></tr>
+          <tr><td>Scouts</td><td><%= projected.scouts %></td></tr>
+          <tr><td>Explorers</td><td><%= projected.explorers %></td></tr>
+          <tr class="grand-total">
+            <td>Grand Total</td>
+            <td><%= totalProjected %></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <a href="/" class="back">Back to Main Dashboard</a>
+  </div>
+</body>
+</html>

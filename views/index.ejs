@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>OSM Helper</title>
+  <style> table { border-collapse: collapse; } th, td { border: 1px solid black; padding: 8px; } </style>
+</head>
+<body>
+<% if (!authorized) { %>
+  <a href="/auth"><button>Authorise with OSM</button></a>
+<% } else { %>
+  <div class="container">
+    <h1>OSM Helper Dashboard</h1>
+<% if (authorized) { %>
+  <div class="rate-limit-info">
+    <p><strong>API Rate Limit Status:</strong></p>
+    <ul>
+      <li>Limit: <%= rateInfo.limit %> requests</li>
+      <li>Remaining: <%= rateInfo.remaining %></li>
+      <li>Resets at: <%= rateInfo.reset %></li>
+    </ul>
+    <% if (rateInfo.remaining !== 'Unknown' && rateInfo.remaining !== 'Error') { %>
+      <% const rem = parseInt(rateInfo.remaining, 10); %>
+      <% if (rem <= 50) { %>
+        <p class="warning">⚠️ Low remaining requests – use sparingly or wait for reset!</p>
+      <% } else if (rem <= 200) { %>
+        <p class="caution">Caution: Getting low – consider waiting if planning large fetches.</p>
+      <% } %>
+    <% } %>
+  </div>
+<% } %>
+    <p class="fetched-at">Ready to fetch fresh data!</p>
+<% if (authorized && sections.length > 0) { %>
+
+    <div class="dashboard-buttons">
+      <a href="/members"><button>Members</button></a>
+      <a href="/waiting-list"><button>Waiting List</button></a>
+      <a href="/membership-dashboard"><button>Membership Dashboard</button></a>
+      <a href="/equipment"><button>Equipment</button></a>
+      <a href="/bank-transfers"><button>Bank Transfers</button></a>
+      <a href="/reset"><button style="background:#e74c3c;">Reset Auth</button></a>
+    </div>
+  </div>
+
+  <h2>Sections & Capacities</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Capacity</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% sections.forEach(sec => { %>
+        <tr>
+          <td><%= sec.friendlyType %></td>
+          <td><%= sec.name %></td>
+          <td><%= sec.capacity %></td>
+          <td>
+            <form action="/update-capacity" method="post" style="display:inline;">
+              <input type="hidden" name="sectionId" value="<%= sec.id %>">
+              <input type="number" name="capacity" value="<%= sec.capacity === 'Not set' ? '' : sec.capacity %>" min="0" style="width:80px;">
+              <button type="submit">Update</button>
+            </form>
+          </td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+<% } %>
+
+<h2>Group Settings</h2>
+<form action="/update-group-name" method="post">
+  <label>Group Name:
+    <input type="text" name="groupName" value="<%= groupName || '4th Ashby Scout Group' %>" style="width: 300px;">
+  </label>
+  <button type="submit">Save</button>
+</form>
+
+<% } %>
+</body>
+</html>

@@ -1,0 +1,50 @@
+// server.js - top of file
+require('dotenv').config({ path: path.join(__dirname, '.env') }); // explicit path = safer
+
+// Debug to confirm loading (remove later if you like)
+console.log('Environment loaded:', {
+  clientIdPresent: !!process.env.CLIENT_ID,
+  clientSecretPresent: !!process.env.CLIENT_SECRET,
+  redirectUri: process.env.REDIRECT_URI || 'MISSING'
+});
+
+// Now require everything else
+const express = require('express');
+const session = require('express-session');
+const bodyParser = require('body-parser');
+const path = require('path');
+
+const app = express();
+const port = process.env.PORT || 3000;
+
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: true,
+}));
+
+// Mount modular route files
+const authRoutes       = require('./src/auth');
+const dashboardRoutes  = require('./src/dashboard');
+const membersRoutes    = require('./src/members');
+const equipmentRoutes  = require('./src/equipment');
+const financeRoutes    = require('./src/finance');
+
+app.use('/', dashboardRoutes);
+app.use('/', authRoutes);
+app.use('/', membersRoutes);
+app.use('/', equipmentRoutes);
+app.use('/', financeRoutes);
+
+// Catch-all 404
+app.use((req, res) => {
+  res.status(404).render('error', { message: 'Page not found' });
+});
+
+app.listen(port, () => {
+  console.log(`OSM Helper running on port ${port}`);
+});

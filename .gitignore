@@ -1,0 +1,17 @@
+# environment
+.env
+.env.*
+
+# node
+node_modules/
+
+# logs
+logs
+*.log
+
+# build
+dist
+build
+
+# OS
+.DS_Store

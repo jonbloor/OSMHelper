@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Waiting List - OSM Helper</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Waiting List</h1>
+    <p class="fetched-at">Fetched at: <%= fetchedAt %></p>
+
+    <% if (applicants.length === 0) { %>
+      <p>No applicants found (or access issue).</p>
+    <% } else { %>
+      <table>
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>First Name</th>
+            <th>Last Name</th>
+            <th>Age</th>
+            <th>Time on List (Days)</th>
+            <th>Willing to Help</th>
+            <th>Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% applicants.forEach(app => { %>
+            <tr>
+              <td><%= app.rank %></td>
+              <td><%= app.firstName %></td>
+              <td><%= app.lastName %></td>
+              <td><%= app.age %></td>
+              <td><%= app.timeOnList %></td>
+              <td><%= app.willingToHelp %></td>
+              <td><%= app.score %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } %>
+
+    <a href="/">Back to Dashboard</a>
+  </div>
+</body>
+</html>

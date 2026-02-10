@@ -1,0 +1,149 @@
+/* public/styles.css */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #f8f9fa;
+  color: #333;
+  margin: 0;
+  padding: 20px;
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+h1, h2 {
+  color: #2c3e50;
+}
+
+button, a button {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  margin: 8px 4px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background 0.3s;
+}
+
+button:hover, a button:hover {
+  background: #2980b9;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+th, td {
+  border: 1px solid #ddd;
+  padding: 12px;
+  text-align: left;
+}
+
+th {
+  background: #34495e;
+  color: white;
+}
+
+tr:nth-child(even) {
+  background: #f9f9f9;
+}
+
+tr:hover {
+  background: #ecf0f1;
+}
+
+.dashboard-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.fetched-at {
+  font-style: italic;
+  color: #7f8c8d;
+  margin-bottom: 20px;
+}
+
+.error {
+  color: #c0392b;
+  font-weight: bold;
+}
+
+.rate-limit-info {
+  background: #ecf0f1;
+  padding: 15px;
+  border-radius: 8px;
+  margin: 20px 0;
+  border-left: 5px solid #3498db;
+}
+
+.rate-limit-info ul {
+  margin: 10px 0;
+  padding-left: 20px;
+}
+
+.warning { color: #c0392b; font-weight: bold; }
+.caution { color: #e67e22; font-weight: bold; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+th, td {
+  padding: 12px 15px;
+  border: 1px solid #ddd;
+  text-align: left;
+}
+
+th {
+  background-color: #2c3e50;
+  color: white;
+}
+
+tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
+
+tr:hover {
+  background-color: #e0f7fa;
+}
+
+.section-header {
+  background-color: #bdc3c7;
+  font-weight: bold;
+}
+
+.subtotal {
+  background-color: #95a5a6;
+  font-weight: bold;
+}
+
+.grand-total {
+  background-color: #34495e;
+  color: white;
+  font-weight: bold;
+  font-size: 1.1em;
+}
+
+.projected-table th {
+  background-color: #3498db;
+}
+
+.back-link {
+  display: block;
+  text-align: center;
+  margin: 30px 0;
+  font-size: 1.1em;
+}
