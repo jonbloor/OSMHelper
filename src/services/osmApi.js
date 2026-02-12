@@ -138,8 +138,9 @@ async function getDynamicSections(accessToken, session = null) {
   });
 
   const data = response.data; // Assuming the data is in response.data
-  console.log('Raw /oauth/resource data:', JSON.stringify(data)); // Debug log to check structure
-
+console.log('Raw /oauth/resource full structure:', JSON.stringify(data, null, 2));
+console.log('Raw keys at top level:', Object.keys(data || {}));
+if (data?.data) console.log('Keys inside data.data:', Object.keys(data.data || {}));
   let rawSections = data?.sections || data?.data?.sections || data?.roles || data?.data?.roles || [];
   if (!Array.isArray(rawSections)) rawSections = [];
 

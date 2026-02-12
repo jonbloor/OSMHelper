@@ -30,6 +30,7 @@ router.get('/callback', asyncHandler(async (req, res) => {
     const resourceResponse = await osmApi.get(req.session.accessToken, '/oauth/resource', { session: req.session });
     const data = resourceResponse.data?.data || {};
     req.session.email = data.email || 'Unknown Email';
+    req.session.groupName = data.sections?.[0]?.group_name || 'Your Group'; // Assumes first section has it; adjust if multi-group
     req.session.fullName = data.full_name || 'Unknown User';
 
     return res.redirect('/dashboard');

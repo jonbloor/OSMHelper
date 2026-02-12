@@ -219,3 +219,14 @@ h1, h2 {
   background: #bdc3c7; /* Existing grey */
   font-weight: bold;
 }
+.slow-fetch-warning {
+  font-style: italic;
+  color: #7f8c8d;
+  margin: 10px 0;
+  text-align: center;
+}
+tr.subtotal,
+tr.subtotal:nth-child(even) {
+  background: #bdc3c7 !important; /* Uniform grey, overriding even/odd */
+  font-weight: bold;
+}

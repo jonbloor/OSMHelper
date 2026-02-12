@@ -27,6 +27,9 @@ router.get('/membership-dashboard', requireAuth, asyncHandler(async (req, res) =
   const sections = await osmApi.getDynamicSections(accessToken, req.session);
   const excludedTypes = ['explorers', 'adults', 'waiting'];
   const filteredSections = sections.filter(sec => !excludedTypes.includes(sec.section_type));
+const capacities = req.session.capacities || {};
+const visibleSections = req.session.visibleSections || {};
+const filteredSections = sections.filter(sec => !excludedTypes.includes(sec.section_type) && visibleSections[sec.section_id] !== false);
   const cutoffs = { ...DEFAULT_CUTOFFS, ...(req.session.cutoffs || {}) };
   let waitingCounts = { tooYoung: 0, squirrels: 0, beavers: 0, cubs: 0, scouts: 0, explorers: 0 };
   try {
@@ -92,8 +95,8 @@ router.get('/membership-dashboard', requireAuth, asyncHandler(async (req, res) =
       members: secMembers,
       leaders: secLeaders,
       youngLeaders: secYLs,
-      leaderInitials: leaderInitials.join(', ') || '-',
-      youngLeaderInitials: ylInitials.join(', ') || '-',
+      leaderInitials: leaderInitials.join(', ') || ' ',
+      youngLeaderInitials: ylInitials.join(', ') || ' ',
       capacity,
       spaces,
       waiting,

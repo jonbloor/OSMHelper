@@ -32,6 +32,32 @@
       </table>
       <button type="submit">Save Cut-offs</button>
     </form>
+
+    <h2>Section Capacities & Visibility</h2>
+    <form action="/update-sections" method="post">
+      <table style="width:auto; margin:20px 0;">
+        <thead>
+          <tr>
+            <th>Section</th>
+            <th>Type</th>
+            <th>Capacity (Default: <%= /* Display default */ %>)</th>
+            <th>Show in Dashboard?</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% displaySections.forEach(sec => { %>
+            <tr>
+              <td><%= sec.name %></td>
+              <td><%= sec.type %></td>
+              <td><input type="number" name="capacity_<%= sec.id %>" value="<%= sec.capacity %>" min="0" placeholder="<%= sec.defaultCapacity %>" style="width:80px;"></td>
+              <td><input type="checkbox" name="visible_<%= sec.id %>" <%= sec.visible ? 'checked' : '' %>></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+      <button type="submit">Save Sections</button>
+    </form>
+
     <a href="/" class="back-button"><button>Back to Dashboard</button></a>
   </div>
 </body>

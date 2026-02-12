@@ -14,8 +14,8 @@ async function resolveFinanceSection(accessToken, session) {
 
   // Prioritise adults, but only those with accounts permission
   const candidates = [
-    ...sections.filter(s => s.section_type === 'adults' && s.permissions?.accounts === true),
-    ...sections.filter(s => s.section_type !== 'adults' && s.permissions?.accounts === true),
+    ...sections.filter(s => s.section_type === 'adults' && s.upgrades?.accounts === true),
+    ...sections.filter(s => s.section_type !== 'adults' && s.upgrades?.accounts === true),
   ].filter(s => s.section_id);
 
   if (candidates.length === 0) {
