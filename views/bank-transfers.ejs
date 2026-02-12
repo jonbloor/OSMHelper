@@ -8,35 +8,60 @@
   <div class="container">
     <h1>Bank Transfers</h1>
     <p class="fetched-at">Fetched at: <%= fetchedAt %></p>
+    <input type="text" placeholder="Search..." data-search>
+    <p>Total records: <span data-count><%= transfers.length %></span></p>
 
-    <% if (transfers.length === 0) { %>
-      <p>No transfers found (or access issue).</p>
-    <% } else { %>
-      <table>
-        <thead>
+    <table data-table>
+      <thead>
+        <tr>
+          <th data-sort="string">Account</th>
+          <th data-sort="date">Date</th>
+          <th data-sort="string">Reference</th>
+          <th data-sort="number">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% transfers.forEach(t => { %>
           <tr>
-            <th>Account Name</th>
-            <th>Date</th>
-            <th>Reference</th>
-            <th>Description</th>
-            <th>Amount</th>
+            <td><%= t.accountName %></td>
+            <td><%= t.date %></td>
+            <td><%= t.reference %></td>
+            <td><%= t.amount %></td>
           </tr>
-        </thead>
-        <tbody>
-          <% transfers.forEach(transfer => { %>
-            <tr>
-              <td><%= transfer.accountName %></td>
-              <td><%= transfer.date %></td>
-              <td><%= transfer.reference %></td>
-              <td><%= transfer.description %></td>
-              <td><%= transfer.amount %></td>
-            </tr>
-          <% }); %>
-        </tbody>
-      </table>
-    <% } %>
+        <% }) %>
+      </tbody>
+    </table>
 
-    <a href="/">Back to Dashboard</a>
+    <a href="/" class="back-button"><button>Back to Dashboard</button></a>
   </div>
+  <script>
+    // Caching for bank transfers
+    const cachedData = localStorage.getItem('bankTransfersData');
+    const cachedTime = localStorage.getItem('bankTransfersTime');
+    const now = Date.now();
+    if (cachedData && cachedTime && (now - cachedTime) < 3600000) {
+      const transfers = JSON.parse(cachedData);
+      const tbody = document.querySelector('tbody');
+      tbody.innerHTML = '';
+      transfers.forEach(t => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${t.accountName}</td>
+          <td>${t.date}</td>
+          <td>${t.reference}</td>
+          <td>${t.amount}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      document.querySelector('[data-count]').textContent = transfers.length;
+      console.log('Loaded from cache');
+    } else {
+      // Store fresh data
+      const transfers = <%= transfersJSON %>;
+      localStorage.setItem('bankTransfersData', JSON.stringify(transfers));
+      localStorage.setItem('bankTransfersTime', now);
+    }
+  </script>
+  <script src="/table-utils.js"></script>
 </body>
 </html>

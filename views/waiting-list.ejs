@@ -8,20 +8,27 @@
   <div class="container">
     <h1>Waiting List</h1>
     <p class="fetched-at">Fetched at: <%= fetchedAt %></p>
+    <input type="text" placeholder="Search..." data-search>
+    <p>Total records: <span data-count><%= applicants.length %></span></p>
 
     <% if (applicants.length === 0) { %>
       <p>No applicants found (or access issue).</p>
     <% } else { %>
-      <table>
+      <table data-table>
         <thead>
           <tr>
-            <th>Rank</th>
-            <th>First Name</th>
-            <th>Last Name</th>
-            <th>Age</th>
-            <th>Time on List (Days)</th>
-            <th>Willing to Help</th>
-            <th>Score</th>
+            <th data-sort="number">Rank</th>
+            <th data-sort="string">First Name</th>
+            <th data-sort="string">Last Name</th>
+            <th data-sort="string">Age</th>
+            <th data-sort="number">Time on List (Days)</th>
+            <th data-sort="string">Willing to Help</th>
+            <th data-sort="string">Leaders' Notes</th>
+            <th data-sort="string">Joining Comments</th>
+            <th data-sort="string">Place accepted?</th>
+            <th data-sort="date">Target Join Date</th>
+            <th data-sort="string">Ideal Section</th> <!-- Added -->
+            <th data-sort="number">Score</th>
           </tr>
         </thead>
         <tbody>
@@ -33,6 +40,11 @@
               <td><%= app.age %></td>
               <td><%= app.timeOnList %></td>
               <td><%= app.willingToHelp %></td>
+              <td><%= app.leadersNotes %></td>
+              <td><%= app.joiningComments %></td>
+              <td><%= app.placeAccepted %></td>
+              <td><%= app.targetJoinDate %></td>
+              <td><%= app.idealSection %></td> <!-- Added -->
               <td><%= app.score %></td>
             </tr>
           <% }); %>
@@ -40,7 +52,8 @@
       </table>
     <% } %>
 
-    <a href="/">Back to Dashboard</a>
+    <a href="/" class="back-button"><button>Back to Dashboard</button></a>
   </div>
+  <script src="/table-utils.js"></script>
 </body>
 </html>
