@@ -25,6 +25,12 @@
         <a href="/reset"><button>Logout</button></a>
       </div>
 
+<p class="slow-fetch-warning">Some actions may take a moment as we're fetching fresh data from OSM—hang in there!</p>
+<div id="loading-indicator" style="display: none; text-align: center; margin: 20px 0; color: #3498db;">
+  <span>Loading... Please wait.</span> <!-- Or add a spinner GIF/CSS animation if preferred -->
+</div>
+
+
       <% if (rateLimit) { %>
         <div class="rate-limit-info">
           <p><strong>API Rate Limit Status:</strong></p>
@@ -66,5 +72,13 @@
       <% } %>
     <% } %>
   </div>
+<script>
+  // Show loading on button clicks
+  document.querySelectorAll('.dashboard-buttons button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('loading-indicator').style.display = 'block';
+    });
+  });
+</script>
 </body>
 </html>
