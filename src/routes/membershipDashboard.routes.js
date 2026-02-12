@@ -27,7 +27,7 @@ router.get('/membership-dashboard', requireAuth, asyncHandler(async (req, res) =
   const accessToken = req.session.accessToken;
   const sections = await osmApi.getDynamicSections(accessToken, req.session);
 
-  const excludedTypes = ['explorers', 'adults'];
+  const excludedTypes = ['explorers', 'adults', 'waiting'];
   const filteredSections = sections.filter(sec => !excludedTypes.includes(sec.section_type));
 
   const cutoffs = { ...DEFAULT_CUTOFFS, ...(req.session.cutoffs || {}) };
@@ -85,6 +85,19 @@ router.get('/membership-dashboard', requireAuth, asyncHandler(async (req, res) =
     let secMembers = 0, secLeaders = 0, secYLs = 0;
     const leaderInitials = [], ylInitials = [];
 
+// Set waiting subtotals once per group type (fixes per-section overcounting)
+Object.keys(grouped).forEach(type => {
+  grouped[type].subtotalWaiting = waitingCounts[type.toLowerCase().replace(/ /g, '')] || 0;
+});
+
+// Reset and recalculate totalWaiting accurately
+totalWaiting = 0;
+Object.keys(grouped).forEach(type => {
+  totalWaiting += grouped[type].subtotalWaiting;
+});
+totalWaiting += waitingCounts.tooYoung + waitingCounts.explorers;
+
+
     members.forEach(m => {
       const patrol = m.patrol || '';
       const initials = [ (m.firstname || '')[0].toUpperCase(), (m.lastname || '')[0].toUpperCase() ].join('').trim();
@@ -131,7 +144,7 @@ router.get('/membership-dashboard', requireAuth, asyncHandler(async (req, res) =
     totalYLs += secYLs;
     totalCapacity += typeof capacity === 'number' ? capacity : 0;
     totalSpaces += typeof spaces === 'number' ? spaces : 0;
-    totalWaiting += grouped[friendly].subtotalWaiting;
+    totalWaiting += waitingCounts.tooYoung + waitingCounts.explorers; // Overwrite to include full waiting list    
   }
 
   const sortedGrouped = {};

@@ -9,6 +9,8 @@
     <h1>Membership Dashboard</h1>
     <p class="fetched-at">Data updated: <%= dataUpdated %></p>
 
+    <button id="toggle-initials">Toggle Leader/YL Initials</button> <!-- New toggle -->
+
     <table>
       <thead>
         <tr>
@@ -32,8 +34,8 @@
               <td><%= sec.capacity %></td>
               <td><%= sec.spaces %></td>
               <td><%= sec.waiting %></td>
-              <td><%= sec.leaders %> (<%= sec.leaderInitials %>)</td>
-              <td><%= sec.youngLeaders %> (<%= sec.youngLeaderInitials %>)</td>
+              <td><%= sec.leaders %> (<span class="initials"><%= sec.leaderInitials %></span>)</td> <!-- Wrapped in span -->
+              <td><%= sec.youngLeaders %> (<span class="initials"><%= sec.youngLeaderInitials %></span>)</td> <!-- Wrapped in span -->
             </tr>
           <% }); %>
           <tr class="subtotal">
@@ -47,7 +49,7 @@
             <td><%= data.subtotalYLs %></td>
           </tr>
         <% } %>
-        <tr class="grand-total-readable">
+        <tr class="subtotal"> <!-- Changed to "subtotal" for uniform styling -->
           <td><strong>Grand Total</strong></td>
           <td></td>
           <td><strong><%= totalMembers %></strong></td>
@@ -62,5 +64,13 @@
 
     <a href="/" class="back-button"><button>Back to Dashboard</button></a>
   </div>
+  <script>
+    // Toggle script
+    document.getElementById('toggle-initials').addEventListener('click', () => {
+      document.querySelectorAll('.initials').forEach(el => {
+        el.style.display = el.style.display === 'none' ? 'inline' : 'none';
+      });
+    });
+  </script>
 </body>
 </html>

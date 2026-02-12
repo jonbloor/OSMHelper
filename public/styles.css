@@ -214,3 +214,8 @@ h1, h2 {
 .fetched-at {
   margin-bottom: 5px;
 }
+/* Uniform subtotal and grand total styling */
+.subtotal {
+  background: #bdc3c7; /* Existing grey */
+  font-weight: bold;
+}
