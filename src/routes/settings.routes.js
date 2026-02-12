@@ -3,6 +3,7 @@ const express = require('express');
 const { requireAuth } = require('../middleware/requireAuth');
 const { DEFAULT_CUTOFFS, FRIENDLY_SECTION_TYPES, DEFAULT_CAPACITIES } = require('../config/constants');
 const osmApi = require('../services/osmApi');
+const { asyncHandler } = require('../utils/asyncHandler');
 
 const router = express.Router();
 
@@ -64,6 +65,6 @@ router.post('/update-sections', requireAuth, (req, res) => {
   req.session.capacities = capacities;
   req.session.visibleSections = visibleSections;
   res.redirect('/settings');
-}));
+});
 
 module.exports = router;

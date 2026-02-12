@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Select Finance Section</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Select a Section for Bank Transfers</h1>
+    <p>We couldn't auto-detect a finance-enabled section. Please select one.</p>
+    <form action="/bank-transfers/select" method="post">
+      <select name="sectionId" required>
+        <option value="">Select Section</option>
+        <% sections.forEach(sec => { %>
+          <option value="<%= sec.section_id %>" data-type="<%= sec.section_type %>"><%= sec.section_name %> (Type: <%= sec.section_type %>)</option>
+        <% }); %>
+      </select>
+      <input type="hidden" name="sectionType" value="<%= sec.section_type %>">
+      <button type="submit">Save and Continue</button>
+    </form>
+    <a href="/" class="back-button"><button>Back to Dashboard</button></a>
+  </div>
+  <script>
+    // Optional: Pre-select type
+    document.querySelector('select').addEventListener('change', (e) => {
+      const selected = e.target.options[e.target.selectedIndex];
+      const type = selected.getAttribute('data-type');
+      if (type) {
+        // Could add hidden input for type if needed
+      }
+    });
+  </script>
+</body>
+</html>

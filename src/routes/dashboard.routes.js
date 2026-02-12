@@ -41,7 +41,7 @@ router.get(
 
     res.render('index', {
       authorized: true,
-      groupName: req.session.groupName || '4th Ashby Scout Group',
+      groupName: req.session.groupName || 'OSM Helper',
       email: req.session.email || 'Unknown Email', // Added
       fullName: req.session.fullName || 'Unknown User', // Optional
       sections,

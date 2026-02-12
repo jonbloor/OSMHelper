@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <title>OSM Helper</title>
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/styles.css?v=<%= new Date().getTime() %>">
 </head>
 <body>
   <div class="container">
@@ -13,23 +13,25 @@
       <a href="/auth"><button>Authorise with OSM</button></a>
       <p>This project is available via <a href="https://github.com/jonbloor/OSMHelper">GitHub</a>. Also check <a href="https://wogglehq.com">Woggle HQ</a> for all kinds of resources for leaders.</p>
     <% } else { %>
-      <h1>OSM Helper Dashboard</h1>
+      <h1><%= groupName %> Tools Dashboard</h1>
       <p>Logged in as: <%= email || 'Unknown Email' %></p>
       <div class="dashboard-buttons">
         <a href="/membership-dashboard"><button>Membership Dashboard</button></a>
         <a href="/waiting-list"><button>Waiting List</button></a>
         <a href="/members"><button>Members</button></a>
-        <a href="/equipment"><button>Equipment</button></a>
+	<a href="/equipment"><button>Equipment List</button></a>
+	<a href="/equipment/add"><button>Add Equipment</button></a>
+	<a href="/equipment/edit"><button>Edit Equipment</button></a> <!-- Note: edit needs ID, perhaps link from list -->
         <a href="/bank-transfers"><button>Bank Transfers</button></a>
         <a href="/settings"><button>Settings</button></a>
         <a href="/reset"><button>Logout</button></a>
       </div>
 
 <p class="slow-fetch-warning">Some actions may take a moment as we're fetching fresh data from OSM—hang in there!</p>
-<div id="loading-indicator" style="display: none; text-align: center; margin: 20px 0; color: #3498db;">
-  <span>Loading... Please wait.</span> <!-- Or add a spinner GIF/CSS animation if preferred -->
-</div>
 
+<div id="loading-indicator" style="display: none; text-align: center; margin: 20px 0; color: #3498db;">
+  <span class="loading-spinner"></span> Loading... Please wait.
+</div>
 
       <% if (rateLimit) { %>
         <div class="rate-limit-info">

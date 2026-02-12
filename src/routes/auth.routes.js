@@ -28,9 +28,10 @@ router.get('/callback', asyncHandler(async (req, res) => {
 
     // Fetch user details from /oauth/resource and store in session
     const resourceResponse = await osmApi.get(req.session.accessToken, '/oauth/resource', { session: req.session });
+    console.log('Full resourceResponse.data:', JSON.stringify(resourceResponse.data, null, 2)); // Added log
     const data = resourceResponse.data?.data || {};
     req.session.email = data.email || 'Unknown Email';
-    req.session.groupName = data.sections?.[0]?.group_name || 'Your Group'; // Assumes first section has it; adjust if multi-group
+    req.session.groupName = data.sections?.[0]?.group_name || 'OSM Helper';
     req.session.fullName = data.full_name || 'Unknown User';
 
     return res.redirect('/dashboard');

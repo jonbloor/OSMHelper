@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Equipment List</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Equipment List</h1>
+    <input type="text" placeholder="Search..." data-search>
+    <p>Total records: <span data-count><%= equipment.length %></span></p>
+    <table data-table>
+      <thead>
+        <tr>
+          <th data-sort="string">List Name</th>
+          <th data-sort="string">Item Name</th>
+          <th data-sort="string">Description</th>
+          <th data-sort="string">Location</th>
+          <th data-sort="string">Notes</th>
+          <th data-sort="string">Condition</th>
+          <th data-sort="number">Quantity</th>
+          <th data-sort="string">Broken</th>
+          <th data-sort="date">Purchase Date</th>
+          <th data-sort="number">Renewal Price</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% equipment.forEach(item => { %>
+          <tr>
+            <td><%= item.listName %></td>
+            <td><%= item.itemName %></td>
+            <td><%= item.description %></td>
+            <td><%= item.location %></td>
+            <td><%= item.notes %></td>
+            <td><%= item.condition %></td>
+            <td><%= item.quantity %></td>
+            <td><%= item.broken %></td>
+            <td><%= item.purchaseDate %></td>
+            <td><%= item.renewalPrice %></td>
+            <td><a href="/equipment/edit?listId=<%= item.listId %>&itemRowId=<%= item.itemRowId %>">Edit</a></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+    <a href="/" class="back-button"><button>Back to Dashboard</button></a>
+    <a href="/equipment/add"><button>Add New</button></a>
+  </div>
+  <script src="/table-utils.js"></script>
+</body>
+</html>

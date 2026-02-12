@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <title>Membership Dashboard - OSM Helper</title>
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/styles.css?v=<%= new Date().getTime() %>">
 </head>
 <body>
   <div class="container">
@@ -61,6 +61,8 @@
         </tr>
       </tbody>
     </table>
+
+<p>Note: There are <%= tooYoungWaiting %> children who are too young, bringing the waiting list total to <%= totalWaitingFull %>.</p>
 
     <a href="/" class="back-button"><button>Back to Dashboard</button></a>
   </div>

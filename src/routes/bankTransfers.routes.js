@@ -11,12 +11,8 @@ const router = express.Router();
 
 async function resolveFinanceSection(accessToken, session) {
   const sections = await osmApi.getDynamicSections(accessToken, session);
-
-  // Prioritise adults, but only those with accounts permission
-  const candidates = [
-    ...sections.filter(s => s.section_type === 'adults' && s.upgrades?.accounts === true),
-    ...sections.filter(s => s.section_type !== 'adults' && s.upgrades?.accounts === true),
-  ].filter(s => s.section_id);
+  console.log('Sections with upgrades:', sections.map(s => ({ name: s.section_name, upgrades: s.upgrades })));
+  const candidates = sections.filter(s => s.upgrades?.accounts === true).filter(s => s.section_id);
 
   if (candidates.length === 0) {
     console.log('No sections with accounts permission found in /oauth/resource.');
@@ -48,6 +44,13 @@ async function resolveFinanceSection(accessToken, session) {
   return null;
 }
 
+router.post('/bank-transfers/select', requireAuth, asyncHandler(async (req, res) => {
+  const sectionId = req.body.sectionId;
+  const sectionType = req.body.sectionType || 'adults';
+  req.session.financeSection = { sectionId, sectionType }; // Save for future
+  res.redirect('/bank-transfers');
+}));
+
 router.get(
   '/bank-transfers',
   requireAuth,
@@ -56,7 +59,8 @@ router.get(
     const financeSection = await resolveFinanceSection(accessToken, req.session);
 
     if (!financeSection) {
-      return res.render('error', { message: 'No section with finance access found. Check your OSM permissions and ensure "Accounts" is enabled for at least one section.' });
+      const sections = await osmApi.getDynamicSections(accessToken, req.session);
+      return res.render('bank-transfers-select', { sections }); // New EJS for selection
     }
 
     const { sectionId, sectionType } = financeSection;

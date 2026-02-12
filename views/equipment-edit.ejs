@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Edit Equipment</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Update Equipment</h1>
+    <form action="/equipment/edit" method="post">
+      <input type="hidden" name="listId" value="<%= item.listId %>">
+      <input type="hidden" name="itemRowId" value="<%= item.itemRowId %>">
+      <label>Name: <input type="text" name="name" value="<%= item.itemName %>"></label><br>
+      <label>Description: <input type="text" name="description" value="<%= item.description %>"></label><br>
+      <label>Location: <select name="location">
+        <option value="<%= item.location %>"><%= item.location %></option>
+        <option value="Rack 1, Shelf 1">Rack 1, Shelf 1</option>
+        <!-- Add others -->
+      </select></label><br>
+      <label>Notes: <input type="text" name="notes" value="<%= item.notes %>"></label><br>
+      <label>Condition: <select name="condition">
+        <option value="<%= item.condition %>"><%= item.condition %></option>
+        <option value="Excellent">Excellent</option>
+        <!-- Add others -->
+      </select></label><br>
+      <label>Quantity: <input type="number" name="quantity" value="<%= item.quantity %>"></label><br>
+      <label>Broken: <input type="text" name="broken" value="<%= item.broken %>"></label><br>
+      <label>Purchase Date: <input type="date" name="purchaseDate" value="<%= item.purchaseDate %>"></label><br>
+      <label>Renewal Price: <input type="text" name="renewalPrice" value="<%= item.renewalPrice %>"></label><br>
+      <button type="submit">Update</button>
+    </form>
+    <a href="/equipment">Back to List</a>
+  </div>
+</body>
+</html>
