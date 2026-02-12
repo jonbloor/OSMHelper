@@ -1,49 +1,58 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>4th Ashby Scout Group - Membership Dashboard</title>
+  <title><%= groupName %> - Membership Dashboard</title>
   <link rel="stylesheet" href="/styles.css">
-<style>
-  table { width: 100%; border-collapse: collapse; margin: 20px 0; font-family: Arial, sans-serif; }
-  th, td { padding: 12px 15px; border: 1px solid #ddd; text-align: right; }
-  th { background: #34495e; color: white; text-align: left; }
-  tr:nth-child(even) { background: #f9f9f9; }
-  .section-header { background: #ecf0f1; font-weight: bold; }
-  .grand-total { background: #2c3e50; color: white; font-weight: bold; font-size: 1.1em; }
-  .projected { margin-top: 40px; border-top: 2px solid #34495e; padding-top: 20px; }
-  .projected th { background: #2980b9; }
-  .back { margin: 30px auto; display: block; text-align: center; font-size: 1.1em; }
-</style>
 </head>
 <body>
   <div class="container">
-    <h1>4th Ashby Scout Group<br>Membership Dashboard</h1>
+    <h1><%= groupName %><br>Membership Dashboard</h1>
     <p>Members Updated: <%= membersUpdated %><br>Waiting List Updated: <%= waitingUpdated %></p>
 
     <table>
       <thead>
         <tr>
           <th>Section Type</th>
+          <th>Section Name</th>
           <th>Members</th>
+          <th>Capacity</th>
+          <th>Spaces</th>
           <th>Leaders</th>
           <th>Young Leaders</th>
         </tr>
       </thead>
       <tbody>
         <% for (const [type, data] of Object.entries(grouped)) { %>
-          <tr class="section-header">
-            <td><%= type %></td>
-            <td><%= data.members %></td>
-            <td><%= data.leaders %></td>
-            <td><%= data.youngLeaders %></td>
+          <% data.sections.forEach(sec => { %>
+            <tr>
+              <td><%= type %></td>
+              <td><%= sec.name %></td>
+              <td><%= sec.members %></td>
+              <td><%= sec.capacity %></td>
+              <td><%= sec.spaces %></td>
+              <td><%= sec.leaders %> (<%= sec.leaderInitials %>)</td>
+              <td><%= sec.youngLeaders %> (<%= sec.youngLeaderInitials %>)</td>
+            </tr>
+          <% }); %>
+          <tr class="subtotal">
+            <td><%= type %> Subtotal</td>
+            <td></td>
+            <td><%= data.subtotalMembers %></td>
+            <td></td>
+            <td></td>
+            <td><%= data.subtotalLeaders %></td>
+            <td><%= data.subtotalYLs %></td>
           </tr>
         <% } %>
 
         <tr class="grand-total">
-          <td>TOTAL</td>
-          <td><%= totalMembers %></td>
-          <td><%= totalLeaders %></td>
-          <td><%= totalYLs %></td>
+          <td><strong>GRAND TOTAL</strong></td>
+          <td></td>
+          <td><strong><%= totalMembers %></strong></td>
+          <td></td>
+          <td></td>
+          <td><strong><%= totalLeaders %></strong></td>
+          <td><strong><%= totalYLs %></strong></td>
         </tr>
       </tbody>
     </table>
@@ -71,6 +80,32 @@
         </tbody>
       </table>
     </div>
+
+<h2>Adjust Age Cut-offs (for projections)</h2>
+<form action="/update-cutoffs" method="post">
+  <table style="width:auto; margin:20px 0;">
+    <thead>
+      <tr>
+        <th>Category</th>
+        <th>Years</th>
+        <th>Months</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% ['Squirrels', 'Beavers', 'Cubs', 'Scouts', 'Explorers'].forEach((cat, i) => { 
+        const key = ['squirrels','beavers','cubs','scouts','explorers'][i];
+        const { years, months } = displayCutoffs[key] || { years: 0, months: 0 };
+      %>
+        <tr>
+          <td><%= cat %></td>
+          <td><input type="number" name="<%= key %>_years" value="<%= years %>" min="0" style="width:60px;"></td>
+          <td><input type="number" name="<%= key %>_months" value="<%= months %>" min="0" max="11" style="width:60px;"></td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+  <button type="submit">Apply Cut-offs</button>
+</form>
 
     <a href="/" class="back">Back to Main Dashboard</a>
   </div>
