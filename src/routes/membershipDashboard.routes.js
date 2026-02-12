@@ -1,7 +1,8 @@
+// src/routes/membershipDashboard.routes.js
 const express = require('express');
 const { requireAuth } = require('../middleware/requireAuth');
 const { asyncHandler } = require('../utils/asyncHandler');
-const { osm, authHeader, getDynamicSections } = require('../services/osmApi');
+const osmApi = require('../services/osmApi');
 const {
   FRIENDLY_SECTION_TYPES,
   SECTION_TYPE_ORDER,
@@ -23,17 +24,13 @@ router.post('/update-cutoffs', requireAuth, (req, res) => {
 });
 
 router.get('/membership-dashboard', requireAuth, asyncHandler(async (req, res) => {
-  const sections = await getDynamicSections(req.session.accessToken);
+  const accessToken = req.session.accessToken;
+  const sections = await osmApi.getDynamicSections(accessToken, req.session);
 
-  const groupName =
-    req.session.groupName ||
-    sections[0]?.group_name ||
-    '4th Ashby Scout Group';
+  const groupName = req.session.groupName || sections[0]?.group_name || '4th Ashby Scout Group';
 
-  // Use session overrides if present, else defaults.
   const cutoffs = { ...DEFAULT_CUTOFFS, ...(req.session.cutoffs || {}) };
 
-  // Prepare cut-offs for the view (years + months)
   const displayCutoffs = {};
   ['squirrels', 'beavers', 'cubs', 'scouts', 'explorers'].forEach(key => {
     const decimal = cutoffs[key];
@@ -42,114 +39,63 @@ router.get('/membership-dashboard', requireAuth, asyncHandler(async (req, res) =
     displayCutoffs[key] = { years, months };
   });
 
-  // If no sections returned, render an empty dashboard safely.
-  if (!sections.length) {
-    const projected = { tooYoung: 0, squirrels: 0, beavers: 0, cubs: 0, scouts: 0, explorers: 0 };
-    return res.render('membership-dashboard', {
-      groupName,
-      grouped: {},
-      totalMembers: 0,
-      totalLeaders: 0,
-      totalYLs: 0,
-      projected,
-      totalProjected: 0,
-      displayCutoffs,
-      membersUpdated: new Date().toLocaleString('en-GB'),
-      waitingUpdated: new Date().toLocaleString('en-GB'),
-    });
-  }
-
-  const today = new Date();
-  const todayMillis = today.getTime();
-
-  // Fetch waiting list and project ages
-  let waitingApplicants = [];
-
-  const waitingSection = sections.find(s =>
-    s.section_type === 'waiting' || String(s.section_name || '').toLowerCase().includes('waiting')
-  );
-
+  // Fetch waiting list for projections
+  const waitingSection = sections.find(sec => sec.section_type === 'waiting' || sec.section_name.toLowerCase().includes('waiting'));
+  let projected = { tooYoung: 0, squirrels: 0, beavers: 0, cubs: 0, scouts: 0, explorers: 0 };
+  let totalProjected = 0;
   if (waitingSection) {
-    const wId = waitingSection.section_id;
-    const wType = waitingSection.section_type || 'waiting';
+    const waitingId = waitingSection.section_id;
+    const waitingType = waitingSection.section_type || 'waiting';
 
-    const wUrl = `/ext/members/contact/?action=getListOfMembers&sectionid=${wId}&termid=-1&section=${wType}&sort=dob`;
-    const wRes = await osm.get(wUrl, { headers: authHeader(req.session.accessToken) });
-    const wItems = wRes.data?.items || [];
+    const listUrl = `/ext/members/contact/?action=getListOfMembers&sectionid=${waitingId}&termid=-1&section=${waitingType}&sort=dob`;
+    const listRes = await osmApi.get(accessToken, listUrl, { session: req.session });
+    const waitingList = listRes.data?.items || [];
 
-    for (const app of wItems) {
-      try {
-        const indUrl = `/ext/members/contact/?action=getIndividual&sectionid=${wId}&scoutid=${app.scoutid}&termid=-1&context=members`;
-        const indRes = await osm.get(indUrl, { headers: authHeader(req.session.accessToken) });
-        const data = indRes.data?.data || {};
-        const dobDate = new Date(data.dob);
-        const dobMillis = dobDate.getTime();
-        if (!Number.isFinite(dobMillis)) continue;
+    const today = new Date();
+    const todayMillis = today.getTime();
 
-        const ageYears = (todayMillis - dobMillis) / (365.25 * 24 * 60 * 60 * 1000);
+    for (const applicant of waitingList) {
+      const individualUrl = `/ext/members/contact/?action=getIndividual&sectionid=${waitingId}&scoutid=${applicant.scoutid}&termid=-1&context=members`;
+      const indRes = await osmApi.get(accessToken, individualUrl, { session: req.session });
+      const indData = indRes.data?.data || {};
 
-        const initials = [
-          (data.firstname || '')[0]?.toUpperCase() || '',
-          (data.lastname || '')[0]?.toUpperCase() || '',
-        ].join('').trim();
+      const dob = new Date(indData.dob);
+      const age = Number.isFinite(dob.getTime()) ? (todayMillis - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000) : null;
 
-        waitingApplicants.push({ ageYears, initials, dob: data.dob });
-      } catch {
-        // Ignore single-record failures to keep dashboard usable.
-      }
+      if (age == null) continue;
+
+      if (age < cutoffs.squirrels) projected.tooYoung++;
+      else if (age < cutoffs.beavers) projected.squirrels++;
+      else if (age < cutoffs.cubs) projected.beavers++;
+      else if (age < cutoffs.scouts) projected.cubs++;
+      else if (age < cutoffs.explorers) projected.scouts++;
+      else projected.explorers++;
+
+      totalProjected++;
     }
   }
 
-  const projected = { tooYoung: 0, squirrels: 0, beavers: 0, cubs: 0, scouts: 0, explorers: 0 };
-  waitingApplicants.forEach(app => {
-    const age = app.ageYears;
-    if (age < cutoffs.squirrels) projected.tooYoung++;
-    else if (age < cutoffs.beavers) projected.squirrels++;
-    else if (age < cutoffs.cubs) projected.beavers++;
-    else if (age < cutoffs.scouts) projected.cubs++;
-    else if (age < cutoffs.explorers) projected.scouts++;
-    else projected.explorers++;
-  });
-  const totalProjected = Object.values(projected).reduce((a, b) => a + b, 0);
-
-  // Grouped section stats
+  // Fetch members for dashboard
   const grouped = {};
-  let totalMembers = 0;
-  let totalLeaders = 0;
-  let totalYLs = 0;
+  let totalMembers = 0, totalLeaders = 0, totalYLs = 0;
 
   for (const sec of sections) {
-    const type = sec.section_type;
-    if (!['earlyyears', 'beavers', 'cubs', 'scouts', 'explorers'].includes(type)) continue;
+    const type = sec.section_type || 'unknown';
+    const friendly = FRIENDLY_SECTION_TYPES[type] || 'Other';
 
-    const friendly = FRIENDLY_SECTION_TYPES[type] || type;
-    if (!grouped[friendly]) {
-      grouped[friendly] = { sections: [], subtotalMembers: 0, subtotalLeaders: 0, subtotalYLs: 0 };
-    }
+    if (!grouped[friendly]) grouped[friendly] = { sections: [], subtotalMembers: 0, subtotalLeaders: 0, subtotalYLs: 0 };
 
-    const currentTerm = sec.terms?.find(t => new Date(t.startdate) <= today && new Date(t.enddate) >= today);
-    const termId = currentTerm?.term_id || sec.terms?.[sec.terms.length - 1]?.term_id;
-    if (!termId) continue;
+    const termId = sec.current_term_id || -1; // Fallback
+    const listUrl = `/ext/members/contact/?action=getListOfMembers&sectionid=${sec.section_id}&termid=${termId}&section=${type}&sort=patrol`;
+    const listRes = await osmApi.get(accessToken, listUrl, { session: req.session });
+    const members = listRes.data?.items || [];
 
-    const listUrl =
-      `/ext/members/contact/?action=getListOfMembers&sectionid=${sec.section_id}&termid=${termId}&section=${type}&sort=lastname`;
+    let secMembers = 0, secLeaders = 0, secYLs = 0;
+    const leaderInitials = [], ylInitials = [];
 
-    const listRes = await osm.get(listUrl, { headers: authHeader(req.session.accessToken) });
-    const items = listRes.data?.items || [];
-
-    let secMembers = 0;
-    let secLeaders = 0;
-    let secYLs = 0;
-    const leaderInitials = [];
-    const ylInitials = [];
-
-    items.forEach(m => {
-      const patrol = String(m.patrol || '').trim();
-
-      const initials = [
-        (m.firstname || '')[0]?.toUpperCase() || '',
-        (m.lastname || '')[0]?.toUpperCase() || '',
-      ].join('').trim();
+    members.forEach(m => {
+      const patrol = m.patrol || '';
+      const initials = [ (m.firstname || '')[0].toUpperCase(), (m.lastname || '')[0].toUpperCase() ].join('').trim();
 
       if (patrol === 'Leaders') {
         secLeaders++;
@@ -188,7 +134,6 @@ router.get('/membership-dashboard', requireAuth, asyncHandler(async (req, res) =
     totalYLs += secYLs;
   }
 
-  // Optional: render in your preferred order (Squirrels → Explorers)
   const sortedGrouped = {};
   SECTION_TYPE_ORDER.forEach(typeName => {
     if (grouped[typeName]) sortedGrouped[typeName] = grouped[typeName];

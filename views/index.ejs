@@ -1,18 +1,58 @@
-<% if (authorized && rateLimit) { %>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>OSM Helper</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container">
+    <% if (!authorized) { %>
+      <h1>Welcome to OSM Helper</h1>
+      <p>This is an independent project, not affiliated with Online Scout Manager. Use it at your own risk.</p>
+      <p>We only store your OSM access token in a session cookie (deleted when you close the browser). No scout data is permanently saved.</p>
+      <a href="/auth"><button>Authorise with OSM</button></a>
+    <% } else { %>
+      <h1>OSM Helper Dashboard</h1>   <!-- ← Changed here -->
+      
+      <div class="dashboard-buttons">
+        <a href="/membership-dashboard"><button>Membership Dashboard</button></a>
+        <a href="/waiting-list"><button>Waiting List</button></a>
+        <a href="/members"><button>Members</button></a>
+        <a href="/equipment"><button>Equipment</button></a>
+        <a href="/bank-transfers"><button>Bank Transfers</button></a>
+        <a href="/settings"><button>Settings</button></a>
+        <a href="/reset"><button>Logout</button></a>
+      </div>
+
+<% if (rateLimit) { %>
   <div class="rate-limit-info">
     <p><strong>API Rate Limit Status:</strong></p>
     <ul>
       <li>Limit: <%= rateLimit.limit ?? 'Unknown' %></li>
       <li>Remaining: <%= rateLimit.remaining ?? 'Unknown' %></li>
-      <li>Resets in: <%= (rateLimit.secondsUntilReset != null) ? (Math.max(0, rateLimit.secondsUntilReset) + 's') : 'Unknown' %></li>
+      <li>Resets in: 
+        <% 
+          let resetText = 'Unknown';
+          const secs = rateLimit.secondsUntilReset;
+          if (secs != null) {
+            if (secs <= 0) {
+              resetText = 'now';
+            } else {
+              const mins = Math.ceil(secs / 60);
+              resetText = mins + ' minute' + (mins === 1 ? '' : 's');
+            }
+          }
+        %>
+        <%= resetText %>
+      </li>
     </ul>
-
-    <% if (typeof rateLimit.remaining === 'number') { %>
-      <% if (rateLimit.remaining <= 50) { %>
-        <p class="warning">⚠️ Low remaining requests – use sparingly or wait for reset!</p>
-      <% } else if (rateLimit.remaining <= 200) { %>
-        <p class="caution">Caution: Getting low – consider waiting if planning large fetches.</p>
-      <% } %>
+    <% if (typeof rateLimit.remaining === 'number' && rateLimit.remaining <= 50) { %>
+      <p class="warning">⚠️ Low remaining requests – use sparingly!</p>
     <% } %>
   </div>
 <% } %>
+
+    <% } %>
+  </div>
+</body>
+</html>

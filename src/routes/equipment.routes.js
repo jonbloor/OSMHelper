@@ -1,7 +1,8 @@
+// src/routes/equipment.routes.js
 const express = require('express');
 const { requireAuth } = require('../middleware/requireAuth');
 const { asyncHandler } = require('../utils/asyncHandler');
-const { osm, authHeader, getDynamicSections } = require('../services/osmApi');
+const osmApi = require('../services/osmApi');
 
 const router = express.Router();
 
@@ -11,31 +12,30 @@ function toForm(payload) {
   return new URLSearchParams(payload);
 }
 
-/**
- * Find Adults/Leaders section id dynamically if possible.
- */
-async function resolveAdultsSectionId(accessToken) {
-  const sections = await getDynamicSections(accessToken);
+async function resolveAdultsSectionId(accessToken, session) {
+  const sections = await osmApi.getDynamicSections(accessToken, session);
+  console.log('Sections for equipment:', sections); // Debug log
 
-  // Prefer Adults/Leaders if present
   const adults = sections.find(s => s.section_type === 'adults');
   if (adults?.section_id) return adults.section_id;
 
-  // Otherwise pick the first section that exists (keeps app usable)
   const first = sections[0];
   if (first?.section_id) return first.section_id;
 
-  throw new Error('No sections available to resolve a section id for equipment.');
+  return null; // Changed: return null instead of throwing
 }
 
 router.get('/equipment', requireAuth, asyncHandler(async (req, res) => {
   const accessToken = req.session.accessToken;
-  const sectionId = await resolveAdultsSectionId(accessToken);
+  const sectionId = await resolveAdultsSectionId(accessToken, req.session);
 
-  const listsUrl =
-    `/ext/quartermaster/?action=getListOfLists&section=${ADULTS_SECTION_TYPE}&sectionid=${sectionId}`;
+  if (!sectionId) {
+    return res.render('error', { message: 'Oops! No suitable section found for equipment. Check your OSM permissions or try again later.' });
+  }
 
-  const listsResponse = await osm.get(listsUrl, { headers: authHeader(accessToken) });
+  const listsUrl = `/ext/quartermaster/?action=getListOfLists&section=${ADULTS_SECTION_TYPE}&sectionid=${sectionId}`;
+
+  const listsResponse = await osmApi.get(accessToken, listsUrl, { session: req.session });
   const listsData = listsResponse.data?.data || [];
 
   const equipment = [];
@@ -44,32 +44,26 @@ router.get('/equipment', requireAuth, asyncHandler(async (req, res) => {
     const listId = equipList.id;
     const listName = equipList.name;
 
-    const itemsUrl =
-      `/ext/quartermaster/?action=getList&listid=${listId}&section=${ADULTS_SECTION_TYPE}&sectionid=${sectionId}`;
+    const itemsUrl = `/ext/quartermaster/?action=getList&listid=${listId}&section=${ADULTS_SECTION_TYPE}&sectionid=${sectionId}`;
 
-    const itemsResponse = await osm.get(itemsUrl, { headers: authHeader(accessToken) });
-    const itemsData = itemsResponse.data?.data;
+    const itemsResponse = await osmApi.get(accessToken, itemsUrl, { session: req.session });
+    const itemsData = itemsResponse.data?.data || [];
 
-    if (!itemsData?.rows) continue;
-
-    for (const rowId in itemsData.rows) {
-      const item = itemsData.rows[rowId];
-
+    itemsData.forEach(item => {
       equipment.push({
-        itemRowId: rowId,
-        listId,
+        itemRowId: item.rowidentifier,
         listName,
-        itemName: item['1'] || '',
-        description: item['2'] || '',
-        location: item['3'] || '',
-        notes: item['4'] || '',
-        quantity: item['6'] || '',
-        condition: item['5'] || '',
-        broken: item['7'] || '',
-        purchaseDate: item['8'] || '',
-        renewalPrice: item['9'] || '',
+        itemName: item._1 || '',
+        description: item._2 || '',
+        location: item._3 || '',
+        notes: item._4 || '',
+        quantity: item._6 || '',
+        condition: item._5 || '',
+        broken: item._7 || '',
+        purchaseDate: item._8 || '',
+        renewalPrice: item._9 || '',
       });
-    }
+    });
   }
 
   res.render('equipment', { equipment });
@@ -77,7 +71,11 @@ router.get('/equipment', requireAuth, asyncHandler(async (req, res) => {
 
 router.post('/add-equipment', requireAuth, asyncHandler(async (req, res) => {
   const accessToken = req.session.accessToken;
-  const sectionId = await resolveAdultsSectionId(accessToken);
+  const sectionId = await resolveAdultsSectionId(accessToken, req.session);
+
+  if (!sectionId) {
+    return res.render('error', { message: 'Oops! No suitable section found for adding equipment. Check your OSM permissions.' });
+  }
 
   const { listId } = req.body;
 
@@ -95,29 +93,23 @@ router.post('/add-equipment', requireAuth, asyncHandler(async (req, res) => {
 
   const payload = { listid: listId, section: ADULTS_SECTION_TYPE, sectionid: sectionId };
 
-  // Map request fields to OSM column ids
   for (const field in req.body) {
     const columnId = columnMap[field];
     if (columnId) payload[`_${columnId}`] = req.body[field];
   }
 
-  await osm.post(
-    '/ext/quartermaster/?action=saveItemRowDetails',
-    toForm(payload),
-    {
-      headers: {
-        ...authHeader(accessToken),
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-    }
-  );
+  await osmApi.post(accessToken, '/ext/quartermaster/?action=saveItemRowDetails', { data: toForm(payload) });
 
   res.redirect('/equipment');
 }));
 
 router.post('/update-equipment', requireAuth, asyncHandler(async (req, res) => {
   const accessToken = req.session.accessToken;
-  const sectionId = await resolveAdultsSectionId(accessToken);
+  const sectionId = await resolveAdultsSectionId(accessToken, req.session);
+
+  if (!sectionId) {
+    return res.render('error', { message: 'Oops! No suitable section found for updating equipment. Check your OSM permissions.' });
+  }
 
   const { listId, itemRowId } = req.body;
 
@@ -145,8 +137,6 @@ router.post('/update-equipment', requireAuth, asyncHandler(async (req, res) => {
   for (const field in req.body) {
     if (field === 'listId' || field === 'itemRowId') continue;
     const columnId = columnMap[field];
-
-    // Keep original behaviour: only send non-empty updates
     if (columnId && req.body[field]) {
       payload[`_${columnId}`] = req.body[field];
       updated = true;
@@ -154,16 +144,7 @@ router.post('/update-equipment', requireAuth, asyncHandler(async (req, res) => {
   }
 
   if (updated) {
-    await osm.post(
-      '/ext/quartermaster/?action=saveItemRowDetails',
-      toForm(payload),
-      {
-        headers: {
-          ...authHeader(accessToken),
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      }
-    );
+    await osmApi.post(accessToken, '/ext/quartermaster/?action=saveItemRowDetails', { data: toForm(payload) });
   }
 
   res.redirect('/equipment');

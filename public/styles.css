@@ -167,3 +167,9 @@ tr:hover { background: #e8f4f8; }
 .projected { margin-top: 40px; padding-top: 20px; border-top: 2px solid #34495e; }
 .back { display: block; text-align: center; margin: 30px 0; font-size: 1.1em; color: #3498db; text-decoration: none; }
 .back:hover { text-decoration: underline; }
+
+@media print {
+  .back-button {
+    display: none;
+  }
+}

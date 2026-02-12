@@ -1,12 +1,14 @@
+// src/routes/waitingList.routes.js
 const express = require('express');
 const { requireAuth } = require('../middleware/requireAuth');
 const { asyncHandler } = require('../utils/asyncHandler');
-const { osm, authHeader, getDynamicSections } = require('../services/osmApi');
+const osmApi = require('../services/osmApi');
 
 const router = express.Router();
 
 router.get('/waiting-list', requireAuth, asyncHandler(async (req, res) => {
-  const sections = await getDynamicSections(req.session.accessToken);
+  const accessToken = req.session.accessToken;
+  const sections = await osmApi.getDynamicSections(accessToken, req.session);
 
   const waitingSection = sections.find(sec =>
     sec.section_type === 'waiting' ||
@@ -20,10 +22,9 @@ router.get('/waiting-list', requireAuth, asyncHandler(async (req, res) => {
   const waitingSectionId = waitingSection.section_id;
   const waitingSectionType = waitingSection.section_type || 'waiting';
 
-  const listUrl =
-    `/ext/members/contact/?action=getListOfMembers&sectionid=${waitingSectionId}&termid=-1&section=${waitingSectionType}&sort=dob`;
+  const listUrl = `/ext/members/contact/?action=getListOfMembers&sectionid=${waitingSectionId}&termid=-1&section=${waitingSectionType}&sort=dob`;
 
-  const listResponse = await osm.get(listUrl, { headers: authHeader(req.session.accessToken) });
+  const listResponse = await osmApi.get(accessToken, listUrl, { session: req.session });
   const listData = listResponse.data?.items || [];
 
   const applicants = [];
@@ -32,10 +33,9 @@ router.get('/waiting-list', requireAuth, asyncHandler(async (req, res) => {
 
   for (const applicant of listData) {
     try {
-      const individualUrl =
-        `/ext/members/contact/?action=getIndividual&sectionid=${waitingSectionId}&scoutid=${applicant.scoutid}&termid=-1&context=members`;
+      const individualUrl = `/ext/members/contact/?action=getIndividual&sectionid=${waitingSectionId}&scoutid=${applicant.scoutid}&termid=-1&context=members`;
 
-      const individualResponse = await osm.get(individualUrl, { headers: authHeader(req.session.accessToken) });
+      const individualResponse = await osmApi.get(accessToken, individualUrl, { session: req.session });
       const individualData = individualResponse.data?.data || {};
 
       const dob = new Date(individualData.dob);
@@ -43,7 +43,6 @@ router.get('/waiting-list', requireAuth, asyncHandler(async (req, res) => {
         ? Math.floor((todayMillis - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000))
         : null;
 
-      // NOTE: this custom field id is group-specific; keep it configurable later.
       const willingToHelp = individualData.customfields?.customfield_123 || 'N';
 
       const joinDate = new Date(individualData.joined || individualData.applicationdate || individualData.started);

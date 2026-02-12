@@ -1,3 +1,4 @@
+// src/routes/dashboard.routes.js
 'use strict';
 
 const express = require('express');
@@ -7,19 +8,20 @@ const osmApi = require('../services/osmApi');
 
 const router = express.Router();
 
-// Intro page (NOT protected)
+// Pre-auth intro page
 router.get('/', (req, res) => {
   const authorized = Boolean(req.session && req.session.accessToken);
+  const rateLimit = authorized ? osmApi.getRateLimitSnapshot(req.session.accessToken) : null;
 
   res.render('index', {
     authorized,
     groupName: req.session.groupName || '4th Ashby Scout Group',
     sections: [],
-    rateLimit: authorized ? osmApi.getRateLimitSnapshot(req.session.accessToken) : null,
+    rateLimit,
   });
 });
 
-// Real dashboard (protected)
+// Authenticated dashboard
 router.get(
   '/dashboard',
   requireAuth,
@@ -28,29 +30,31 @@ router.get(
 
     let sections = [];
     try {
-      const resource = await osmApi.get(accessToken, '/oauth/resource', {
-        session: req.session,
-        ttlMs: 5 * 60 * 1000,
-      });
-
-      sections =
-        resource?.sections ||
-        resource?.data?.sections ||
-        resource?.items ||
-        resource?.data?.items ||
-        [];
-      if (!Array.isArray(sections)) sections = [];
-    } catch {
-      sections = [];
+      sections = await osmApi.getDynamicSections(accessToken, req.session);
+    } catch (err) {
+      console.warn('Sections fetch failed:', err.message);
     }
+
+    const rateLimit = osmApi.getRateLimitSnapshot(accessToken);
 
     res.render('index', {
       authorized: true,
       groupName: req.session.groupName || '4th Ashby Scout Group',
       sections,
-      rateLimit: osmApi.getRateLimitSnapshot(accessToken),
+      rateLimit,
     });
   })
 );
+
+// Logout / Reset
+router.get('/reset', (req, res) => {
+  req.session.destroy(err => {
+    if (err) {
+      console.error('Session destroy error:', err);
+      return res.status(500).send('Logout failed');
+    }
+    res.redirect('/');
+  });
+});
 
 module.exports = router;
