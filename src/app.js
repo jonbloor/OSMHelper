@@ -17,6 +17,7 @@ const equipmentRoutes = require('./routes/equipment.routes');
 const membershipDashboardRoutes = require('./routes/membershipDashboard.routes');
 const membersRoutes = require('./routes/members.routes');
 const waitingListRoutes = require('./routes/waitingList.routes');
+const settingsRoutes = require('./routes/settings.routes');
 
 function createApp() {
   assertEnv(); // Ensure required env vars are set
@@ -42,6 +43,7 @@ function createApp() {
   app.use(membershipDashboardRoutes);
   app.use(membersRoutes);
   app.use(waitingListRoutes);
+  app.use(settingsRoutes);
 
   // Global error handler
   app.use((err, req, res, next) => {

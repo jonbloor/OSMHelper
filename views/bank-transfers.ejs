@@ -1,27 +1,27 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Bank transfers · <%= groupName %></title>
-  <link rel="stylesheet" href="/styles.css" />
+  <title>Bank Transfers - OSM Helper</title>
+  <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
   <div class="container">
-    <h1><%= groupName %></h1>
-    <h2>Bank transfers</h2>
-    <p style="opacity:.75;">Fetched at: <%= fetchedAt %></p>
+    <h1>Bank Transfers</h1>
+    <p class="fetched-at">Fetched at: <%= fetchedAt %></p>
+    <input type="text" placeholder="Search..." data-search>
+    <p>Total records: <span data-count><%= transfers.length %></span></p>
 
-    <table>
+    <table data-table>
       <thead>
         <tr>
-          <th>Account</th>
-          <th>Date</th>
-          <th>Reference</th>
-          <th>Amount</th>
+          <th data-sort="string">Account</th>
+          <th data-sort="date">Date</th>
+          <th data-sort="string">Reference</th>
+          <th data-sort="number">Amount</th>
         </tr>
       </thead>
       <tbody>
-        <% (transfers || []).forEach(t => { %>
+        <% transfers.forEach(t => { %>
           <tr>
             <td><%= t.accountName %></td>
             <td><%= t.date %></td>
@@ -31,6 +31,37 @@
         <% }) %>
       </tbody>
     </table>
+
+    <a href="/" class="back-button"><button>Back to Dashboard</button></a>
   </div>
+  <script>
+    // Caching for bank transfers
+    const cachedData = localStorage.getItem('bankTransfersData');
+    const cachedTime = localStorage.getItem('bankTransfersTime');
+    const now = Date.now();
+    if (cachedData && cachedTime && (now - cachedTime) < 3600000) {
+      const transfers = JSON.parse(cachedData);
+      const tbody = document.querySelector('tbody');
+      tbody.innerHTML = '';
+      transfers.forEach(t => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${t.accountName}</td>
+          <td>${t.date}</td>
+          <td>${t.reference}</td>
+          <td>${t.amount}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      document.querySelector('[data-count]').textContent = transfers.length;
+      console.log('Loaded from cache');
+    } else {
+      // Store fresh data
+      const transfers = <%= transfersJSON %>;
+      localStorage.setItem('bankTransfersData', JSON.stringify(transfers));
+      localStorage.setItem('bankTransfersTime', now);
+    }
+  </script>
+  <script src="/table-utils.js"></script>
 </body>
 </html>

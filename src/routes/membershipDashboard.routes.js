@@ -27,65 +27,57 @@ router.get('/membership-dashboard', requireAuth, asyncHandler(async (req, res) =
   const accessToken = req.session.accessToken;
   const sections = await osmApi.getDynamicSections(accessToken, req.session);
 
-  const groupName = req.session.groupName || sections[0]?.group_name || '4th Ashby Scout Group';
+  const excludedTypes = ['explorers', 'adults'];
+  const filteredSections = sections.filter(sec => !excludedTypes.includes(sec.section_type));
 
   const cutoffs = { ...DEFAULT_CUTOFFS, ...(req.session.cutoffs || {}) };
 
-  const displayCutoffs = {};
-  ['squirrels', 'beavers', 'cubs', 'scouts', 'explorers'].forEach(key => {
-    const decimal = cutoffs[key];
-    const years = Math.floor(decimal);
-    const months = Math.round((decimal - years) * 12);
-    displayCutoffs[key] = { years, months };
-  });
+  let waitingCounts = { tooYoung: 0, squirrels: 0, beavers: 0, cubs: 0, scouts: 0, explorers: 0 };
+  try {
+    const waitingSection = sections.find(sec => sec.section_type === 'waiting' || (sec.section_name || '').toLowerCase().includes('waiting'));
+    if (waitingSection) {
+      const waitingId = waitingSection.section_id;
+      const waitingType = waitingSection.section_type || 'waiting';
 
-  // Fetch waiting list for projections
-  const waitingSection = sections.find(sec => sec.section_type === 'waiting' || sec.section_name.toLowerCase().includes('waiting'));
-  let projected = { tooYoung: 0, squirrels: 0, beavers: 0, cubs: 0, scouts: 0, explorers: 0 };
-  let totalProjected = 0;
-  if (waitingSection) {
-    const waitingId = waitingSection.section_id;
-    const waitingType = waitingSection.section_type || 'waiting';
+      const listUrl = `/ext/members/contact/?action=getListOfMembers&sectionid=${waitingId}&termid=-1&section=${waitingType}&sort=dob`;
+      const listRes = await osmApi.get(accessToken, listUrl, { session: req.session });
+      const waitingList = listRes.data?.items || [];
 
-    const listUrl = `/ext/members/contact/?action=getListOfMembers&sectionid=${waitingId}&termid=-1&section=${waitingType}&sort=dob`;
-    const listRes = await osmApi.get(accessToken, listUrl, { session: req.session });
-    const waitingList = listRes.data?.items || [];
+      const today = new Date();
+      const todayMillis = today.getTime();
 
-    const today = new Date();
-    const todayMillis = today.getTime();
+      for (const applicant of waitingList) {
+        const individualUrl = `/ext/members/contact/?action=getIndividual&sectionid=${waitingId}&scoutid=${applicant.scoutid}&termid=-1&context=members`;
+        const indRes = await osmApi.get(accessToken, individualUrl, { session: req.session });
+        const indData = indRes.data?.data || {};
 
-    for (const applicant of waitingList) {
-      const individualUrl = `/ext/members/contact/?action=getIndividual&sectionid=${waitingId}&scoutid=${applicant.scoutid}&termid=-1&context=members`;
-      const indRes = await osmApi.get(accessToken, individualUrl, { session: req.session });
-      const indData = indRes.data?.data || {};
+        const dob = new Date(indData.dob);
+        const age = Number.isFinite(dob.getTime()) ? (todayMillis - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000) : null;
 
-      const dob = new Date(indData.dob);
-      const age = Number.isFinite(dob.getTime()) ? (todayMillis - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000) : null;
+        if (age == null) continue;
 
-      if (age == null) continue;
-
-      if (age < cutoffs.squirrels) projected.tooYoung++;
-      else if (age < cutoffs.beavers) projected.squirrels++;
-      else if (age < cutoffs.cubs) projected.beavers++;
-      else if (age < cutoffs.scouts) projected.cubs++;
-      else if (age < cutoffs.explorers) projected.scouts++;
-      else projected.explorers++;
-
-      totalProjected++;
+        if (age < cutoffs.squirrels) waitingCounts.tooYoung++;
+        else if (age < cutoffs.beavers) waitingCounts.squirrels++;
+        else if (age < cutoffs.cubs) waitingCounts.beavers++;
+        else if (age < cutoffs.scouts) waitingCounts.cubs++;
+        else if (age < cutoffs.explorers) waitingCounts.scouts++;
+        else waitingCounts.explorers++;
+      }
     }
+  } catch (e) {
+    console.warn('Waiting list fetch failed (possibly rate limit):', e.message);
   }
 
-  // Fetch members for dashboard
   const grouped = {};
-  let totalMembers = 0, totalLeaders = 0, totalYLs = 0;
+  let totalMembers = 0, totalLeaders = 0, totalYLs = 0, totalCapacity = 0, totalSpaces = 0, totalWaiting = 0;
 
-  for (const sec of sections) {
+  for (const sec of filteredSections) {
     const type = sec.section_type || 'unknown';
     const friendly = FRIENDLY_SECTION_TYPES[type] || 'Other';
 
-    if (!grouped[friendly]) grouped[friendly] = { sections: [], subtotalMembers: 0, subtotalLeaders: 0, subtotalYLs: 0 };
+    if (!grouped[friendly]) grouped[friendly] = { sections: [], subtotalMembers: 0, subtotalLeaders: 0, subtotalYLs: 0, subtotalCapacity: 0, subtotalSpaces: 0, subtotalWaiting: 0 };
 
-    const termId = sec.current_term_id || -1; // Fallback
+    const termId = sec.current_term_id || -1;
     const listUrl = `/ext/members/contact/?action=getListOfMembers&sectionid=${sec.section_id}&termid=${termId}&section=${type}&sort=patrol`;
     const listRes = await osmApi.get(accessToken, listUrl, { session: req.session });
     const members = listRes.data?.items || [];
@@ -113,6 +105,7 @@ router.get('/membership-dashboard', requireAuth, asyncHandler(async (req, res) =
 
     const capacity = getCapacity(sec.section_id, type);
     const spaces = (typeof capacity === 'number') ? (capacity - secMembers) : '-';
+    const waiting = 0; // Per-section waiting is 0 (only subtotals)
 
     grouped[friendly].sections.push({
       name: sec.section_name,
@@ -123,15 +116,22 @@ router.get('/membership-dashboard', requireAuth, asyncHandler(async (req, res) =
       youngLeaderInitials: ylInitials.join(', ') || '-',
       capacity,
       spaces,
+      waiting,
     });
 
     grouped[friendly].subtotalMembers += secMembers;
     grouped[friendly].subtotalLeaders += secLeaders;
     grouped[friendly].subtotalYLs += secYLs;
+    grouped[friendly].subtotalCapacity += typeof capacity === 'number' ? capacity : 0;
+    grouped[friendly].subtotalSpaces += typeof spaces === 'number' ? spaces : 0;
+    grouped[friendly].subtotalWaiting += waitingCounts[friendly.toLowerCase().replace(/ /g, '')] || 0;
 
     totalMembers += secMembers;
     totalLeaders += secLeaders;
     totalYLs += secYLs;
+    totalCapacity += typeof capacity === 'number' ? capacity : 0;
+    totalSpaces += typeof spaces === 'number' ? spaces : 0;
+    totalWaiting += grouped[friendly].subtotalWaiting;
   }
 
   const sortedGrouped = {};
@@ -139,17 +139,25 @@ router.get('/membership-dashboard', requireAuth, asyncHandler(async (req, res) =
     if (grouped[typeName]) sortedGrouped[typeName] = grouped[typeName];
   });
 
+  const latestUpdate = new Date().toLocaleString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
   res.render('membership-dashboard', {
-    groupName,
     grouped: Object.keys(sortedGrouped).length ? sortedGrouped : grouped,
     totalMembers,
     totalLeaders,
     totalYLs,
-    projected,
-    totalProjected,
-    displayCutoffs,
-    membersUpdated: new Date().toLocaleString('en-GB'),
-    waitingUpdated: new Date().toLocaleString('en-GB'),
+    totalCapacity,
+    totalSpaces,
+    totalWaiting,
+    tooYoungWaiting: waitingCounts.tooYoung,
+    ofAge: totalWaiting - waitingCounts.tooYoung,
+    dataUpdated: latestUpdate,
   });
 }));
 

@@ -140,18 +140,29 @@ async function getDynamicSections(accessToken, session = null) {
   const data = response.data; // Assuming the data is in response.data
   console.log('Raw /oauth/resource data:', JSON.stringify(data)); // Debug log to check structure
 
-  let roles = data?.roles || data?.data?.roles || data?.items || data?.data?.items || [];
-  if (!Array.isArray(roles)) roles = [];
+  let rawSections = data?.sections || data?.data?.sections || data?.roles || data?.data?.roles || [];
+  if (!Array.isArray(rawSections)) rawSections = [];
 
-  // Map roles to sections format expected by routes
-  const sections = roles.map(role => ({
-    section_id: role.sectionid || role.section_id,
-    section_type: role.section || role.section_type,
-    section_name: role.sectionname || role.section_name,
-    current_term_id: role.currentterm || role.current_term_id,
-    group_name: role.groupname || role.group_name,
-    // Add more mappings if needed from script (e.g., groupid: role.groupid)
-  }));
+  // Compute current_term_id if not present
+  const now = new Date();
+  const sections = rawSections.map(sec => {
+    let current_term_id;
+    if (sec.terms && Array.isArray(sec.terms)) {
+      const currentTerm = sec.terms.find(t => {
+        const start = new Date(t.startdate);
+        const end = new Date(t.enddate);
+        return start <= now && end >= now;
+      });
+      current_term_id = currentTerm ? currentTerm.term_id : (sec.terms[sec.terms.length - 1]?.term_id || -1);
+    } else {
+      current_term_id = sec.current_term_id || -1;
+    }
+
+    return {
+      ...sec,
+      current_term_id,
+    };
+  });
 
   console.log('Parsed sections:', sections); // Debug log
 

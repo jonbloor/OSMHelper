@@ -163,13 +163,54 @@ tr:hover { background: #e8f4f8; }
 /* Dashboard specific */
 .section-header { background: #ecf0f1; font-weight: bold; }
 .subtotal { background: #bdc3c7; font-weight: bold; }
-.grand-total { background: #2c3e50; color: white; font-weight: bold; font-size: 1.1em; }
+.grand-total { background: #34495e; color: white; font-weight: bold; font-size: 1.1em; }
 .projected { margin-top: 40px; padding-top: 20px; border-top: 2px solid #34495e; }
 .back { display: block; text-align: center; margin: 30px 0; font-size: 1.1em; color: #3498db; text-decoration: none; }
 .back:hover { text-decoration: underline; }
+
+#toggle-initials {
+  margin-bottom: 10px;
+}
+
+.initials {
+  display: inline; /* Default show */
+}
 
 @media print {
   .back-button {
     display: none;
   }
+}
+
+@media print {
+  [data-search] {
+    display: none;
+  }
+}
+
+.fetched-at {
+  font-style: italic;
+  color: #7f8c8d;
+  margin-bottom: 10px;
+}
+
+table th, table td {
+  padding: 6px; /* Was 8px, condensed */
+}
+
+.container {
+  margin: 10px auto; /* Tighter margins */
+  padding: 10px;
+}
+
+h1, h2 {
+  margin-bottom: 10px; /* Less space */
+}
+
+.dashboard-buttons button {
+  margin: 5px; /* Tighter button spacing */
+}
+
+.fetched-at {
+  margin-bottom: 5px;
 }

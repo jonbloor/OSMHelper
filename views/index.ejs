@@ -11,9 +11,10 @@
       <p>This is an independent project, not affiliated with Online Scout Manager. Use it at your own risk.</p>
       <p>We only store your OSM access token in a session cookie (deleted when you close the browser). No scout data is permanently saved.</p>
       <a href="/auth"><button>Authorise with OSM</button></a>
+      <p>This project is available via <a href="https://github.com/jonbloor/OSMHelper">GitHub</a>. Also check <a href="https://wogglehq.com">Woggle HQ</a> for all kinds of resources for leaders.</p>
     <% } else { %>
-      <h1>OSM Helper Dashboard</h1>   <!-- ← Changed here -->
-      
+      <h1>OSM Helper Dashboard</h1>
+      <p>Logged in as: <%= email || 'Unknown Email' %></p>
       <div class="dashboard-buttons">
         <a href="/membership-dashboard"><button>Membership Dashboard</button></a>
         <a href="/waiting-list"><button>Waiting List</button></a>
@@ -24,34 +25,45 @@
         <a href="/reset"><button>Logout</button></a>
       </div>
 
-<% if (rateLimit) { %>
-  <div class="rate-limit-info">
-    <p><strong>API Rate Limit Status:</strong></p>
-    <ul>
-      <li>Limit: <%= rateLimit.limit ?? 'Unknown' %></li>
-      <li>Remaining: <%= rateLimit.remaining ?? 'Unknown' %></li>
-      <li>Resets in: 
-        <% 
-          let resetText = 'Unknown';
-          const secs = rateLimit.secondsUntilReset;
-          if (secs != null) {
-            if (secs <= 0) {
-              resetText = 'now';
-            } else {
-              const mins = Math.ceil(secs / 60);
-              resetText = mins + ' minute' + (mins === 1 ? '' : 's');
-            }
-          }
-        %>
-        <%= resetText %>
-      </li>
-    </ul>
-    <% if (typeof rateLimit.remaining === 'number' && rateLimit.remaining <= 50) { %>
-      <p class="warning">⚠️ Low remaining requests – use sparingly!</p>
-    <% } %>
-  </div>
-<% } %>
+      <% if (rateLimit) { %>
+        <div class="rate-limit-info">
+          <p><strong>API Rate Limit Status:</strong></p>
+          <ul>
+            <li>Limit: <%= rateLimit.limit ?? 'Unknown' %></li>
+            <li>Remaining: <%= rateLimit.remaining ?? 'Unknown' %></li>
+            <li>Resets in: 
+              <% 
+                let resetText = 'Unknown';
+                const secs = rateLimit.secondsUntilReset;
+                if (secs != null) {
+                  if (secs <= 0) {
+                    resetText = 'now';
+                  } else {
+                    const mins = Math.ceil(secs / 60);
+                    resetText = mins + ' minute' + (mins === 1 ? '' : 's');
+                  }
+                }
+              %>
+              <%= resetText %>
+            </li>
+          </ul>
+          <% if (typeof rateLimit.remaining === 'number' && rateLimit.remaining <= 50) { %>
+            <p class="warning">⚠️ Low remaining requests – use sparingly!</p>
+          <% } %>
+        </div>
+      <% } %>
 
+      <!-- New: List of accessible sections -->
+      <% if (sections && sections.length > 0) { %>
+        <h2>Accessible Sections</h2>
+        <ul>
+          <% sections.forEach(sec => { %>
+            <li><%= sec.section_name %> (type: <%= sec.section_type %>)</li>
+          <% }); %>
+        </ul>
+      <% } else { %>
+        <p>No accessible sections found—check your OSM permissions.</p>
+      <% } %>
     <% } %>
   </div>
 </body>

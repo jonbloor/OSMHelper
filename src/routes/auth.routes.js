@@ -1,6 +1,8 @@
+// src/routes/auth.routes.js
 const express = require('express');
 const { asyncHandler } = require('../utils/asyncHandler');
 const { createOAuthClient } = require('../services/oauthClient');
+const osmApi = require('../services/osmApi');
 
 const router = express.Router();
 
@@ -23,6 +25,13 @@ router.get('/callback', asyncHandler(async (req, res) => {
   try {
     const result = await client.getToken({ code, redirect_uri: REDIRECT_URI });
     req.session.accessToken = result.token.access_token;
+
+    // Fetch user details from /oauth/resource and store in session
+    const resourceResponse = await osmApi.get(req.session.accessToken, '/oauth/resource', { session: req.session });
+    const data = resourceResponse.data?.data || {};
+    req.session.email = data.email || 'Unknown Email';
+    req.session.fullName = data.full_name || 'Unknown User';
+
     return res.redirect('/dashboard');
   } catch (error) {
     console.error('OAuth callback failed:', error.response?.status, error.response?.data || error.message);

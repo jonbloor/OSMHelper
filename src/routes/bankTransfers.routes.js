@@ -11,7 +11,6 @@ const router = express.Router();
 
 async function resolveFinanceSectionId(accessToken, session) {
   const sections = await osmApi.getDynamicSections(accessToken, session);
-  console.log('Sections for bank transfers:', sections); // Debug log
 
   const candidates = [
     ...sections.filter(s => s.section_type === 'adults'),
@@ -25,11 +24,10 @@ async function resolveFinanceSectionId(accessToken, session) {
       return sectionId;
     } catch (err) {
       if (err.response?.status !== 403) throw err;
-      console.warn(`Finance access denied for section ${sectionId}`);
     }
   }
 
-  return null; // Changed: return null instead of throwing
+  return null;
 }
 
 router.get(
@@ -40,7 +38,7 @@ router.get(
     const sectionId = await resolveFinanceSectionId(accessToken, req.session);
 
     if (!sectionId) {
-      return res.render('error', { message: 'Drat! No section with finance access found. Ensure your OSM account has bank permissions.' });
+      return res.render('error', { message: 'No section with finance access found.' });
     }
 
     const accountsPath = `/v3/finances/accounting/bank_accounts/section/${sectionId}`;
@@ -99,6 +97,7 @@ router.get(
       groupName: req.session.groupName || '4th Ashby Scout Group',
       transfers,
       fetchedAt: new Date().toLocaleString('en-GB'),
+      transfersJSON: JSON.stringify(transfers) // For caching
     });
   })
 );

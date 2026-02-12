@@ -1,6 +1,7 @@
 const OSM_API_BASE = 'https://www.onlinescoutmanager.co.uk';
 
 const SECTION_TYPE_ORDER = [
+  'Waiting List',
   'Squirrels',
   'Beavers',
   'Cubs',
@@ -15,7 +16,7 @@ const FRIENDLY_SECTION_TYPES = {
   cubs: 'Cubs',
   scouts: 'Scouts',
   explorers: 'Explorers',
-  adults: 'Adults / Leaders',
+  adults: 'Adults/Leaders',
   waiting: 'Waiting List',
   unknown: 'Other',
 };

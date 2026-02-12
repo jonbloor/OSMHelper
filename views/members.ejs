@@ -8,7 +8,9 @@
 <body>
   <div class="container">
     <h1>Members</h1>
-    <input type="text" placeholder="Search..." data-search> <!-- Added search input -->
+    <p class="fetched-at">Fetched at: <%= fetchedAt %></p>
+    <input type="text" placeholder="Search..." data-search>
+    <p>Total records: <span data-count><%= members.length %></span></p> <!-- Initial count -->
     <table data-table>
       <thead>
         <tr>
@@ -43,6 +45,40 @@
     </table>
     <a href="/" class="back-button"><button>Back to Dashboard</button></a>
   </div>
-  <script src="/table-utils.js"></script> <!-- Added JS for search/sort -->
+  <script>
+    // Caching for members
+    const cachedData = localStorage.getItem('membersData');
+    const cachedTime = localStorage.getItem('membersTime');
+    const now = Date.now();
+    if (cachedData && cachedTime && (now - cachedTime) < 3600000) {
+      const members = JSON.parse(cachedData);
+      const tbody = document.querySelector('tbody');
+      tbody.innerHTML = '';
+      members.forEach(member => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${member.sectionType}</td>
+          <td>${member.sectionName}</td>
+          <td>${member.memberId}</td>
+          <td>${member.firstName}</td>
+          <td>${member.lastName}</td>
+          <td>${member.dob}</td>
+          <td>${member.patrol}</td>
+          <td>${member.started}</td>
+          <td>${member.joined}</td>
+          <td>${member.age}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      document.querySelector('[data-count]').textContent = members.length;
+      console.log('Loaded from cache');
+    } else {
+      // Store fresh data
+      const members = <%= membersJSON %>;
+      localStorage.setItem('membersData', JSON.stringify(members));
+      localStorage.setItem('membersTime', now);
+    }
+  </script>
+  <script src="/table-utils.js"></script>
 </body>
 </html>

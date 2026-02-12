@@ -3,10 +3,18 @@
   const tables = document.querySelectorAll('[data-table]');
   tables.forEach(table => {
     const search = document.querySelector('[data-search]');
+    const countSpan = document.querySelector('[data-count]');
     const tbody = table.querySelector('tbody');
     const rows = Array.from(tbody.querySelectorAll('tr'));
 
     function normalise(s) { return String(s || '').toLowerCase(); }
+
+    function updateCount() {
+      if (countSpan) {
+        const visible = rows.filter(tr => tr.style.display !== 'none').length;
+        countSpan.textContent = visible;
+      }
+    }
 
     if (search) {
       search.addEventListener('input', () => {
@@ -15,10 +23,10 @@
           const text = normalise(tr.innerText);
           tr.style.display = text.includes(q) ? '' : 'none';
         });
+        updateCount();
       });
     }
 
-    // Click-to-sort headers with data-sort="string|number|date"
     table.querySelectorAll('th[data-sort]').forEach((th, idx) => {
       let dir = 1;
       th.style.cursor = 'pointer';
@@ -37,7 +45,10 @@
         });
 
         sorted.forEach(tr => tbody.appendChild(tr));
+        updateCount();
       });
     });
+
+    updateCount(); // Initial count
   });
 })();

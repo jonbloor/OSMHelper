@@ -14,6 +14,8 @@ router.get(
   '/members',
   requireAuth,
   asyncHandler(async (req, res) => {
+    console.log('Members route loaded successfully'); // Debug to confirm no syntax error
+
     const accessToken = req.session.accessToken;
     const sections = await osmApi.getDynamicSections(accessToken, req.session);
 
@@ -28,9 +30,9 @@ router.get(
 
     for (const sec of sections) {
       const type = sec.section_type || 'unknown';
-      if (['waiting', 'unknown', 'adults'].includes(type)) continue; // Skip non-youth
+      if (['waiting', 'unknown', 'adults'].includes(type)) continue;
 
-      const termId = sec.current_term_id || -1; // Simplified to match original code
+      const termId = sec.current_term_id || -1;
 
       const listPath = '/ext/members/contact/';
       const listParams = {
@@ -127,6 +129,15 @@ router.get(
     res.render('members', {
       members,
       rateLimit,
+      fetchedAt: new Date().toLocaleString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      }),
+      membersJSON: JSON.stringify(members)
     });
   })
 );
