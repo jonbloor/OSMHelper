@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <title>Membership Dashboard - OSM Helper</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="/styles.css?v=<%= new Date().getTime() %>">
 </head>
 <body>
@@ -10,7 +11,7 @@
     <p class="fetched-at">Data updated: <%= dataUpdated %></p>
 
     <button id="toggle-initials">Toggle Leader/YL Initials</button> <!-- New toggle -->
-
+  <div class="table-responsive">
     <table>
       <thead>
         <tr>
@@ -61,7 +62,7 @@
         </tr>
       </tbody>
     </table>
-
+  </div>
 <p>Note: There are <%= tooYoungWaiting %> children who are too young, bringing the waiting list total to <%= totalWaitingFull %>.</p>
 
     <a href="/" class="back-button"><button>Back to Dashboard</button></a>

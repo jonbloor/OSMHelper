@@ -208,3 +208,41 @@ tr.grand-total td{
   .back-button{ display: none; }
   [data-search]{ display: none; }
 }
+
+@media (max-width: 768px) {
+  body {
+    padding: 10px; /* Less padding for smaller screens */
+  }
+  .container {
+    padding: 5px;
+    text-align: center; /* Centre text and button */
+  }
+  button {
+    width: 100%; /* Full-width buttons for easy tapping */
+    margin: 10px 0;
+  }
+  .dashboard-buttons {
+    flex-direction: column; /* Stack buttons vertically */
+    align-items: center;
+  }
+  .dashboard-buttons button {
+    width: 80%; /* Not full-width to avoid edge taps */
+  }
+  .slow-fetch-warning {
+    font-size: 0.9em; /* Slightly smaller for brevity */
+  }
+}
+
+.table-responsive {
+  overflow-x: auto;
+  margin: 10px 0;
+}
+@media (max-width: 768px) {
+  table {
+    font-size: 0.85em; /* Smaller text for fit */
+  }
+  th, td {
+    padding: 4px; /* Tighter padding */
+    white-space: nowrap; /* Prevent wrapping in cells */
+  }
+}
