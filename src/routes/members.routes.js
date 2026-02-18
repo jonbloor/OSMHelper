@@ -6,139 +6,199 @@ const { requireAuth } = require('../middleware/requireAuth');
 const { asyncHandler } = require('../utils/asyncHandler');
 const osmApi = require('../services/osmApi');
 const { limit } = require('../utils/concurrency');
-const { FRIENDLY_SECTION_TYPES } = require('../config/constants');
 
 const router = express.Router();
+
+function calculateAge(dob) {
+  if (!dob) return 0;
+  const birthDate = new Date(dob);
+  const ageDifMs = Date.now() - birthDate.getTime();
+  return Math.abs(ageDifMs / (1000 * 60 * 60 * 24 * 365.25));
+}
 
 router.get(
   '/members',
   requireAuth,
   asyncHandler(async (req, res) => {
-    console.log('Members route loaded successfully'); // Debug to confirm no syntax error
+    let groupName = 'Your Group'; // default right at top
+if (sections.length > 0) {
+    groupName = await osmApi.getGroupName(accessToken, sections[0].section_id || sections[0].id, req.session);
+}
+    let mainMembers = [];
+    let youthDuplicates = [];
+    let ylMembers = [];
+    let leaderMembers = [];
 
-    const accessToken = req.session.accessToken;
-    const sections = await osmApi.getDynamicSections(accessToken, req.session);
+    try {
+      const accessToken = req.session.accessToken;
+      const sections = await osmApi.getDynamicSections(accessToken, req.session);
 
-    console.log('Sections fetched:', sections.length);
-    sections.forEach(sec => {
-      console.log(`Section: ${sec.section_name} (type: ${sec.section_type}, id: ${sec.section_id}, current_term_id: ${sec.current_term_id})`);
-    });
+      console.log('Sections fetched:', sections.length); // diagnostic
 
-    const members = [];
-
-    const withLimit = limit(5);
-
-    for (const sec of sections) {
-      const type = sec.section_type || 'unknown';
-      if (['waiting', 'unknown', 'adults'].includes(type)) continue;
-
-      const termId = sec.current_term_id || -1;
-
-      const listPath = '/ext/members/contact/';
-      const listParams = {
-        action: 'getListOfMembers',
-        sectionid: sec.section_id,
-        termid: termId,
-        section: type,
-        sort: 'patrol',
-      };
-
-      console.log(`Fetching list for section ${sec.section_name}: ${listPath}?${new URLSearchParams(listParams).toString()}`);
-
-      let listData = [];
-      try {
-        const listResponse = await osmApi.get(accessToken, listPath, {
-          params: listParams,
-          session: req.session,
-          ttlMs: 60_000,
-        });
-
-        listData = listResponse?.data?.items ||
-                   listResponse?.data?.data ||
-                   listResponse?.items ||
-                   listResponse?.data ||
-                   [];
-        if (!Array.isArray(listData)) listData = [];
-
-        console.log(`Members list for section ${sec.section_name}: ${listData.length} items`);
-      } catch (err) {
-        console.error(`List fetch failed for section ${sec.section_id}:`, err.message);
+      if (sections.length > 0) {
+        groupName = await osmApi.getGroupName(accessToken, sections[0].section_id || sections[0].id, req.session);
       }
 
-      const detailed = await Promise.all(
-        listData.map(member => withLimit(async () => {
-          const scoutId = member.scoutid || member.id;
-          if (!scoutId) return null;
+      const allMembers = new Map(); // scoutid → { member details + sections: [] }
 
-          const individualPath = '/ext/members/contact/';
-          const individualParams = {
-            action: 'getIndividual',
-            sectionid: sec.section_id,
-            scoutid: scoutId,
-            termid: termId,
-            context: 'members',
-          };
+      const withLimit = limit(4); // gentle on API
 
-          try {
-            const individualResponse = await osmApi.get(accessToken, individualPath, {
-              params: individualParams,
-              session: req.session,
-              ttlMs: 2 * 60 * 1000,
-            });
+      for (const sec of sections) {
+        const sectionId = sec.section_id || sec.id;
+        const sectionName = sec.section_name || sec.name;
+        const sectionType = sec.section_type || sec.type || 'unknown';
+        const termId = sec.current_term_id || -1;
 
-            const individualData = individualResponse?.data?.data ||
-                                    individualResponse?.data ||
-                                    individualResponse ||
-                                    {};
+        // Skip non-member sections
+        if (['waiting', 'unknown'].includes(sectionType)) continue;
 
-            return {
-              sectionType: FRIENDLY_SECTION_TYPES[type] || type,
-              sectionName: sec.section_name,
-              memberId: scoutId,
-              firstName: member.firstname || individualData.firstname || '',
-              lastName: member.lastname || individualData.lastname || '',
-              dob: individualData.dob || member.dob || '',
-              patrol: member.patrol || individualData.patrol || '',
-              started: individualData.startedsection || individualData.started || '',
-              joined: individualData.started || individualData.joinedgroup || individualData.joined || '',
-              age: member.age || individualData.age || '',
-            };
-          } catch (err) {
-            console.warn(`Individual fetch failed for ${scoutId}:`, err.message);
-            return {
-              sectionType: FRIENDLY_SECTION_TYPES[type] || type,
-              sectionName: sec.section_name,
-              memberId: scoutId,
-              firstName: member.firstname || '',
-              lastName: member.lastname || '',
-              dob: '',
-              patrol: member.patrol || '',
-              started: '',
-              joined: '',
-              age: member.age || '',
-            };
+        const params = {
+          action: 'getListOfMembers',
+          sectionid: sectionId,
+          termid: termId,
+          section: sectionType,
+          sort: 'patrol',
+        };
+
+        let listData = [];
+        try {
+          const response = await osmApi.get(accessToken, '/ext/members/contact/', {
+            params,
+            session: req.session,
+            ttlMs: 90_000, // 1.5 min – lists change slowly
+          });
+
+          listData = response?.data?.items || response?.data?.data || response?.data || [];
+          if (!Array.isArray(listData)) listData = [];
+        } catch (err) {
+          console.error(`Members list failed for ${sectionName}:`, err.message);
+          continue;
+        }
+
+        for (const raw of listData) {
+          const scoutid = raw.scoutid || raw.id;
+          if (!scoutid) continue;
+
+          // Minimal individual fetch only if needed (patrol/dob often in list)
+          let member = { ...raw };
+          if (!member.dob || !member.patrol) {
+            try {
+              const indParams = {
+                action: 'getIndividual',
+                sectionid: sectionId,
+                scoutid,
+                termid: termId,
+                context: 'members',
+              };
+              const indRes = await withLimit(async () => osmApi.get(accessToken, '/ext/members/contact/', {
+                params: indParams,
+                session: req.session,
+                ttlMs: 300_000,
+              }));
+              member = { ...member, ...indRes?.data?.data || {}, ...indRes?.data || {} };
+            } catch (err) {
+              console.warn(`Individual fetch skipped for ${scoutid}: ${err.message}`);
+            }
           }
-        }))
+
+          const age = calculateAge(member.dob);
+          const key = scoutid;
+
+          if (!allMembers.has(key)) {
+            allMembers.set(key, {
+              firstname: member.firstname,
+              lastname: member.lastname,
+              dob: member.dob,
+              age,
+              sections: [],
+            });
+          }
+          allMembers.get(key).sections.push({
+            name: sectionName,
+            type: sectionType,
+            patrol: member.patrol || 'None',
+          });
+        }
+      }
+
+      // Now perform validations and collect lists after all data is gathered
+      const ylMismatches = [];
+      const leaderMismatches = [];
+      allMembers.forEach((m) => {
+        const hasYL = m.sections.some((s) => s.patrol === 'Young Leaders');
+        if (hasYL) {
+          let issue = '';
+          const hasExplorer = m.sections.some((s) => s.type === 'explorers');
+          if (!hasExplorer) {
+            issue += 'Not in Explorers; ';
+          }
+          if (m.sections.length !== 2) {
+            issue += `In ${m.sections.length} sections instead of 2; `;
+          }
+          issue = issue.trim().replace(/; $/, '');
+          ylMembers.push({
+            firstname: m.firstname,
+            lastname: m.lastname,
+            sections: m.sections.map((s) => s.name).join(', '),
+            issue,
+          });
+        }
+
+        const hasLeader = m.sections.some((s) => s.patrol === 'Leaders');
+        if (hasLeader) {
+          let issue = '';
+          const hasAdult = m.sections.some((s) => s.type === 'adults');
+          if (!hasAdult) {
+            issue = 'Not in Adults';
+          }
+          leaderMembers.push({
+            firstname: m.firstname,
+            lastname: m.lastname,
+            sections: m.sections.map((s) => s.name).join(', '),
+            issue,
+          });
+        }
+      });
+
+      // Dedupe mismatches (if same person flagged multiple times) - though unlikely now
+      ylMembers = [...new Map(ylMembers.map((m) => [m.firstname + m.lastname, m])).values()];
+      leaderMembers = [...new Map(leaderMembers.map((m) => [m.firstname + m.lastname, m])).values()];
+
+      // Youth duplicates, excluding YLs
+      allMembers.forEach((m) => {
+        if (
+          m.age < 18 &&
+          m.sections.length > 1 &&
+          !m.sections.some((s) => s.patrol === 'Young Leaders')
+        ) {
+          youthDuplicates.push(m);
+        }
+      });
+
+      mainMembers = Array.from(allMembers.values()).sort((a, b) =>
+        `${a.firstname} ${a.lastname}`.localeCompare(`${b.firstname} ${b.lastname}`)
       );
 
-      detailed.filter(Boolean).forEach(row => members.push(row));
+      // If we get here, all good
+res.render('members', {
+  mainMembers:        mainMembers        || [],
+  youthDuplicates:    youthDuplicates    || [],
+  ylMembers:          ylMembers          || [],     // ← note: your code uses ylMembers
+  leaderMembers:      leaderMembers      || [],
+  groupName:          groupName          || 'Group name unavailable',
+  errorMessage:       errorMessage       || null
+});
+    } catch (err) {
+      console.error('Critical error in members route:', err.message, err.stack);
+      res.status(503).render('members', {  // or 'error' if you prefer
+        mainMembers: [],
+        youthDuplicates: [],
+        ylMembers: [],
+        leaderMembers: [],
+        groupName: 'Unavailable (try again soon)',
+        errorMessage: 'Could not load data from OSM right now – possibly rate limited or auth issue.',
+      });
     }
-
-    const rateLimit = osmApi.getRateLimitSnapshot(accessToken);
-
-    res.render('members', {
-      members,
-      rateLimit,
-      fetchedAt: new Date().toLocaleString('en-GB', {
-        day: '2-digit',
-        month: '2-digit',
-        year: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-      }),
-      membersJSON: JSON.stringify(members)
-    });
   })
 );
 

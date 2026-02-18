@@ -246,3 +246,36 @@ tr.grand-total td{
     white-space: nowrap; /* Prevent wrapping in cells */
   }
 }
+
+.toggle-buttons {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 20px;
+}
+
+.toggle-buttons button {
+    padding: 10px;
+    background: #bdc3c7;
+    border: none;
+    cursor: pointer;
+}
+
+.table-section {
+    margin-bottom: 30px;
+}
+
+.duplicates-table tr {
+    background: #fffacd; /* Lemon chiffon for highlights */
+}
+
+@media print {
+    .no-print {
+        display: none !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .toggle-buttons {
+        flex-direction: column;
+    }
+}

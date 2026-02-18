@@ -25,6 +25,7 @@ function createApp() {
   const app = express();
 
   app.set('view engine', 'ejs');
+  app.set('view cache', false);
   app.set('views', path.join(__dirname, '../views'));
   app.use(bodyParser.urlencoded({ extended: true }));
   app.use(express.static(path.join(__dirname, '../public')));

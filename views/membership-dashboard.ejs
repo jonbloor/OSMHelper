@@ -1,79 +1,145 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <title>Membership Dashboard - OSM Helper</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="/styles.css?v=<%= new Date().getTime() %>">
-</head>
-<body>
-  <div class="container">
-    <h1><%= groupName %> Membership Dashboard</h1>
-    <p class="fetched-at">Data updated: <%= dataUpdated %></p>
+// src/routes/members.routes.js
+'use strict';
 
-    <button id="toggle-initials">Toggle Leader/YL Initials</button> <!-- New toggle -->
-  <div class="table-responsive">
-    <table>
-      <thead>
-        <tr>
-          <th>Section Type</th>
-          <th>Section Name</th>
-          <th>Members</th>
-          <th>Capacity</th>
-          <th>Spaces</th>
-          <th>Waiting</th>
-          <th>Leaders</th>
-          <th>Young Leaders</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% for (const [type, data] of Object.entries(grouped)) { %>
-          <% data.sections.forEach(sec => { %>
-            <tr>
-              <td><%= type %></td>
-              <td><%= sec.name %></td>
-              <td><%= sec.members %></td>
-              <td><%= sec.capacity %></td>
-              <td><%= sec.spaces %></td>
-              <td><%= sec.waiting %></td>
-	      <td><%= sec.leaders %> <span class="initials"><%= sec.leaderInitials %></span></td>
-	      <td><%= sec.youngLeaders %> <span class="initials"><%= sec.youngLeaderInitials %></span></td>
-            </tr>
-          <% }); %>
-          <tr class="subtotal">
-            <td><%= type %> Subtotal</td>
-            <td></td>
-            <td><%= data.subtotalMembers %></td>
-            <td><%= data.subtotalCapacity %></td>
-            <td><%= data.subtotalSpaces %></td>
-            <td><%= data.subtotalWaiting %></td>
-            <td><%= data.subtotalLeaders %></td>
-            <td><%= data.subtotalYLs %></td>
-          </tr>
-        <% } %>
-        <tr class="subtotal"> <!-- Changed to "subtotal" for uniform styling -->
-          <td><strong>Grand Total</strong></td>
-          <td></td>
-          <td><strong><%= totalMembers %></strong></td>
-          <td><strong><%= totalCapacity %></strong></td>
-          <td><strong><%= totalSpaces %></strong></td>
-          <td><strong><%= totalWaiting %></strong></td>
-          <td><strong><%= totalLeaders %></strong></td>
-          <td><strong><%= totalYLs %></strong></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-<p>Note: There are <%= tooYoungWaiting %> children who are too young, bringing the waiting list total to <%= totalWaitingFull %>.</p>
+const express = require('express');
+const { requireAuth } = require('../middleware/requireAuth');
+const { asyncHandler } = require('../utils/asyncHandler');
+const osmApi = require('../services/osmApi');
+const { limit } = require('../utils/concurrency');
+const { FRIENDLY_SECTION_TYPES } = require('../config/constants');
 
-    <a href="/" class="back-button"><button>Back to Dashboard</button></a>
-  </div>
-  <script>
-    // Toggle script
-    document.getElementById('toggle-initials').addEventListener('click', () => {
-      document.querySelectorAll('.initials').forEach(el => {
-        el.style.display = el.style.display === 'none' ? 'inline' : 'none';
-      });
+const router = express.Router();
+
+router.get(
+  '/members',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    console.log('Members route loaded successfully'); // Debug to confirm no syntax error
+
+    const accessToken = req.session.accessToken;
+    const sections = await osmApi.getDynamicSections(accessToken, req.session);
+
+    console.log('Sections fetched:', sections.length);
+    sections.forEach(sec => {
+      console.log(`Section: ${sec.section_name} (type: ${sec.section_type}, id: ${sec.section_id}, current_term_id: ${sec.current_term_id})`);
     });
-  </script>
-</body>
-</html>
+
+    const members = [];
+
+    const withLimit = limit(5);
+
+    for (const sec of sections) {
+      const type = sec.section_type || 'unknown';
+      if (['waiting', 'unknown', 'adults'].includes(type)) continue;
+
+      const termId = sec.current_term_id || -1;
+
+      const listPath = '/ext/members/contact/';
+      const listParams = {
+        action: 'getListOfMembers',
+        sectionid: sec.section_id,
+        termid: termId,
+        section: type,
+        sort: 'patrol',
+      };
+
+      console.log(`Fetching list for section ${sec.section_name}: ${listPath}?${new URLSearchParams(listParams).toString()}`);
+
+      let listData = [];
+      try {
+        const listResponse = await osmApi.get(accessToken, listPath, {
+          params: listParams,
+          session: req.session,
+          ttlMs: 60_000,
+        });
+
+        listData = listResponse?.data?.items ||
+                   listResponse?.data?.data ||
+                   listResponse?.items ||
+                   listResponse?.data ||
+                   [];
+        if (!Array.isArray(listData)) listData = [];
+
+        console.log(`Members list for section ${sec.section_name}: ${listData.length} items`);
+      } catch (err) {
+        console.error(`List fetch failed for section ${sec.section_id}:`, err.message);
+      }
+
+      const detailed = await Promise.all(
+        listData.map(member => withLimit(async () => {
+          const scoutId = member.scoutid || member.id;
+          if (!scoutId) return null;
+
+          const individualPath = '/ext/members/contact/';
+          const individualParams = {
+            action: 'getIndividual',
+            sectionid: sec.section_id,
+            scoutid: scoutId,
+            termid: termId,
+            context: 'members',
+          };
+
+          try {
+            const individualResponse = await osmApi.get(accessToken, individualPath, {
+              params: individualParams,
+              session: req.session,
+              ttlMs: 2 * 60 * 1000,
+            });
+
+            const individualData = individualResponse?.data?.data ||
+                                    individualResponse?.data ||
+                                    individualResponse ||
+                                    {};
+
+            return {
+              sectionType: FRIENDLY_SECTION_TYPES[type] || type,
+              sectionName: sec.section_name,
+              memberId: scoutId,
+              firstName: member.firstname || individualData.firstname || '',
+              lastName: member.lastname || individualData.lastname || '',
+              dob: individualData.dob || member.dob || '',
+              patrol: member.patrol || individualData.patrol || '',
+              started: individualData.startedsection || individualData.started || '',
+              joined: individualData.started || individualData.joinedgroup || individualData.joined || '',
+              age: member.age || individualData.age || '',
+            };
+          } catch (err) {
+            console.warn(`Individual fetch failed for ${scoutId}:`, err.message);
+            return {
+              sectionType: FRIENDLY_SECTION_TYPES[type] || type,
+              sectionName: sec.section_name,
+              memberId: scoutId,
+              firstName: member.firstname || '',
+              lastName: member.lastname || '',
+              dob: '',
+              patrol: member.patrol || '',
+              started: '',
+              joined: '',
+              age: member.age || '',
+            };
+          }
+        }))
+      );
+
+      detailed.filter(Boolean).forEach(row => members.push(row));
+    }
+
+    const rateLimit = osmApi.getRateLimitSnapshot(accessToken);
+
+    res.render('members', {
+      members,
+      rateLimit,
+      fetchedAt: new Date().toLocaleString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      }),
+      membersJSON: JSON.stringify(members)
+    });
+  })
+);
+
+module.exports = router;
