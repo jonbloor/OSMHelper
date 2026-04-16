@@ -1,145 +1,109 @@
-// src/routes/members.routes.js
-'use strict';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Membership Dashboard - OSM Helper</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/styles.css?v=<%= new Date().getTime() %>">
+</head>
+<body>
+  <div class="container">
+    <h1><%= groupName %> Membership Dashboard</h1>
+    <p class="fetched-at">Data updated: <%= dataUpdated %></p>
 
-const express = require('express');
-const { requireAuth } = require('../middleware/requireAuth');
-const { asyncHandler } = require('../utils/asyncHandler');
-const osmApi = require('../services/osmApi');
-const { limit } = require('../utils/concurrency');
-const { FRIENDLY_SECTION_TYPES } = require('../config/constants');
+    <button id="toggle-initials" type="button">Show leader initials</button>
 
-const router = express.Router();
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th>Section</th>
+            <th>Members</th>
+            <th>Leaders</th>
+            <th>Young Leaders</th>
+            <th>Capacity</th>
+            <th>Spaces</th>
+            <th>Waiting List</th>
+            <th class="initials-col" style="display:none;">Leader Initials</th>
+            <th class="initials-col" style="display:none;">Young Leader Initials</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% Object.keys(grouped).forEach(groupName => { const group = grouped[groupName]; %>
+            <tr class="section-header">
+              <td colspan="9"><%= groupName %></td>
+            </tr>
+            <% group.sections.forEach(sec => { %>
+              <tr>
+                <td><%= sec.name %></td>
+                <td><%= sec.members %></td>
+                <td><%= sec.leaders %></td>
+                <td><%= sec.youngLeaders %></td>
+                <td><%= sec.capacity %></td>
+                <td><%= sec.spaces %></td>
+                <td><%= sec.waiting %></td>
+                <td class="initials-col" style="display:none;"><%= sec.leaderInitials %></td>
+                <td class="initials-col" style="display:none;"><%= sec.youngLeaderInitials %></td>
+              </tr>
+            <% }) %>
+            <tr class="subtotal">
+              <td><strong><%= groupName %> subtotal</strong></td>
+              <td><strong><%= group.subtotalMembers %></strong></td>
+              <td><strong><%= group.subtotalLeaders %></strong></td>
+              <td><strong><%= group.subtotalYLs %></strong></td>
+              <td><strong><%= group.subtotalCapacity %></strong></td>
+              <td><strong><%= group.subtotalSpaces %></strong></td>
+              <td><strong><%= group.subtotalWaiting %></strong></td>
+              <td class="initials-col" style="display:none;">&nbsp;</td>
+              <td class="initials-col" style="display:none;">&nbsp;</td>
+            </tr>
+          <% }) %>
 
-router.get(
-  '/members',
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    console.log('Members route loaded successfully'); // Debug to confirm no syntax error
+          <tr class="grand-total">
+            <td><strong>Grand total</strong></td>
+            <td><strong><%= totalMembers %></strong></td>
+            <td><strong><%= totalLeaders %></strong></td>
+            <td><strong><%= totalYLs %></strong></td>
+            <td><strong><%= totalCapacity %></strong></td>
+            <td><strong><%= totalSpaces %></strong></td>
+            <td><strong><%= totalWaiting %></strong></td>
+            <td class="initials-col" style="display:none;">&nbsp;</td>
+            <td class="initials-col" style="display:none;">&nbsp;</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
-    const accessToken = req.session.accessToken;
-    const sections = await osmApi.getDynamicSections(accessToken, req.session);
+    <h2>Waiting list overview</h2>
+    <ul>
+      <li>Of section age: <strong><%= ofAge %></strong></li>
+      <li>Too young: <strong><%= tooYoungWaiting %></strong></li>
+      <li>Total tracked (incl. explorers aged out): <strong><%= totalWaitingFull %></strong></li>
+    </ul>
 
-    console.log('Sections fetched:', sections.length);
-    sections.forEach(sec => {
-      console.log(`Section: ${sec.section_name} (type: ${sec.section_type}, id: ${sec.section_id}, current_term_id: ${sec.current_term_id})`);
-    });
+    <details>
+      <summary>Debug details</summary>
+      <pre><%= JSON.stringify(debugSummary, null, 2) %></pre>
+    </details>
 
-    const members = [];
+    <a href="/" class="back-button"><button>Back to Dashboard</button></a>
+  </div>
 
-    const withLimit = limit(5);
+  <script>
+    (function () {
+      const toggleBtn = document.getElementById('toggle-initials');
+      const initialsColumns = Array.from(document.querySelectorAll('.initials-col'));
+      let shown = false;
 
-    for (const sec of sections) {
-      const type = sec.section_type || 'unknown';
-      if (['waiting', 'unknown', 'adults'].includes(type)) continue;
+      if (!toggleBtn) return;
 
-      const termId = sec.current_term_id || -1;
-
-      const listPath = '/ext/members/contact/';
-      const listParams = {
-        action: 'getListOfMembers',
-        sectionid: sec.section_id,
-        termid: termId,
-        section: type,
-        sort: 'patrol',
-      };
-
-      console.log(`Fetching list for section ${sec.section_name}: ${listPath}?${new URLSearchParams(listParams).toString()}`);
-
-      let listData = [];
-      try {
-        const listResponse = await osmApi.get(accessToken, listPath, {
-          params: listParams,
-          session: req.session,
-          ttlMs: 60_000,
+      toggleBtn.addEventListener('click', () => {
+        shown = !shown;
+        initialsColumns.forEach(cell => {
+          cell.style.display = shown ? '' : 'none';
         });
-
-        listData = listResponse?.data?.items ||
-                   listResponse?.data?.data ||
-                   listResponse?.items ||
-                   listResponse?.data ||
-                   [];
-        if (!Array.isArray(listData)) listData = [];
-
-        console.log(`Members list for section ${sec.section_name}: ${listData.length} items`);
-      } catch (err) {
-        console.error(`List fetch failed for section ${sec.section_id}:`, err.message);
-      }
-
-      const detailed = await Promise.all(
-        listData.map(member => withLimit(async () => {
-          const scoutId = member.scoutid || member.id;
-          if (!scoutId) return null;
-
-          const individualPath = '/ext/members/contact/';
-          const individualParams = {
-            action: 'getIndividual',
-            sectionid: sec.section_id,
-            scoutid: scoutId,
-            termid: termId,
-            context: 'members',
-          };
-
-          try {
-            const individualResponse = await osmApi.get(accessToken, individualPath, {
-              params: individualParams,
-              session: req.session,
-              ttlMs: 2 * 60 * 1000,
-            });
-
-            const individualData = individualResponse?.data?.data ||
-                                    individualResponse?.data ||
-                                    individualResponse ||
-                                    {};
-
-            return {
-              sectionType: FRIENDLY_SECTION_TYPES[type] || type,
-              sectionName: sec.section_name,
-              memberId: scoutId,
-              firstName: member.firstname || individualData.firstname || '',
-              lastName: member.lastname || individualData.lastname || '',
-              dob: individualData.dob || member.dob || '',
-              patrol: member.patrol || individualData.patrol || '',
-              started: individualData.startedsection || individualData.started || '',
-              joined: individualData.started || individualData.joinedgroup || individualData.joined || '',
-              age: member.age || individualData.age || '',
-            };
-          } catch (err) {
-            console.warn(`Individual fetch failed for ${scoutId}:`, err.message);
-            return {
-              sectionType: FRIENDLY_SECTION_TYPES[type] || type,
-              sectionName: sec.section_name,
-              memberId: scoutId,
-              firstName: member.firstname || '',
-              lastName: member.lastname || '',
-              dob: '',
-              patrol: member.patrol || '',
-              started: '',
-              joined: '',
-              age: member.age || '',
-            };
-          }
-        }))
-      );
-
-      detailed.filter(Boolean).forEach(row => members.push(row));
-    }
-
-    const rateLimit = osmApi.getRateLimitSnapshot(accessToken);
-
-    res.render('members', {
-      members,
-      rateLimit,
-      fetchedAt: new Date().toLocaleString('en-GB', {
-        day: '2-digit',
-        month: '2-digit',
-        year: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-      }),
-      membersJSON: JSON.stringify(members)
-    });
-  })
-);
-
-module.exports = router;
+        toggleBtn.textContent = shown ? 'Hide leader initials' : 'Show leader initials';
+      });
+    })();
+  </script>
+</body>
+</html>
