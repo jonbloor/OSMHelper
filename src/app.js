@@ -5,6 +5,8 @@ const express = require('express');
 const session = require('express-session');
 const bodyParser = require('body-parser');
 const path = require('path');
+const helmet = require('helmet');
+const cookieParser = require('cookie-parser');
 
 const { assertEnv } = require('./config/env');
 const { requireAuth } = require('./middleware/requireAuth');
@@ -24,16 +26,30 @@ function createApp() {
 
   const app = express();
 
+  // Security middleware first (Helmet adds all the important headers)
+  app.use(helmet({
+    contentSecurityPolicy: false, // You can tighten this later if you add more scripts
+  }));
+
   app.set('view engine', 'ejs');
   app.set('view cache', false);
   app.set('views', path.join(__dirname, '../views'));
+
+  app.use(cookieParser());
   app.use(bodyParser.urlencoded({ extended: true }));
   app.use(express.static(path.join(__dirname, '../public')));
 
+  // Secure session configuration
   app.use(session({
     secret: process.env.SESSION_SECRET,
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      // secure: process.env.NODE_ENV === 'production', // auto true on HTTPS
+      // sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
   }));
 
   // Mount routes
@@ -46,7 +62,8 @@ function createApp() {
   app.use(waitingListRoutes);
   app.use(settingsRoutes);
 
-  // Global error handler
+  // 404 & global error handler
+  app.use((req, res) => res.status(404).render('error', { message: 'Page not found' }));
   app.use((err, req, res, next) => {
     console.error('Error:', err.stack);
     res.status(500).render('error', { message: 'Something went wrong. Please try again.' });
