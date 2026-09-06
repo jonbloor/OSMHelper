@@ -80,20 +80,62 @@ final class EquipmentController
      * @param array<string, mixed> $row
      * @return array<string, mixed>
      */
+    private static function cellToString(mixed $v): string
+    {
+        if ($v === null || $v === '') {
+            return '';
+        }
+        if (is_bool($v)) {
+            return $v ? '1' : '0';
+        }
+        if (is_scalar($v)) {
+            return (string) $v;
+        }
+        if (is_array($v)) {
+            // OSM sometimes nests {value:…} or multi-line arrays
+            if (array_key_exists('value', $v)) {
+                return self::cellToString($v['value']);
+            }
+            if (array_is_list($v)) {
+                $parts = [];
+                foreach ($v as $p) {
+                    $s = self::cellToString($p);
+                    if ($s !== '') {
+                        $parts[] = $s;
+                    }
+                }
+                return implode("\n", $parts);
+            }
+            // assoc leftover — prefer common keys
+            foreach (['text', 'label', 'name', 'raw'] as $k) {
+                if (array_key_exists($k, $v)) {
+                    return self::cellToString($v[$k]);
+                }
+            }
+            $json = json_encode($v, JSON_UNESCAPED_UNICODE);
+            return is_string($json) ? $json : '';
+        }
+        return '';
+    }
+
     private static function normaliseItemRow(array $row, string $rowId): array
     {
-        $pick = static function (array $row, string $n) {
+        $pick = static function (array $row, string $n): string {
             if (array_key_exists('_' . $n, $row)) {
-                return $row['_' . $n];
+                return self::cellToString($row['_' . $n]);
             }
             if (array_key_exists($n, $row)) {
-                return $row[$n];
+                return self::cellToString($row[$n]);
             }
             return '';
         };
+        $name = $pick($row, '1');
+        if ($name === '' && isset($row['name'])) {
+            $name = self::cellToString($row['name']);
+        }
         return [
-            'rowid' => $row['rowid'] ?? ($row['id'] ?? $rowId),
-            '_1' => $pick($row, '1') !== '' ? $pick($row, '1') : ($row['name'] ?? ''),
+            'rowid' => self::cellToString($row['rowid'] ?? ($row['id'] ?? $rowId)),
+            '_1' => $name,
             '_2' => $pick($row, '2'),
             '_3' => $pick($row, '3'),
             '_4' => $pick($row, '4'),
@@ -102,7 +144,7 @@ final class EquipmentController
             '_7' => $pick($row, '7'),
             '_8' => $pick($row, '8'),
             '_9' => $pick($row, '9'),
-            'name' => $row['name'] ?? null,
+            'name' => $name,
         ];
     }
 
