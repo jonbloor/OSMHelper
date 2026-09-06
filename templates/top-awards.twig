@@ -1,0 +1,60 @@
+{% extends 'layout.twig' %}
+{% block body %}
+<div class="card">
+  <h2>Top awards — Scouts dry-run</h2>
+  <p class="muted">Read-only. Counts activity + staged badges awarded on/after each member’s <code>startedsection</code>. Each staged level counts as 1. Proposed Gold string uses threshold {{ threshold }} (no write).</p>
+  {% if section %}
+  <p><strong>Section:</strong> {{ section.name }} <span class="muted">(id {{ section.id }}, term {{ section.termId }})</span></p>
+  {% endif %}
+  {% if error %}
+  <p class="status-warn">{{ error }}</p>
+  {% endif %}
+  {% if scopeHint %}
+  <p class="status-warn"><strong>Possible scope/403:</strong> {{ scopeHint }}</p>
+  {% endif %}
+  {% if notes %}
+  <details><summary class="muted">Notes ({{ notes|length }})</summary>
+    <ul>{% for n in notes %}<li>{{ n }}</li>{% endfor %}</ul>
+  </details>
+  {% endif %}
+  {% if debugMeta %}
+  <p class="muted">Mode: {{ debugMeta.mode|default('—') }} · badge API calls: {{ debugMeta.badgeApiCalls|default(0) }} · date keys seen: {{ debugMeta.awardedDateKeysSeen|default([])|join(', ')|default('none') }}</p>
+  {% endif %}
+</div>
+{% if rows %}
+<div class="card">
+  <div class="table-wrap">
+  <table class="data" data-table-tools>
+    <thead>
+      <tr>
+        <th data-sort="text">Name</th>
+        <th data-sort="text">Patrol</th>
+        <th data-sort="date">Section start</th>
+        <th data-sort="num">Activity</th>
+        <th data-sort="num">Staged</th>
+        <th data-sort="num">Total</th>
+        <th data-sort="text">Proposed Gold</th>
+        <th data-sort="text">Flags</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td>{{ r.name }}</td>
+        <td>{{ r.patrol }}</td>
+        <td>{% if r.missing_start %}<span class="status-warn">missing</span>{% else %}{{ r.startedsection }}{% endif %}</td>
+        <td>{{ r.activity }}</td>
+        <td>{{ r.staged }}</td>
+        <td><strong>{{ r.total }}</strong>{% if r.unknown_type %} <span class="muted">(+{{ r.unknown_type }} untyped)</span>{% endif %}</td>
+        <td><code>{{ r.gold }}</code></td>
+        <td class="muted">{% if r.skipped_no_date %}no-date:{{ r.skipped_no_date }} {% endif %}{% if r.skipped_before_start %}before:{{ r.skipped_before_start }}{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% elseif not error %}
+<p class="muted">No youth members found in this Scouts section.</p>
+{% endif %}
+{% endblock %}

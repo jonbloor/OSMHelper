@@ -12,6 +12,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MembersController;
 use App\Http\Controllers\MembershipDashboardController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\TopAwardsController;
 use App\Http\Controllers\WaitingListController;
 use App\Http\Router;
 use Dotenv\Dotenv;
@@ -40,6 +41,7 @@ final class App
         $set = new SettingsController();
         $help = new HelpController();
         $roadmap = new RoadmapController();
+        $topAwards = new TopAwardsController();
 
         $router->get('/', [$home, 'index']);
         $router->get('/auth', [$auth, 'redirectToOsm']);
@@ -58,6 +60,7 @@ final class App
         $router->get('/settings', [$set, 'index']);
         $router->get('/help', [$help, 'index']);
         $router->get('/roadmap', [$roadmap, 'index']);
+        $router->get('/top-awards', [$topAwards, 'index']);
         $router->post('/settings/update-cutoffs', [$set, 'updateCutoffs']);
         $router->post('/settings/update-sections', [$set, 'updateSections']);
         $router->post('/settings/update-tool-sections', [$set, 'updateToolSections']);
