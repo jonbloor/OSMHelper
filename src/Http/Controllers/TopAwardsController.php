@@ -185,8 +185,12 @@ final class TopAwardsController
                 }
             }
 
-            // Fallback / supplement: getAvailableBadges + getBadgeRecords for activity & staged
+            // Prefer typed records when byperson lacks type_id (avoid double-count).
             if (!$byPersonOk || self::needsTypeFilter($awardsByMember)) {
+                if ($byPersonOk && self::needsTypeFilter($awardsByMember)) {
+                    $awardsByMember = [];
+                    $notes[] = 'badgesbyperson lacked type_id — using getBadgeRecords for activity/staged only.';
+                }
                 $debugMeta['mode'] = ($debugMeta['mode'] ?? '') . '+records';
                 foreach ([self::TYPE_ACTIVITY => 'activity', self::TYPE_STAGED => 'staged'] as $typeId => $label) {
                     try {
