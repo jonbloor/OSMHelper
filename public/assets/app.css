@@ -644,3 +644,18 @@ table.data tbody tr:hover {
   padding: 0.35rem 0.65rem;
   font-size: 0.85rem;
 }
+
+
+/* Equipment: Broken > 0 */
+table.data tbody tr.row-broken:nth-child(even),
+table.data tbody tr.row-broken:nth-child(odd) {
+  background: #fde8e8;
+}
+table.data tbody tr.row-broken:hover {
+  filter: none;
+  background: #fbd0d0;
+}
+td.cell-broken {
+  font-weight: 700;
+  color: #9b1c1c;
+}

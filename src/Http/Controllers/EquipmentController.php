@@ -365,27 +365,35 @@ final class EquipmentController
                         $equipment[] = [
                             'listName' => $listName,
                             'itemName' => '(no items in list)',
-                            'description' => '',
-                            'location' => '',
-                            'notes' => '',
-                            'condition' => '',
                             'quantity' => '',
+                            'description' => '',
+                            'condition' => '',
                             'broken' => '',
+                            'location' => '',
+                            'purchaseDate' => '',
+                            'notes' => '',
+                            'renewalPrice' => '',
+                            'brokenCount' => 0,
                         ];
                     }
                     foreach ($rows as $item) {
                         if (!is_array($item)) {
                             continue;
                         }
+                        $brokenRaw = $item['_7'] ?? '';
+                        $brokenNum = is_numeric($brokenRaw) ? (float) $brokenRaw : 0.0;
                         $equipment[] = [
                             'listName' => $listName,
                             'itemName' => $item['_1'] ?? ($item['name'] ?? ''),
-                            'description' => $item['_2'] ?? '',
-                            'location' => $item['_3'] ?? '',
-                            'notes' => $item['_4'] ?? '',
-                            'condition' => $item['_5'] ?? '',
                             'quantity' => $item['_6'] ?? '',
-                            'broken' => $item['_7'] ?? '',
+                            'description' => $item['_2'] ?? '',
+                            'condition' => $item['_5'] ?? '',
+                            'broken' => $brokenRaw,
+                            'location' => $item['_3'] ?? '',
+                            'purchaseDate' => $item['_8'] ?? '',
+                            'notes' => $item['_4'] ?? '',
+                            'renewalPrice' => $item['_9'] ?? '',
+                            'brokenCount' => $brokenNum,
                         ];
                     }
                 } catch (Throwable $ie) {
@@ -398,12 +406,15 @@ final class EquipmentController
                     $equipment[] = [
                         'listName' => $listName,
                         'itemName' => '(could not load items)',
-                        'description' => $ie->getMessage(),
-                        'location' => '',
-                        'notes' => '',
-                        'condition' => '',
                         'quantity' => '',
+                        'description' => $ie->getMessage(),
+                        'condition' => '',
                         'broken' => '',
+                        'location' => '',
+                        'purchaseDate' => '',
+                        'notes' => '',
+                        'renewalPrice' => '',
+                        'brokenCount' => 0,
                     ];
                 }
             }

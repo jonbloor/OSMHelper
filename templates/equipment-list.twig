@@ -11,12 +11,36 @@
   {% if parseHint %}<div class="alert alert-error">{{ parseHint }}</div>{% endif %}
   <div class="table-wrap">
   <table class="data" data-table-tools data-export-name="equipment">
-    <thead><tr><th>List</th><th>Item</th><th>Description</th><th>Location</th><th>Qty</th><th>Condition</th><th>Broken</th></tr></thead>
+    <thead>
+      <tr>
+        <th>List</th>
+        <th>Name</th>
+        <th>Quantity</th>
+        <th>Description</th>
+        <th>Condition</th>
+        <th>Broken</th>
+        <th>Location</th>
+        <th>Purchase Date</th>
+        <th>Notes</th>
+        <th>Renewal Price</th>
+      </tr>
+    </thead>
     <tbody>
     {% for e in equipment %}
-      <tr><td>{{ e.listName }}</td><td>{{ e.itemName }}</td><td>{{ e.description }}</td><td>{{ e.location }}</td><td>{{ e.quantity }}</td><td>{{ e.condition }}</td><td>{{ e.broken }}</td></tr>
+      <tr class="{% if e.brokenCount is defined and e.brokenCount > 0 %}row-broken{% endif %}">
+        <td>{{ e.listName }}</td>
+        <td>{{ e.itemName }}</td>
+        <td>{{ e.quantity }}</td>
+        <td>{{ e.description }}</td>
+        <td>{{ e.condition }}</td>
+        <td class="{% if e.brokenCount is defined and e.brokenCount > 0 %}cell-broken{% endif %}">{{ e.broken }}</td>
+        <td>{{ e.location }}</td>
+        <td>{{ e.purchaseDate }}</td>
+        <td class="notes">{{ e.notes }}</td>
+        <td>{{ e.renewalPrice }}</td>
+      </tr>
     {% else %}
-      <tr><td colspan="7" class="muted">No equipment found for this section. If that looks wrong, pick another Equipment section under Settings.</td></tr>
+      <tr><td colspan="10" class="muted">No equipment found for this section. If that looks wrong, pick another Equipment section under Settings.</td></tr>
     {% endfor %}
     </tbody>
   </table>
