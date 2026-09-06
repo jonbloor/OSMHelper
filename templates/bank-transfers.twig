@@ -1,7 +1,8 @@
 {% extends 'layout.twig' %}
 {% block body %}
 <div class="card">
-  <h2>Bank transfers</h2>
+  <h2>Bank transfers{% if sectionName %} — {{ sectionName }}{% endif %}</h2>
+  {% if sectionId is defined and sectionId %}<p class="muted">Section id {{ sectionId }} · type {{ sectionType }} · {{ accountCount|default(0) }} account(s) · fetched {{ fetchedAt }}</p>{% endif %}
   <p class="muted">Fetched {{ fetchedAt }}</p>
   <div class="table-wrap">
   <table class="data">

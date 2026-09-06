@@ -4,7 +4,10 @@
 <p class="muted">Using a guessed adults section. Set the Equipment section under <a href="/settings/">Settings</a>.</p>
 {% endif %}
 <div class="card">
-  <h2>Equipment</h2>
+  <h2>Equipment{% if sectionName %} — {{ sectionName }}{% endif %}</h2>
+  {% if sectionId is defined and sectionId %}
+  <p class="muted">Section id {{ sectionId }} · type {{ sectionType }} · {{ listCount|default(0) }} list(s)</p>
+  {% endif %}
   <div class="table-wrap">
   <table class="data">
     <thead><tr><th>List</th><th>Item</th><th>Description</th><th>Location</th><th>Qty</th><th>Condition</th><th>Broken</th></tr></thead>
@@ -12,7 +15,7 @@
     {% for e in equipment %}
       <tr><td>{{ e.listName }}</td><td>{{ e.itemName }}</td><td>{{ e.description }}</td><td>{{ e.location }}</td><td>{{ e.quantity }}</td><td>{{ e.condition }}</td><td>{{ e.broken }}</td></tr>
     {% else %}
-      <tr><td colspan="7" class="muted">No equipment found.</td></tr>
+      <tr><td colspan="7" class="muted">No equipment found for this section. If that looks wrong, pick another Equipment section under Settings.</td></tr>
     {% endfor %}
     </tbody>
   </table>

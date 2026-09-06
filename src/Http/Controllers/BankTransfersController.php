@@ -9,6 +9,34 @@ use App\Store\SettingsStore;
 use Throwable;
 final class BankTransfersController
 {
+    /** @param array<string, mixed> $res @return list<array<string, mixed>> */
+    private static function bankAccounts(array $res): array
+    {
+        // Node: accountsResponse.data.items
+        if (isset($res['items']) && is_array($res['items'])) {
+            $items = $res['items'];
+            if (!array_is_list($items)) {
+                $items = array_values(array_filter($items, 'is_array'));
+            }
+            return array_values(array_filter($items, 'is_array'));
+        }
+        if (isset($res['data']['items']) && is_array($res['data']['items'])) {
+            $items = $res['data']['items'];
+            if (!array_is_list($items)) {
+                $items = array_values(array_filter($items, 'is_array'));
+            }
+            return array_values(array_filter($items, 'is_array'));
+        }
+        return OsmLists::items($res);
+    }
+
+    /** @param array<string, mixed> $res @return list<array<string, mixed>> */
+    private static function bankTransactions(array $res): array
+    {
+        // Node: transResponse.data.items
+        return self::bankAccounts($res);
+    }
+
     public function index(): void
     {
         $token = Auth::requireLogin();
@@ -16,15 +44,28 @@ final class BankTransfersController
         try {
             $sections = $api->getDynamicSections($token);
         } catch (Throwable) {
-            App::render('error.twig', Auth::baseContext(['title' => 'Bank transfers', 'message' => 'Could not load sections.']));
+            App::render('error.twig', Auth::baseContext([
+                'title' => 'Bank transfers',
+                'message' => 'Could not load sections from OSM.',
+            ]));
             return;
         }
 
         $savedId = (string) SettingsStore::get('financeSectionId', '');
         $savedType = (string) SettingsStore::get('financeSectionType', 'adults');
+        $sectionName = '';
         $finance = null;
+
         if ($savedId !== '') {
-            $finance = ['sectionId' => $savedId, 'sectionType' => $savedType !== '' ? $savedType : 'adults'];
+            $sectionType = $savedType !== '' ? $savedType : 'adults';
+            foreach ($sections as $s) {
+                if (is_array($s) && (string) ($s['section_id'] ?? '') === $savedId) {
+                    $sectionType = (string) ($s['section_type'] ?? $sectionType);
+                    $sectionName = (string) ($s['section_name'] ?? '');
+                    break;
+                }
+            }
+            $finance = ['sectionId' => $savedId, 'sectionType' => $sectionType];
         } elseif (is_array($_SESSION['financeSection'] ?? null)) {
             $finance = $_SESSION['financeSection'];
         }
@@ -38,25 +79,27 @@ final class BankTransfersController
             return;
         }
 
-        $sectionId = $finance['sectionId'];
-        $sectionType = $finance['sectionType'] ?? 'adults';
+        $sectionId = (string) $finance['sectionId'];
+        $sectionType = (string) ($finance['sectionType'] ?? 'adults');
+        if ($sectionName === '') {
+            $sectionName = $sectionId;
+        }
         $transfers = [];
+        $accountCount = 0;
         try {
             $accountsRes = $api->get($token, '/ext/finances/bank/', [
                 'action' => 'getBankAccounts',
                 'section' => $sectionType,
                 'sectionid' => $sectionId,
             ]);
-            $accounts = OsmLists::items($accountsRes);
-            if ($accounts === [] && isset($accountsRes['items']) && is_array($accountsRes['items'])) {
-                $accounts = array_values(array_filter($accountsRes['items'], 'is_array'));
-            }
+            $accounts = self::bankAccounts($accountsRes);
+            $accountCount = count($accounts);
             $today = date('Y-m-d');
             foreach ($accounts as $account) {
                 if (!is_array($account)) continue;
                 $accountId = $account['bankaccountid'] ?? $account['id'] ?? null;
                 if (!$accountId) continue;
-                $accountName = $account['name'] ?? ('Account ' . $accountId);
+                $accountName = (string) ($account['name'] ?? ('Account ' . $accountId));
                 try {
                     $transRes = $api->get($token, '/ext/finances/bank/', [
                         'action' => 'getTransactions',
@@ -64,8 +107,7 @@ final class BankTransfersController
                         'date_from' => '2020-01-01',
                         'date_to' => $today,
                     ]);
-                    $items = OsmLists::items($transRes);
-                    foreach ($items as $trans) {
+                    foreach (self::bankTransactions($transRes) as $trans) {
                         if (!is_array($trans) || ($trans['type'] ?? '') !== 'T') continue;
                         $transfers[] = [
                             'accountName' => $accountName,
@@ -74,19 +116,28 @@ final class BankTransfersController
                             'amount' => number_format((float) ($trans['amount'] ?? 0), 2),
                         ];
                     }
-                } catch (Throwable) { continue; }
+                } catch (Throwable) {
+                    continue;
+                }
             }
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            $code = (int) $e->getCode();
+            $hint = $code > 0 ? " (OSM HTTP {$code})" : '';
             App::render('error.twig', Auth::baseContext([
                 'title' => 'Bank transfers',
-                'message' => 'Could not load bank accounts for the configured section. Check Settings.',
+                'message' => "Could not load bank accounts for section {$sectionName} (id {$sectionId}, type {$sectionType}){$hint}. That section may not have OSM accounts access — pick another under Settings → Tool sections.",
             ]));
             return;
         }
+
         usort($transfers, static fn ($a, $b) => strcmp($b['date'], $a['date']) ?: strcmp($a['accountName'], $b['accountName']));
         App::render('bank-transfers.twig', Auth::baseContext([
             'title' => 'Bank transfers',
             'transfers' => $transfers,
+            'sectionName' => $sectionName,
+            'sectionId' => $sectionId,
+            'sectionType' => $sectionType,
+            'accountCount' => $accountCount,
             'fetchedAt' => (new \DateTimeImmutable('now', new \DateTimeZone('Europe/London')))->format('d/m/y H:i'),
         ]));
     }
