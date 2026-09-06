@@ -1,4 +1,4 @@
-/* cache-bust d6tbl3 */
+/* cache-bust d6bank1 */
 :root {
   --bg: #f4f6f8;
   --card: #ffffff;
@@ -706,3 +706,8 @@ td.cell-broken {
   width: 2.5rem;
   text-align: center;
 }
+
+
+/* Bank account list */
+table.data tbody tr.row-deleted td { color: var(--muted); text-decoration: line-through; }
+table.data tbody tr.row-transfer td { }

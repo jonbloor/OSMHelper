@@ -5,226 +5,192 @@ use App\App;
 use App\Http\Auth;
 use App\Osm\OsmApi;
 use App\Osm\OsmDebug;
-use App\Osm\OsmLists;
 use App\Store\SettingsStore;
 use Throwable;
+
+/**
+ * Bank reads via OSM v3 accounting (Jon Network capture 2026-09-06):
+ * - GET /v3/finances/accounting/bank_accounts/section/{sectionid}
+ * - GET /v3/finances/accounting/bank_accounts/{id}/transactions?page=&per_page=&expense_cardholder_id=0&mode=all
+ * Amounts are pence (÷100 for £). No write APIs.
+ */
 final class BankTransfersController
 {
-    /**
-     * Node: accountsResponse.data.items / transResponse.data.items
-     * @param array<string, mixed> $res
-     * @return list<array<string, mixed>>
-     */
-    private static function bankItems(array $res): array
+    private const PER_PAGE = 25;
+    private const MAX_PAGES = 4; // rate-limit friendly cap when auto-paging
+
+    /** @param array<string, mixed> $res @return list<array<string, mixed>> */
+    private static function asList(array $res): array
     {
-        foreach ([
-            $res['items'] ?? null,              // Node primary
-            $res['data']['items'] ?? null,
-            $res['data']['data']['items'] ?? null,
+        $candidates = [
             $res['data'] ?? null,
-        ] as $c) {
+            $res['data']['data'] ?? null,
+            $res['data']['accounts'] ?? null,
+            $res['accounts'] ?? null,
+            $res['items'] ?? null,
+            $res['data']['items'] ?? null,
+        ];
+        foreach ($candidates as $c) {
             if (!is_array($c) || $c === []) {
                 continue;
             }
             if (!array_is_list($c)) {
-                if (isset($c['items']) && is_array($c['items'])) {
-                    $c = $c['items'];
-                } else {
-                    $c = array_values(array_filter($c, 'is_array'));
-                }
+                $c = array_values(array_filter($c, 'is_array'));
             }
-            if (!is_array($c) || $c === []) {
-                continue;
-            }
-            $out = [];
-            foreach ($c as $row) {
-                if (!is_array($row)) {
-                    continue;
-                }
-                // accounts have bankaccountid; transactions have type/amount/date
-                if (
-                    isset($row['bankaccountid']) || isset($row['id']) || isset($row['name'])
-                    || isset($row['type']) || isset($row['amount']) || isset($row['date'])
-                    || isset($row['reference'])
-                ) {
-                    $out[] = $row;
-                }
-            }
-            if ($out !== []) {
-                return $out;
+            if ($c !== []) {
+                return $c;
             }
         }
-        return OsmLists::items($res);
+        return [];
     }
 
-    private static function accountsEnabled(array $section): bool
+    /** Format OSM pence (signed int/float/string) as £ display. */
+    private static function penceToPounds(mixed $pence): string
     {
-        $up = $section['upgrades'] ?? null;
-        if (!is_array($up)) {
-            return false;
+        if ($pence === null || $pence === '') {
+            return '';
         }
-        $v = $up['accounts'] ?? false;
-        if ($v === true || $v === 1 || $v === '1' || $v === 'true') {
-            return true;
+        $n = is_numeric($pence) ? (float) $pence : 0.0;
+        $pounds = $n / 100.0;
+        $sign = $pounds < 0 ? '-' : '';
+        return $sign . '£' . number_format(abs($pounds), 2);
+    }
+
+    /** @return array{sectionId: string, sectionType: string, sectionName: string} */
+    private static function resolveSection(array $sections, string $savedId, string $savedType): array
+    {
+        $sectionType = $savedType !== '' ? $savedType : 'adults';
+        $sectionName = $savedId;
+        foreach ($sections as $s) {
+            if (is_array($s) && (string) ($s['section_id'] ?? '') === $savedId) {
+                $sectionType = (string) ($s['section_type'] ?? $sectionType);
+                $sectionName = (string) ($s['section_name'] ?? $sectionName);
+                break;
+            }
         }
-        return !empty($v);
+        return [
+            'sectionId' => $savedId,
+            'sectionType' => $sectionType,
+            'sectionName' => $sectionName,
+        ];
     }
 
     /**
-     * Try getBankAccounts with type variants; on empty/404 probe upgrades.accounts (Node).
-     * @param list<array<string, mixed>> $sections
-     * @return array{sectionId: string, sectionType: string, sectionName: string, accounts: list<array<string, mixed>>, accountsRes: array<string, mixed>}
+     * @return list<array<string, mixed>>
      */
-    private static function resolveAccounts(OsmApi $api, string $token, array $sections, string $preferId, string $preferType): array
+    private static function loadAccounts(OsmApi $api, string $token, string $sectionId): array
     {
-        $attempts = [];
-        if ($preferId !== '') {
-            $liveType = $preferType;
-            $liveName = $preferId;
-            foreach ($sections as $s) {
-                if (is_array($s) && (string) ($s['section_id'] ?? '') === $preferId) {
-                    $liveType = (string) ($s['section_type'] ?? $liveType);
-                    $liveName = (string) ($s['section_name'] ?? $liveName);
-                    break;
-                }
+        $path = '/v3/finances/accounting/bank_accounts/section/' . rawurlencode($sectionId);
+        $res = $api->get($token, $path);
+        OsmDebug::log('bank_v3_accounts_' . $sectionId, [
+            'sectionId' => $sectionId,
+            'path' => $path,
+            'top_keys' => array_keys($res),
+            'body' => $res,
+        ]);
+        $rows = self::asList($res);
+        $out = [];
+        foreach ($rows as $row) {
+            if (!is_array($row) || empty($row['id'])) {
+                continue;
             }
-            foreach ([$liveType, $preferType, 'adults', 'group'] as $type) {
-                $type = trim((string) $type);
-                if ($type === '') {
+            $deleted = $row['deleted_at'] ?? null;
+            $isDeleted = $deleted !== null && $deleted !== '' && $deleted !== false;
+            $out[] = [
+                'id' => (string) $row['id'],
+                'name' => (string) ($row['name'] ?? ('Account ' . $row['id'])),
+                'sectionId' => (string) ($row['section_id'] ?? $sectionId),
+                'currentBalancePence' => $row['current_balance'] ?? 0,
+                'currentBalance' => self::penceToPounds($row['current_balance'] ?? 0),
+                'openingBalance' => self::penceToPounds($row['opening_balance'] ?? null),
+                'openingDate' => (string) ($row['opening_date'] ?? ''),
+                'firstTransactionDate' => (string) ($row['first_transaction_date'] ?? ''),
+                'lastTransactionDate' => (string) ($row['last_transaction_date'] ?? ''),
+                'unprocessed' => (int) ($row['number_unprocessed_transactions'] ?? 0),
+                'deleted' => $isDeleted,
+                'deletedAt' => $isDeleted ? (string) $deleted : '',
+                'expenseAccount' => !empty($row['expense_account']) || !empty($row['stripe_id']) || stripos((string) ($row['name'] ?? ''), 'expense') !== false,
+            ];
+        }
+        return $out;
+    }
+
+    /**
+     * @return array{rows: list<array<string, mixed>>, total: int|null, page: int, pagesFetched: int}
+     */
+    private static function loadTransactions(OsmApi $api, string $token, string $accountId, int $page, bool $autoPage): array
+    {
+        $all = [];
+        $total = null;
+        $pagesFetched = 0;
+        $start = max(1, $page);
+        $end = $autoPage ? ($start + self::MAX_PAGES - 1) : $start;
+
+        for ($p = $start; $p <= $end; $p++) {
+            if ($pagesFetched > 0) {
+                usleep(150000);
+            }
+            $path = '/v3/finances/accounting/bank_accounts/' . rawurlencode($accountId) . '/transactions';
+            $res = $api->get($token, $path, [
+                'page' => $p,
+                'per_page' => self::PER_PAGE,
+                'expense_cardholder_id' => 0,
+                'mode' => 'all',
+            ]);
+            OsmDebug::log('bank_v3_trans_' . $accountId . '_p' . $p, [
+                'accountId' => $accountId,
+                'page' => $p,
+                'top_keys' => array_keys($res),
+                'meta' => $res['meta'] ?? null,
+                'body' => $res,
+            ]);
+            $pagesFetched++;
+            if ($total === null && isset($res['meta']['number_transactions']) && is_numeric($res['meta']['number_transactions'])) {
+                $total = (int) $res['meta']['number_transactions'];
+            }
+            $chunk = self::asList($res);
+            if ($chunk === []) {
+                break;
+            }
+            foreach ($chunk as $row) {
+                if (!is_array($row)) {
                     continue;
                 }
-                $attempts[] = ['id' => $preferId, 'type' => $type, 'name' => $liveName, 'preferred' => true];
+                $isTransfer = !empty($row['is_transfer']);
+                $tx = is_array($row['transaction'] ?? null) ? $row['transaction'] : null;
+                $type = $isTransfer ? 'Transfer' : (string) ($tx['type'] ?? '');
+                if ($type !== '') {
+                    $type = ucfirst(strtolower($type));
+                }
+                $desc = $tx !== null ? (string) ($tx['description'] ?? '') : '';
+                $all[] = [
+                    'id' => (string) ($row['id'] ?? ''),
+                    'date' => (string) ($row['date'] ?? ''),
+                    'reference' => (string) ($row['reference'] ?? ''),
+                    'amountPence' => $row['amount'] ?? 0,
+                    'amount' => self::penceToPounds($row['amount'] ?? 0),
+                    'type' => $type !== '' ? $type : ($isTransfer ? 'Transfer' : '—'),
+                    'description' => $desc,
+                    'isTransfer' => $isTransfer,
+                ];
             }
-        }
-        foreach ($sections as $s) {
-            if (!is_array($s) || empty($s['section_id'])) {
-                continue;
+            if (count($chunk) < self::PER_PAGE) {
+                break;
             }
-            if (!self::accountsEnabled($s)) {
-                continue;
+            if ($total !== null && count($all) >= $total) {
+                break;
             }
-            $id = (string) $s['section_id'];
-            $type = (string) ($s['section_type'] ?? 'adults');
-            if ($type === '') {
-                $type = 'adults';
+            if (!$autoPage) {
+                break;
             }
-            $attempts[] = [
-                'id' => $id,
-                'type' => $type,
-                'name' => (string) ($s['section_name'] ?? $id),
-                'preferred' => $id === $preferId,
-            ];
-        }
-        // Last resort: any adults section
-        foreach ($sections as $s) {
-            if (!is_array($s) || empty($s['section_id'])) {
-                continue;
-            }
-            if (($s['section_type'] ?? '') !== 'adults') {
-                continue;
-            }
-            $id = (string) $s['section_id'];
-            $attempts[] = [
-                'id' => $id,
-                'type' => 'adults',
-                'name' => (string) ($s['section_name'] ?? $id),
-                'preferred' => $id === $preferId,
-            ];
         }
 
-        $upgradeMap = [];
-        foreach ($sections as $s) {
-            if (!is_array($s) || empty($s['section_id'])) continue;
-            $upgradeMap[(string) $s['section_id']] = [
-                'name' => (string) ($s['section_name'] ?? ''),
-                'type' => (string) ($s['section_type'] ?? ''),
-                'accounts' => $s['upgrades']['accounts'] ?? null,
-                'accountsEnabled' => self::accountsEnabled($s),
-            ];
-        }
-        OsmDebug::log('bank_section_upgrades', ['preferId' => $preferId, 'preferType' => $preferType, 'sections' => $upgradeMap]);
-
-        $seen = [];
-        $lastError = null;
-        $bestEmpty = null;
-        foreach ($attempts as $a) {
-            $key = $a['id'] . '|' . $a['type'];
-            if (isset($seen[$key])) {
-                continue;
-            }
-            $seen[$key] = true;
-            try {
-                $res = null;
-                $paths = [
-                    '/ext/finances/bank/',
-                    '/ext/finance/bank/',
-                ];
-                $paramSets = [
-                    ['action' => 'getBankAccounts', 'section' => $a['type'], 'sectionid' => $a['id']],
-                    ['action' => 'getBankAccounts', 'sectionid' => $a['id'], 'section' => $a['type']],
-                    ['action' => 'getBankAccounts', 'sectionid' => $a['id']],
-                ];
-                $lastPathErr = null;
-                foreach ($paths as $path) {
-                    foreach ($paramSets as $params) {
-                        try {
-                            $res = $api->get($token, $path, $params);
-                            OsmDebug::log('bank_accounts_' . $a['id'] . '_' . $a['type'], [
-                                'sectionId' => $a['id'],
-                                'sectionType' => $a['type'],
-                                'path' => $path,
-                                'params' => $params,
-                                'top_keys' => array_keys($res),
-                                'body' => $res,
-                            ]);
-                            $lastPathErr = null;
-                            break 2;
-                        } catch (Throwable $pe) {
-                            $lastPathErr = $pe;
-                            continue;
-                        }
-                    }
-                }
-                if ($res === null) {
-                    throw $lastPathErr ?? new \RuntimeException('bank accounts fetch failed');
-                }
-                $accounts = self::bankItems($res);
-                $payload = [
-                    'sectionId' => $a['id'],
-                    'sectionType' => $a['type'],
-                    'sectionName' => $a['name'],
-                    'accountsRes' => $res,
-                    'accounts' => $accounts,
-                ];
-                if ($accounts !== []) {
-                    return $payload;
-                }
-                // Remember preferred empty (HTTP 200 but no parseable accounts) but keep probing
-                if ($a['preferred'] && $bestEmpty === null) {
-                    $bestEmpty = $payload;
-                } elseif ($bestEmpty === null) {
-                    $bestEmpty = $payload;
-                }
-            } catch (Throwable $e) {
-                $lastError = $e;
-                OsmDebug::log('bank_accounts_error_' . $a['id'] . '_' . $a['type'], [
-                    'message' => $e->getMessage(),
-                    'code' => (int) $e->getCode(),
-                ]);
-                continue;
-            }
-        }
-        if ($bestEmpty !== null) {
-            return $bestEmpty;
-        }
-        if ($lastError) {
-            throw $lastError;
-        }
-        throw new \RuntimeException(
-            'No accessible finance section found after probes'
-            . ($preferId !== '' ? " (configured id {$preferId}, type {$preferType})" : '')
-            . '.'
-        );
+        return [
+            'rows' => $all,
+            'total' => $total,
+            'page' => $start,
+            'pagesFetched' => $pagesFetched,
+        ];
     }
 
     public function index(): void
@@ -235,7 +201,7 @@ final class BankTransfersController
             $sections = $api->getDynamicSections($token);
         } catch (Throwable) {
             App::render('error.twig', Auth::baseContext([
-                'title' => 'Bank transfers',
+                'title' => 'Bank',
                 'message' => 'Could not load sections from OSM.',
             ]));
             return;
@@ -250,88 +216,100 @@ final class BankTransfersController
 
         if ($savedId === '') {
             App::render('bank-transfers-select.twig', Auth::baseContext([
-                'title' => 'Bank transfers',
+                'title' => 'Bank',
                 'sections' => $sections,
-                'message' => 'Pick a finance section once under Settings (or below).',
+                'message' => 'Pick a Bank / finance section under Settings (or below).',
             ]));
             return;
         }
 
-        $transfers = [];
-        $parseHint = null;
+        $resolved = self::resolveSection($sections, $savedId, $savedType);
+        $sectionId = $resolved['sectionId'];
+        $sectionType = $resolved['sectionType'];
+        $sectionName = $resolved['sectionName'];
+        $showDeleted = isset($_GET['deleted']) && (string) $_GET['deleted'] === '1';
+        $accountId = isset($_GET['account']) ? trim((string) $_GET['account']) : '';
+        $page = isset($_GET['page']) && is_numeric($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
+
         try {
-            $resolved = self::resolveAccounts($api, $token, $sections, $savedId, $savedType);
-            $sectionId = $resolved['sectionId'];
-            $sectionType = $resolved['sectionType'];
-            $sectionName = $resolved['sectionName'];
-            $accounts = $resolved['accounts'];
-            $accountCount = count($accounts);
-            if ($sectionId === $savedId && $sectionType !== $savedType && $sectionType !== '') {
-                SettingsStore::merge(['financeSectionType' => $sectionType]);
-            }
-            if ($accountCount === 0) {
-                $keys = array_keys($resolved['accountsRes']);
-                $parseHint = "OSM returned no bank accounts for section {$sectionName} (id {$sectionId}, type {$sectionType}; keys: "
-                    . implode(', ', $keys)
-                    . '). Tried configured section type variants and accounts-enabled sections. Check Settings → Tool sections and that Finance/Accounts is enabled in OSM for this section.';
-            }
-            $today = date('Y-m-d');
-            foreach ($accounts as $account) {
-                $accountId = $account['bankaccountid'] ?? $account['id'] ?? null;
-                if (!$accountId) {
-                    continue;
-                }
-                $accountName = (string) ($account['name'] ?? ('Account ' . $accountId));
-                try {
-                    $transRes = $api->get($token, '/ext/finances/bank/', [
-                        'action' => 'getTransactions',
-                        'bankaccountid' => $accountId,
-                        'date_from' => '2020-01-01',
-                        'date_to' => $today,
-                    ]);
-                    OsmDebug::log('bank_trans_' . $accountId, [
-                        'accountId' => $accountId,
-                        'top_keys' => array_keys($transRes),
-                        'body' => $transRes,
-                    ]);
-                    foreach (self::bankItems($transRes) as $trans) {
-                        if (!is_array($trans) || ($trans['type'] ?? '') !== 'T') {
-                            continue;
-                        }
-                        $transfers[] = [
-                            'accountName' => $accountName,
-                            'date' => $trans['date'] ?? 'N/A',
-                            'reference' => $trans['reference'] ?? 'N/A',
-                            'amount' => number_format((float) ($trans['amount'] ?? 0), 2),
-                        ];
-                    }
-                } catch (Throwable $e) {
-                    OsmDebug::log('bank_trans_error_' . $accountId, [
-                        'message' => $e->getMessage(),
-                        'code' => (int) $e->getCode(),
-                    ]);
-                    continue;
-                }
-            }
+            $accounts = self::loadAccounts($api, $token, $sectionId);
         } catch (Throwable $e) {
             $code = (int) $e->getCode();
             $hint = $code > 0 ? " (OSM HTTP {$code})" : '';
+            OsmDebug::log('bank_v3_accounts_error', [
+                'sectionId' => $sectionId,
+                'message' => $e->getMessage(),
+                'code' => $code,
+            ]);
             App::render('error.twig', Auth::baseContext([
-                'title' => 'Bank transfers',
-                'message' => "Could not load bank accounts for configured section id {$savedId} (type {$savedType}){$hint}. Tried live section type variants and accounts-enabled sections. Details in storage/osm-debug.json.",
+                'title' => 'Bank',
+                'message' => "Could not load bank accounts for section {$sectionName} (id {$sectionId}){$hint}: " . $e->getMessage(),
             ]));
             return;
         }
 
-        usort($transfers, static fn ($a, $b) => strcmp($b['date'], $a['date']) ?: strcmp($a['accountName'], $b['accountName']));
+        $active = array_values(array_filter($accounts, static fn ($a) => empty($a['deleted'])));
+        $deleted = array_values(array_filter($accounts, static fn ($a) => !empty($a['deleted'])));
+        $visible = $showDeleted ? $accounts : $active;
+
+        // Account detail + transactions
+        if ($accountId !== '') {
+            $account = null;
+            foreach ($accounts as $a) {
+                if ($a['id'] === $accountId) {
+                    $account = $a;
+                    break;
+                }
+            }
+            if ($account === null) {
+                App::render('error.twig', Auth::baseContext([
+                    'title' => 'Bank',
+                    'message' => "Bank account {$accountId} was not found in section {$sectionId}.",
+                ]));
+                return;
+            }
+            try {
+                $tx = self::loadTransactions($api, $token, $accountId, $page, $page === 1);
+            } catch (Throwable $e) {
+                $code = (int) $e->getCode();
+                OsmDebug::log('bank_v3_trans_error_' . $accountId, [
+                    'message' => $e->getMessage(),
+                    'code' => $code,
+                ]);
+                App::render('error.twig', Auth::baseContext([
+                    'title' => 'Bank',
+                    'message' => 'Could not load transactions for ' . $account['name'] . ': ' . $e->getMessage(),
+                ]));
+                return;
+            }
+            App::render('bank-transfers.twig', Auth::baseContext([
+                'title' => 'Bank — ' . $account['name'],
+                'view' => 'transactions',
+                'sectionName' => $sectionName,
+                'sectionId' => $sectionId,
+                'sectionType' => $sectionType,
+                'account' => $account,
+                'transactions' => $tx['rows'],
+                'txTotal' => $tx['total'],
+                'txPage' => $tx['page'],
+                'txPerPage' => self::PER_PAGE,
+                'txPagesFetched' => $tx['pagesFetched'],
+                'showDeleted' => $showDeleted,
+                'fetchedAt' => (new \DateTimeImmutable('now', new \DateTimeZone('Europe/London')))->format('d/m/y H:i'),
+            ]));
+            return;
+        }
+
         App::render('bank-transfers.twig', Auth::baseContext([
-            'title' => 'Bank transfers',
-            'transfers' => $transfers,
+            'title' => 'Bank',
+            'view' => 'accounts',
             'sectionName' => $sectionName,
             'sectionId' => $sectionId,
             'sectionType' => $sectionType,
-            'accountCount' => $accountCount,
-            'parseHint' => $parseHint,
+            'accounts' => $visible,
+            'activeCount' => count($active),
+            'deletedCount' => count($deleted),
+            'showDeleted' => $showDeleted,
             'fetchedAt' => (new \DateTimeImmutable('now', new \DateTimeZone('Europe/London')))->format('d/m/y H:i'),
         ]));
     }
