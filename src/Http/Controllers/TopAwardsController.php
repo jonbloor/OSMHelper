@@ -436,26 +436,9 @@ final class TopAwardsController
     /** @param array<string, mixed> $b @param array<string, mixed> $debugMeta */
     private static function parseAward(array $b, array &$debugMeta): ?array
     {
-        // Jon Athletics capture: awarded is 0|1; awardeddate is "" or yyyy-mm-dd.
-        // Count only when awarded is truthy AND awardeddate is non-empty.
-        $awardedRaw = $b['awarded'] ?? $b['awarded_level'] ?? null;
+        // Jon: awardeddate is the authority. Empty awardeddate = not awarded for this calc.
+        // Prefer key awardeddate; awarded (0|1 / level) is secondary for level / soft check.
         $completedRaw = $b['completed'] ?? null;
-        $isAwarded = false;
-        $level = 0;
-        if ($awardedRaw === true || $awardedRaw === 1 || $awardedRaw === '1') {
-            $isAwarded = true;
-            $level = 1;
-        } elseif (is_numeric($awardedRaw) && (int) $awardedRaw > 0) {
-            // staged may use awarded as level
-            $isAwarded = true;
-            $level = (int) $awardedRaw;
-        } elseif (is_string($awardedRaw) && is_numeric(trim($awardedRaw)) && (int) trim($awardedRaw) > 0) {
-            $isAwarded = true;
-            $level = (int) trim($awardedRaw);
-        }
-        if (!$isAwarded) {
-            return null;
-        }
 
         $dateKeys = ['awardeddate', 'awarded_date', 'date_awarded', 'awardedDate', 'dateawarded'];
         $dateStr = '';
@@ -473,12 +456,22 @@ final class TopAwardsController
             }
         }
         if ($dateStr === '') {
-            // required: no empty awardeddate
             return null;
         }
+
+        $awardedRaw = $b['awarded'] ?? $b['awarded_level'] ?? null;
+        $level = 1;
+        if (is_numeric($awardedRaw) && (int) $awardedRaw > 0) {
+            $level = (int) $awardedRaw;
+        } elseif (is_string($awardedRaw) && is_numeric(trim($awardedRaw)) && (int) trim($awardedRaw) > 0) {
+            $level = (int) trim($awardedRaw);
+        } elseif ($awardedRaw === true || $awardedRaw === '1') {
+            $level = 1;
+        }
+        // If awarded is explicitly 0/false but date present, still count (date is authority).
         return [
             'badge_id' => (string) ($b['badge_id'] ?? $b['badgeid'] ?? ''),
-            'level' => $level > 0 ? $level : 1,
+            'level' => $level,
             'awarded_date' => $dateStr,
             'completed' => $completedRaw,
         ];
