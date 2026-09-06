@@ -138,12 +138,16 @@ final class OsmApi
         if (!preg_match('#^https?://#i', $path)) {
             $path = ltrim($path, '/');
         }
-        $options['headers'] = array_merge($options['headers'] ?? [], [
+        $headers = [
             'Authorization' => 'Bearer ' . $accessToken,
             'Accept' => 'application/json',
-            // Node osmApi sets Content-Type on all requests
-            'Content-Type' => 'application/json',
-        ]);
+        ];
+        // form_params need application/x-www-form-urlencoded (Guzzle sets it).
+        // Forcing JSON here breaks OSM quartermaster column updates.
+        if (!isset($options['form_params'])) {
+            $headers['Content-Type'] = 'application/json';
+        }
+        $options['headers'] = array_merge($options['headers'] ?? [], $headers);
         $response = $this->http->request($method, $path, $options);
         $this->captureRateLimit($response->getHeaders());
         $status = $response->getStatusCode();

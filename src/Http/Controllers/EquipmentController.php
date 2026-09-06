@@ -521,8 +521,9 @@ final class EquipmentController
 
     /**
      * Review or commit a bulk location move.
-     * OSM quartermaster WRITE action is not confirmed in Node (stubs) or community docs —
-     * commit runs as dry-run/stub with an honest error rather than inventing POSTs.
+     * Jon Network capture (2026-09-06): POST /ext/quartermaster/?action=updateListItemColumnValue
+     * with listid + itemrowidentifier + columnid=3 (Location) + data=<location name>.
+     * Confirm UI still runs before commit; 150ms spacing between writes.
      */
     public function move(): void
     {
@@ -628,29 +629,69 @@ final class EquipmentController
             return;
         }
 
-        // Commit = dry-run stub (no invented OSM POSTs)
+        // Commit = real OSM Location column write (columnid 3), one item at a time.
         $results = [];
-        $delayUs = 150000; // 150ms between would-be writes (rate-limit friendly when real)
+        $delayUs = 150000; // 150ms between writes (rate-limit friendly)
+        $anyOk = false;
+        $api = new OsmApi();
         foreach ($items as $i => $item) {
             if ($i > 0) {
                 usleep($delayUs);
+            }
+            $ok = false;
+            $message = '';
+            try {
+                // Captured URL puts action in query; body carries list/row/column/value (+ section like getList).
+                $res = $api->post($token, '/ext/quartermaster/?action=updateListItemColumnValue', [
+                    'listid' => $item['listId'],
+                    'itemrowidentifier' => $item['rowid'],
+                    'columnid' => 3,
+                    'data' => $location,
+                    'section' => $sectionType,
+                    'sectionid' => $sectionId,
+                ]);
+                $statusTrue = ($res['status'] ?? null) === true
+                    || ($res['status'] ?? null) === 'true'
+                    || ($res['status'] ?? null) === 1;
+                $data = is_array($res['data'] ?? null) ? $res['data'] : [];
+                $echoData = isset($data['data']) ? (string) $data['data'] : '';
+                if ($statusTrue) {
+                    $ok = true;
+                    $anyOk = true;
+                    $message = $echoData !== '' ? ('OSM: ' . $echoData) : 'Updated';
+                } else {
+                    $message = 'OSM did not return status true'
+                        . (isset($res['error']) ? (': ' . (is_string($res['error']) ? $res['error'] : json_encode($res['error']))) : '');
+                }
+                OsmDebug::log('equipment_move_' . $item['listId'] . '_' . $item['rowid'], [
+                    'listId' => $item['listId'],
+                    'rowid' => $item['rowid'],
+                    'location' => $location,
+                    'sectionId' => $sectionId,
+                    'sectionType' => $sectionType,
+                    'ok' => $ok,
+                    'response' => $res,
+                ]);
+            } catch (Throwable $e) {
+                $message = $e->getMessage();
+                OsmDebug::log('equipment_move_error_' . $item['listId'] . '_' . $item['rowid'], [
+                    'listId' => $item['listId'],
+                    'rowid' => $item['rowid'],
+                    'location' => $location,
+                    'sectionId' => $sectionId,
+                    'sectionType' => $sectionType,
+                    'message' => $e->getMessage(),
+                    'code' => (int) $e->getCode(),
+                ]);
             }
             $results[] = [
                 'listId' => $item['listId'],
                 'rowid' => $item['rowid'],
                 'itemName' => $item['itemName'],
-                'ok' => false,
-                'dryRun' => true,
-                'message' => 'Dry-run only — quartermaster location write action not confirmed (Node POSTs were stubs; no community docs). Nothing written to OSM.',
+                'ok' => $ok,
+                'dryRun' => false,
+                'message' => $message,
             ];
-            OsmDebug::log('equipment_move_dryrun_' . $item['listId'] . '_' . $item['rowid'], [
-                'listId' => $item['listId'],
-                'rowid' => $item['rowid'],
-                'location' => $location,
-                'sectionId' => $sectionId,
-                'sectionType' => $sectionType,
-                'mode' => 'dry-run-stub',
-            ]);
         }
 
         App::render('equipment-move-result.twig', Auth::baseContext([
@@ -658,9 +699,9 @@ final class EquipmentController
             'location' => $location,
             'results' => $results,
             'sectionName' => $sectionName,
-            'wrote' => false,
-            'dryRun' => true,
-            'honestError' => 'OSM quartermaster write API for updating item location (column _3) is not documented in the Node reference (add/edit POSTs redirect only) or community OpenAPI. OSMHelper did not invent a POST. UI and dry-run are ready for a real write once the action is captured.',
+            'wrote' => $anyOk,
+            'dryRun' => false,
+            'honestError' => '',
         ]));
     }
 

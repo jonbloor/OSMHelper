@@ -1,9 +1,9 @@
 {% extends 'layout.twig' %}
 {% block body %}
 <div class="card">
-  <h2>Confirm move to {{ location }}</h2>
+  <h2>Confirm move (write to OSM) to {{ location }}</h2>
   <p>You are about to update <strong>{{ itemCount }}</strong> item(s) in OSM quartermaster{% if sectionName %} ({{ sectionName }}){% endif %}.</p>
-  <div class="alert">Please confirm the list below. OSMHelper spaces writes to stay rate-limit friendly.</div>
+  <div class="alert">Please confirm the list below. Confirm writes Location (column 3) in OSM for each item, spaced ~150ms apart.</div>
   <div class="table-wrap">
   <table class="data">
     <thead><tr><th>List id</th><th>Row</th><th>Item</th><th>New location</th></tr></thead>

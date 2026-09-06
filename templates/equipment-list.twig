@@ -29,7 +29,7 @@
       <button class="btn" type="submit" id="equip-move-btn">Review move…</button>
       <span class="muted" id="equip-selected-count">0 selected</span>
     </div>
-    <p class="muted">Writes to OSM are rate-limit aware. You will confirm before anything is attempted. Locations are managed in <a href="/settings/">Settings</a>.</p>
+    <p class="muted">Confirm before anything is written. Each selected item updates Location in OSM (~150ms apart). Locations are managed in <a href="/settings/">Settings</a>.</p>
   {% elseif equipment is not empty %}
   <p class="muted">To bulk-move kit, add named locations under <a href="/settings/">Settings → Equipment locations</a>.</p>
   {% endif %}
