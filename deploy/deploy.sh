@@ -41,7 +41,7 @@ scp -i "$SSH_KEY" -o IdentitiesOnly=yes \
   "${REMOTE}:/home/osmhelper/app/ensure-session-secret.php"
 "${SSH[@]}" 'cd /home/osmhelper/app && php ensure-session-secret.php && rm -f ensure-session-secret.php'
 
-echo "==> Permissions"
-"${SSH[@]}" 'chmod 750 /home/osmhelper/app; chmod 640 /home/osmhelper/app/.env 2>/dev/null || true; chmod 644 /home/osmhelper/htdocs/osmhelper.co.uk/index.php; find /home/osmhelper/htdocs/osmhelper.co.uk -name index.php -exec chmod 644 {} \;'
+echo "==> Permissions (PHP-FPM runs as osmhelper)"
+"${SSH[@]}" 'chgrp -R osmhelper /home/osmhelper/app; find /home/osmhelper/app -type d -exec chmod 750 {} \;; find /home/osmhelper/app -type f -exec chmod 640 {} \;; chmod 640 /home/osmhelper/app/.env; chgrp -R osmhelper /home/osmhelper/htdocs/osmhelper.co.uk/auth /home/osmhelper/htdocs/osmhelper.co.uk/callback /home/osmhelper/htdocs/osmhelper.co.uk/dashboard /home/osmhelper/htdocs/osmhelper.co.uk/logout 2>/dev/null || true'
 
 echo "==> Done. Fill CLIENT_ID/CLIENT_SECRET in /home/osmhelper/app/.env if needed."
