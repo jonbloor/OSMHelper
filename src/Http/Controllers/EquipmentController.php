@@ -35,25 +35,75 @@ final class EquipmentController
     }
 
     /**
-     * Node: itemsResponse.data.data.items
+     * Jon Chromium capture: { status, data: { list, rows, columns } }
+     * rows keyed by id; column keys are "1","2",… (Name, Description, … Quantity="6").
+     * Also accept legacy Node _1/_6 and data.items shapes.
      * @param array<string, mixed> $res
      * @return list<array<string, mixed>>
      */
     private static function quartermasterItems(array $res): array
     {
+        $data = is_array($res['data'] ?? null) ? $res['data'] : null;
+        if (is_array($data) && isset($data['rows']) && is_array($data['rows'])) {
+            $mapped = [];
+            foreach ($data['rows'] as $rowId => $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                $mapped[] = self::normaliseItemRow($row, (string) $rowId);
+            }
+            if ($mapped !== []) {
+                return $mapped;
+            }
+        }
         $candidates = [
-            $res['data']['items'] ?? null,        // Node primary
+            $data['items'] ?? null,
             $res['data']['data']['items'] ?? null,
             $res['items'] ?? null,
-            $res['data'] ?? null,                 // sometimes data is already the items list
+            $data,
         ];
         foreach ($candidates as $c) {
-            $rows = self::asRowList($c, ['_1', 'rowid', 'name', 'item']);
+            $rows = self::asRowList($c, ['_1', '1', 'rowid', 'name', 'item']);
             if ($rows !== []) {
-                return $rows;
+                $out = [];
+                foreach ($rows as $i => $row) {
+                    $out[] = self::normaliseItemRow($row, (string) ($row['rowid'] ?? $row['id'] ?? $i));
+                }
+                return $out;
             }
         }
         return OsmLists::items($res);
+    }
+
+    /**
+     * Map OSM column ids ("1"…"9") and legacy _1…_9 onto stable keys.
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    private static function normaliseItemRow(array $row, string $rowId): array
+    {
+        $pick = static function (array $row, string $n) {
+            if (array_key_exists('_' . $n, $row)) {
+                return $row['_' . $n];
+            }
+            if (array_key_exists($n, $row)) {
+                return $row[$n];
+            }
+            return '';
+        };
+        return [
+            'rowid' => $row['rowid'] ?? ($row['id'] ?? $rowId),
+            '_1' => $pick($row, '1') !== '' ? $pick($row, '1') : ($row['name'] ?? ''),
+            '_2' => $pick($row, '2'),
+            '_3' => $pick($row, '3'),
+            '_4' => $pick($row, '4'),
+            '_5' => $pick($row, '5'),
+            '_6' => $pick($row, '6'),
+            '_7' => $pick($row, '7'),
+            '_8' => $pick($row, '8'),
+            '_9' => $pick($row, '9'),
+            'name' => $row['name'] ?? null,
+        ];
     }
 
     /**
@@ -285,7 +335,7 @@ final class EquipmentController
             $listCount = count($lists);
             $sectionType = $usedType;
             $itemErrors = [];
-            // osm-debug: list rows use id/name (not Node listid)
+            // List metadata uses id/name; getList query uses listid (Jon Chromium capture).
             foreach ($lists as $equipList) {
                 $listId = $equipList['listid'] ?? $equipList['list_id'] ?? $equipList['id'] ?? null;
                 if ($listId === null || $listId === '') {
@@ -293,16 +343,19 @@ final class EquipmentController
                 }
                 $listName = (string) ($equipList['name'] ?? ('List ' . $listId));
                 try {
+                    // NOT getItemsInList — OSM returns invalid-action / HTTP 403 for that.
+                    // Working: GET .../ext/quartermaster/?action=getList&listid=&section=&sectionid=
                     $itemsRes = $api->get($token, '/ext/quartermaster/', [
-                        'action' => 'getItemsInList',
+                        'action' => 'getList',
+                        'listid' => $listId,
                         'section' => $sectionType,
                         'sectionid' => $sectionId,
-                        'listid' => $listId,
                     ]);
-                    if ($listCount <= 5) {
+                    if ($listCount <= 3) {
                         OsmDebug::log('equipment_items_' . $listId, [
                             'listId' => $listId,
                             'top_keys' => array_keys($itemsRes),
+                            'data_keys' => is_array($itemsRes['data'] ?? null) ? array_keys($itemsRes['data']) : null,
                             'body' => $itemsRes,
                         ]);
                     }

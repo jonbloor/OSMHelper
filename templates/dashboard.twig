@@ -2,7 +2,7 @@
 {% block body %}
   <div class="card">
     <div class="row" style="justify-content: space-between;">
-      <h2 style="margin:0;">Dashboard</h2>
+      <h2 style="margin:0;">Home</h2>
       <span class="badge">Signed in</span>
     </div>
     <dl class="meta">
@@ -11,13 +11,6 @@
       <dt>Group</dt><dd>{{ groupName }}</dd>
     </dl>
     {% include '_rate_limit.twig' %}
-    <div class="tool-grid">
-      <a class="btn" href="/membership-dashboard/">Group numbers</a>
-      <a class="btn" href="/members/">Members</a>
-      <a class="btn" href="/waiting-list/">Waiting list</a>
-      <a class="btn" href="/equipment/">Equipment</a>
-      <a class="btn" href="/bank-transfers/">Bank transfers</a>
-      <a class="btn btn-secondary" href="/settings/">Settings</a>
-    </div>
+    <p class="muted">Use the navigation above to open Group numbers, Members, Waiting, Equipment, Bank, and Settings.</p>
   </div>
 {% endblock %}
