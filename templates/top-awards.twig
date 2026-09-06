@@ -1,16 +1,37 @@
 {% extends 'layout.twig' %}
 {% block body %}
+{% if flash %}
+<div class="alert {% if flash.type == 'error' %}alert-error{% endif %}">{{ flash.message }}</div>
+{% endif %}
+
 <div class="card">
-  <h2>Top awards — Scouts dry-run</h2>
-  <p class="muted">Read-only. Counts activity + staged badges awarded on/after each member’s <code>startedsection</code>. Each staged level counts as 1. Proposed Gold string uses threshold {{ threshold }} (no write).</p>
+  <h2>Top awards</h2>
+  <p class="muted">Counts activity + staged badges awarded on/after each member’s <code>startedsection</code>. Each staged level counts as 1. Proposed {{ awardLabel|default('Gold') }} string uses the section threshold{% if threshold %} ({{ threshold }}){% endif %}. Adults / waiting list are skipped.</p>
+
+  <form method="post" action="/top-awards/select/" class="row" style="margin-top:0.75rem;align-items:end;flex-wrap:wrap;gap:0.75rem">
+    {% include '_csrf.twig' %}
+    <label>Youth section
+      <select name="sectionId" required>
+        <option value="">— choose one section —</option>
+        {% for s in sectionOptions %}
+          <option value="{{ s.id }}|{{ s.type }}" {% if section and section.id == s.id %}selected{% endif %}>{{ s.name }} ({{ s.type }})</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button class="btn" type="submit">Calculate</button>
+  </form>
+
   {% if section %}
-  <p><strong>Section:</strong> {{ section.name }} <span class="muted">(id {{ section.id }}, term {{ section.termId }})</span></p>
+  <p style="margin-top:0.75rem"><strong>Section:</strong> {{ section.name }} <span class="muted">(id {{ section.id }}, type {{ section.type }}, term {{ section.termId }})</span>
+    {% if challengeBadge %} · <strong>Challenge badge:</strong> {{ challengeBadge.name }}{% if challengeBadge.chal %} <span class="muted">({{ challengeBadge.chal }})</span>{% endif %}{% endif %}
+  </p>
   {% endif %}
+
   {% if error %}
-  <p class="status-warn">{{ error }}</p>
+  <p class="alert alert-error">{{ error }}</p>
   {% endif %}
   {% if scopeHint %}
-  <p class="status-warn"><strong>Possible scope/403:</strong> {{ scopeHint }}</p>
+  <p class="alert alert-error"><strong>Possible scope/403:</strong> {{ scopeHint }} — after deploy, re-login so OSM grants <code>section:badge:write</code> as well as read.</p>
   {% endif %}
   {% if notes %}
   <details><summary class="muted">Notes ({{ notes|length }})</summary>
@@ -18,13 +39,20 @@
   </details>
   {% endif %}
   {% if debugMeta %}
-  <p class="muted">Mode: {{ debugMeta.mode|default('—') }} · badge API calls: {{ debugMeta.badgeApiCalls|default(0) }} · date keys seen: {{ debugMeta.awardedDateKeysSeen|default([])|join(', ')|default('none') }}</p>
+  <p class="muted">Mode: {{ debugMeta.mode|default('—') }} · badge API calls: {{ debugMeta.badgeApiCalls|default(0) }} · date keys: {{ debugMeta.awardedDateKeysSeen|default([])|join(', ')|default('none') }} · progress field: {{ debugMeta.progressField|default('completed') }}</p>
   {% endif %}
 </div>
+
 {% if rows %}
+<div class="card export-nudge" role="region" aria-label="Export before write">
+  <h3>Save a copy before any write</h3>
+  <p><strong>Please export or copy this table first</strong> (CSV, Excel, or PDF via the table tools above the grid). OSMHelper will not write until you confirm you have a backup.</p>
+  <p class="muted">Use the export buttons on the results table — do not skip this step.</p>
+</div>
+
 <div class="card">
   <div class="table-wrap">
-  <table class="data" data-table-tools>
+  <table class="data" data-table-tools data-export-name="top-awards">
     <thead>
       <tr>
         <th data-sort="text">Name</th>
@@ -34,13 +62,14 @@
         <th data-sort="num">Activity</th>
         <th data-sort="num">Staged</th>
         <th data-sort="num">Total</th>
-        <th data-sort="text">Proposed Gold</th>
+        <th data-sort="text">Current {{ awardLabel|default('Gold') }}</th>
+        <th data-sort="text">Proposed {{ awardLabel|default('Gold') }}</th>
         <th data-sort="text">Flags</th>
       </tr>
     </thead>
     <tbody>
     {% for r in rows %}
-      <tr>
+      <tr {% if r.will_update %}class="status-warn"{% endif %}>
         <td>{{ r.name }}</td>
         <td>{{ r.section_name|default(section.name|default('')) }}</td>
         <td>{{ r.patrol }}</td>
@@ -48,15 +77,34 @@
         <td>{{ r.activity }}</td>
         <td>{{ r.staged }}</td>
         <td><strong>{{ r.total }}</strong>{% if r.unknown_type %} <span class="muted">(+{{ r.unknown_type }} untyped)</span>{% endif %}</td>
-        <td><code>{{ r.gold }}</code></td>
+        <td><code>{{ r.current_completed|default('—') }}</code></td>
+        <td><code>{{ r.proposed|default(r.gold) }}</code>{% if r.will_update %} <span class="muted">→ update</span>{% endif %}</td>
         <td class="muted">{% if r.skipped_no_date %}no-date:{{ r.skipped_no_date }} {% endif %}{% if r.skipped_before_start %}before:{{ r.skipped_before_start }}{% endif %}</td>
       </tr>
     {% endfor %}
     </tbody>
   </table>
   </div>
+
+  {% if challengeBadge %}
+  <form method="post" action="/top-awards/review/" class="top-awards-review" style="margin-top:1.25rem">
+    {% include '_csrf.twig' %}
+    <div class="export-nudge" style="margin-bottom:0.75rem">
+      <label class="row" style="align-items:flex-start;gap:0.5rem">
+        <input type="checkbox" name="saved_copy" value="1" required>
+        <span><strong>I have saved a copy</strong> of this table (CSV / Excel / PDF export or equivalent). I understand OSMHelper will propose writing {{ awardLabel|default('Gold') }} progress strings into OSM.</span>
+      </label>
+    </div>
+    <p class="muted">{{ changesCount }} member(s) have a different current vs proposed value.</p>
+    <button class="btn" type="submit" {% if changesCount == 0 %}disabled{% endif %}>Review updates…</button>
+  </form>
+  {% else %}
+  <p class="alert alert-error" style="margin-top:1rem">No matching challenge badge found for this section — cannot prepare writes. See notes above.</p>
+  {% endif %}
 </div>
-{% elseif not error %}
-<p class="muted">No youth members found in this Scouts section.</p>
+{% elseif section and not error %}
+<p class="muted">No youth members found in this section.</p>
+{% elseif needsSection %}
+<p class="muted">Pick a section above to calculate.</p>
 {% endif %}
 {% endblock %}

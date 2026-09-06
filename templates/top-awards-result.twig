@@ -1,0 +1,39 @@
+{% extends 'layout.twig' %}
+{% block body %}
+<div class="card">
+  <h2>Top awards write result — {{ awardLabel|default('Gold') }}</h2>
+  {% if section %}
+  <p class="muted">{{ section.name }} ({{ section.type }}){% if challengeBadge %} · {{ challengeBadge.name }}{% endif %}</p>
+  {% endif %}
+  {% if wrote %}
+  <div class="alert">At least one update was accepted by OSM. Check Failed rows below. Write path: <code>{{ writePathUsed|default('—') }}</code></div>
+  {% else %}
+  <div class="alert alert-error">No members were updated. See status messages (also in osm-debug). Write API may need a Network capture from Jon while editing a challenge progress cell in OSM.</div>
+  {% endif %}
+  <div class="table-wrap">
+  <table class="data">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Current</th>
+        <th>Proposed</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in results %}
+      <tr>
+        <td>{{ r.name }}</td>
+        <td><code>{{ r.current|default('—') }}</code></td>
+        <td><code>{{ r.proposed }}</code></td>
+        <td>{% if r.ok %}Updated{% else %}Failed{% endif %}{% if r.message %} — {{ r.message }}{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="row" style="margin-top:1rem">
+    <a class="btn" href="/top-awards/">Back to Top awards</a>
+  </p>
+</div>
+{% endblock %}

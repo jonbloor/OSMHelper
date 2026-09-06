@@ -1,0 +1,46 @@
+{% extends 'layout.twig' %}
+{% block body %}
+<div class="card">
+  <h2>Confirm {{ awardLabel|default('Gold') }} write to OSM</h2>
+  <p>Section: <strong>{{ section.name }}</strong> <span class="muted">({{ section.type }}, id {{ section.id }})</span></p>
+  {% if challengeBadge %}
+  <p>Challenge badge: <strong>{{ challengeBadge.name }}</strong>
+    {% if challengeBadge.chal %}<span class="muted">(chal/key {{ challengeBadge.chal }})</span>{% endif %}
+    · field <code>{{ progressField|default('completed') }}</code>
+  </p>
+  {% endif %}
+  <div class="alert">Review each current → proposed change. Nothing is written until you click <strong>Confirm write</strong>.</div>
+  {% if notes %}
+  <details><summary class="muted">Notes</summary><ul>{% for n in notes %}<li>{{ n }}</li>{% endfor %}</ul></details>
+  {% endif %}
+  <div class="table-wrap">
+  <table class="data" data-table-tools data-export-name="top-awards-confirm">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Patrol</th>
+        <th>Total</th>
+        <th>Current {{ awardLabel|default('Gold') }}</th>
+        <th>Proposed {{ awardLabel|default('Gold') }}</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for c in changes %}
+      <tr>
+        <td>{{ c.name }}</td>
+        <td>{{ c.patrol }}</td>
+        <td>{{ c.total }}</td>
+        <td><code>{{ c.current|default('—') }}</code></td>
+        <td><code>{{ c.proposed }}</code></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <form method="post" action="/top-awards/apply/" class="row" style="margin-top:1rem">
+    {% include '_csrf.twig' %}
+    <button class="btn" type="submit">Confirm write</button>
+    <a class="btn btn-secondary" href="/top-awards/">Cancel</a>
+  </form>
+</div>
+{% endblock %}

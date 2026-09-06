@@ -61,6 +61,9 @@ final class App
         $router->get('/help', [$help, 'index']);
         $router->get('/roadmap', [$roadmap, 'index']);
         $router->get('/top-awards', [$topAwards, 'index']);
+        $router->post('/top-awards/select', [$topAwards, 'select']);
+        $router->post('/top-awards/review', [$topAwards, 'review']);
+        $router->post('/top-awards/apply', [$topAwards, 'apply']);
         $router->post('/settings/update-cutoffs', [$set, 'updateCutoffs']);
         $router->post('/settings/update-sections', [$set, 'updateSections']);
         $router->post('/settings/update-tool-sections', [$set, 'updateToolSections']);

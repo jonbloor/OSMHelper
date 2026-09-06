@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% if title and title != 'OSMHelper' %}{{ title }} · {% endif %}OSMHelper</title>
-  <link rel="stylesheet" href="/assets/app.css?v=d6over1">
-  <script src="/assets/table-tools.js?v=d6over1" defer></script>
+  <link rel="stylesheet" href="/assets/app.css?v=d6badge1">
+  <script src="/assets/table-tools.js?v=d6badge1" defer></script>
 </head>
 <body>
   <div id="page-loading" class="page-loading" hidden aria-live="polite" aria-busy="true">
@@ -26,6 +26,13 @@
             <a href="/members/">Members</a>
             <a href="/member-checks/">Checks</a>
             <a href="/waiting-list/">Waiting</a>
+          </div>
+        </details>
+
+        <details class="nav-group nav-badges">
+          <summary><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="6"/><path d="M8.21 13.89 7 22l5-3 5 3-1.21-8.11"/></svg> Badges</summary>
+          <div class="nav-sub">
+            <a href="/top-awards/">Top awards</a>
           </div>
         </details>
 

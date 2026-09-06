@@ -247,6 +247,21 @@ a.nav-equipment[aria-current="page"] { border-bottom-color: #0b6e4f; }
   border-bottom-color: #0b6e4f;
 }
 
+/* Badges #b7791f */
+.nav-group.nav-badges > summary .nav-svg { color: #b7791f; }
+.nav-group.nav-badges > summary:hover,
+.nav-group.nav-badges[open] > summary {
+  border-bottom-color: #b7791f;
+}
+.nav-group.nav-badges .nav-sub {
+  border-left: 3px solid #b7791f;
+}
+.nav-group.nav-badges .nav-sub a[aria-current="page"] {
+  border-bottom-color: #0b6e4f;
+}
+
+
+
 /* Settings #718096 */
 a.nav-settings .nav-svg { color: #718096; }
 a.nav-settings:hover { border-bottom-color: #718096; }
@@ -856,3 +871,18 @@ table.data tbody tr.row-no-section td {
   color: #c1121f;
   font-weight: 700;
 }
+
+/* Top awards: loud export / copy encouragement before write */
+.export-nudge {
+  border: 2px solid #c05621;
+  background: #fff4e6;
+  border-radius: var(--radius);
+  padding: 0.9rem 1rem;
+  margin-bottom: 1rem;
+}
+.export-nudge h3 {
+  margin: 0 0 0.35rem;
+  color: #9c4221;
+  font-size: 1.05rem;
+}
+.export-nudge p { margin: 0.35rem 0; }
