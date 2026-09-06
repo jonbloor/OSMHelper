@@ -1,4 +1,4 @@
-/* cache-bust d6nav2 */
+/* cache-bust d6nav3 */
 :root {
   --bg: #f4f6f8;
   --card: #ffffff;
@@ -184,74 +184,90 @@ header.app-header h1 {
   align-items: center;
 }
 
-/* Jason palette: icon + 2px underline; labels stay #1a1a1a */
+/* Compromise palette: subtle group icon tint; active underline = site green.
+   Labels stay #1a1a1a. Not Scout chart hexes. */
+.nav-svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  display: inline-block;
+  vertical-align: -0.2em;
+}
 .nav-links a,
 .nav-links summary {
   color: #1a1a1a;
-  padding: 0.35rem 0.2rem;
-  border-bottom: 2px solid transparent;
-  text-decoration: none;
-  cursor: pointer;
-  list-style: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-weight: 500;
 }
-.nav-links summary::-webkit-details-marker { display: none; }
 .nav-links summary::after {
-  content: "▾";
-  font-size: 0.7em;
-  opacity: 0.7;
-  margin-left: 0.15rem;
+  content: "";
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid currentColor;
+  opacity: 0.55;
+  margin-left: 0.2rem;
 }
-.nav-links a:hover,
-.nav-links summary:hover {
-  text-decoration: none;
-}
-.nav-ico {
-  font-style: normal;
-  font-size: 0.95em;
-  line-height: 1;
+.nav-group[open] > summary::after {
+  transform: rotate(180deg);
 }
 
-.nav-home .nav-ico, a.nav-home { border-bottom-color: transparent; }
-a.nav-home:hover, a.nav-home[aria-current="page"] { border-bottom-color: #0b6e4f; }
-a.nav-home .nav-ico { color: #0b6e4f; }
+/* Home — site green */
+a.nav-home .nav-svg { color: #0b6e4f; }
+a.nav-home:hover { border-bottom-color: #0b6e4f; }
+a.nav-home[aria-current="page"] { border-bottom-color: #0b6e4f; }
 
-.nav-group.nav-members > summary .nav-ico { color: #1d4ed8; }
+/* Members #2b6cb0 */
+.nav-group.nav-members > summary .nav-svg { color: #2b6cb0; }
 .nav-group.nav-members > summary:hover,
-.nav-group.nav-members[open] > summary { border-bottom-color: #1d4ed8; }
-.nav-group.nav-members .nav-sub a:hover,
-.nav-group.nav-members .nav-sub a[aria-current="page"] { border-bottom-color: #1d4ed8; }
+.nav-group.nav-members[open] > summary {
+  border-bottom-color: #2b6cb0;
+}
+.nav-group.nav-members .nav-sub {
+  border-left: 3px solid #2b6cb0;
+}
+.nav-group.nav-members .nav-sub a[aria-current="page"] {
+  border-bottom-color: #0b6e4f;
+}
 
-a.nav-equipment .nav-ico { color: #b45309; }
-a.nav-equipment:hover,
-a.nav-equipment[aria-current="page"] { border-bottom-color: #b45309; }
+/* Equipment #c05621 */
+a.nav-equipment .nav-svg { color: #c05621; }
+a.nav-equipment:hover { border-bottom-color: #c05621; }
+a.nav-equipment[aria-current="page"] { border-bottom-color: #0b6e4f; }
 
-.nav-group.nav-finance > summary .nav-ico { color: #0f766e; }
+/* Finance #2f855a */
+.nav-group.nav-finance > summary .nav-svg { color: #2f855a; }
 .nav-group.nav-finance > summary:hover,
-.nav-group.nav-finance[open] > summary { border-bottom-color: #0f766e; }
-.nav-group.nav-finance .nav-sub a:hover,
-.nav-group.nav-finance .nav-sub a[aria-current="page"] { border-bottom-color: #0f766e; }
+.nav-group.nav-finance[open] > summary {
+  border-bottom-color: #2f855a;
+}
+.nav-group.nav-finance .nav-sub {
+  border-left: 3px solid #2f855a;
+}
+.nav-group.nav-finance .nav-sub a[aria-current="page"] {
+  border-bottom-color: #0b6e4f;
+}
 
-a.nav-settings .nav-ico { color: #5b21b6; }
-a.nav-settings:hover,
-a.nav-settings[aria-current="page"] { border-bottom-color: #5b21b6; }
+/* Settings #718096 */
+a.nav-settings .nav-svg { color: #718096; }
+a.nav-settings:hover { border-bottom-color: #718096; }
+a.nav-settings[aria-current="page"] { border-bottom-color: #0b6e4f; }
 
-a.nav-help .nav-ico { color: #0369a1; }
-a.nav-help:hover,
-a.nav-help[aria-current="page"] { border-bottom-color: #0369a1; }
+/* Help #6b46c1 */
+a.nav-help .nav-svg { color: #6b46c1; }
+a.nav-help:hover { border-bottom-color: #6b46c1; }
+a.nav-help[aria-current="page"] { border-bottom-color: #0b6e4f; }
 
-a.nav-roadmap .nav-ico { color: #4b5563; }
-a.nav-roadmap:hover,
-a.nav-roadmap[aria-current="page"] { border-bottom-color: #4b5563; }
+/* Roadmap muted slate */
+a.nav-roadmap .nav-svg { color: #4b5563; }
+a.nav-roadmap:hover { border-bottom-color: #4b5563; }
+a.nav-roadmap[aria-current="page"] { border-bottom-color: #0b6e4f; }
 
 a.nav-logout {
   margin-left: auto;
   color: #5c6570 !important;
   font-weight: 400;
 }
+a.nav-logout .nav-svg { color: #5c6570; }
 a.nav-logout:hover { border-bottom-color: #5c6570; }
 
 .nav-group {

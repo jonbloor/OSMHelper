@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% if title and title != 'OSMHelper' %}{{ title }} · {% endif %}OSMHelper</title>
-  <link rel="stylesheet" href="/assets/app.css?v=d6nav2">
-  <script src="/assets/table-tools.js?v=d6nav2" defer></script>
+  <link rel="stylesheet" href="/assets/app.css?v=d6nav3">
+  <script src="/assets/table-tools.js?v=d6nav3" defer></script>
 </head>
 <body>
   <div id="page-loading" class="page-loading" hidden aria-live="polite" aria-busy="true">
@@ -17,10 +17,10 @@
       {% if authed is defined and authed %}
       <button type="button" class="nav-toggle" aria-controls="app-nav" aria-expanded="false">Menu</button>
       <nav id="app-nav" class="nav-links">
-        <a class="nav-item nav-home" href="/dashboard/"><span class="nav-ico" aria-hidden="true">⌂</span> Home</a>
+        <a class="nav-item nav-home" href="/dashboard/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 10v10h14V10"/></svg> Home</a>
 
         <details class="nav-group nav-members">
-          <summary><span class="nav-ico" aria-hidden="true">👥</span> Members</summary>
+          <summary><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Members</summary>
           <div class="nav-sub">
             <a href="/membership-dashboard/">Group numbers</a>
             <a href="/members/">Members</a>
@@ -29,20 +29,20 @@
           </div>
         </details>
 
-        <a class="nav-item nav-equipment" href="/equipment/"><span class="nav-ico" aria-hidden="true">🧰</span> Equipment</a>
+        <a class="nav-item nav-equipment" href="/equipment/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/></svg> Equipment</a>
 
         <details class="nav-group nav-finance">
-          <summary><span class="nav-ico" aria-hidden="true">£</span> Finance</summary>
+          <summary><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></svg> Finance</summary>
           <div class="nav-sub">
             <a href="/bank-transfers/">Bank</a>
             <a href="/bank-transfers/all/">All transfers</a>
           </div>
         </details>
 
-        <a class="nav-item nav-settings" href="/settings/"><span class="nav-ico" aria-hidden="true">⚙</span> Settings</a>
-        <a class="nav-item nav-help" href="/help/"><span class="nav-ico" aria-hidden="true">?</span> Help</a>
-        <a class="nav-item nav-roadmap" href="/roadmap/"><span class="nav-ico" aria-hidden="true">↦</span> Roadmap</a>
-        <a class="nav-item nav-logout" href="/logout/">Logout</a>
+        <a class="nav-item nav-settings" href="/settings/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg> Settings</a>
+        <a class="nav-item nav-help" href="/help/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg> Help</a>
+        <a class="nav-item nav-roadmap" href="/roadmap/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg> Roadmap</a>
+        <a class="nav-item nav-logout" href="/logout/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg> Logout</a>
       </nav>
       <script>
         (function () {
@@ -66,7 +66,6 @@
           if (mq.addEventListener) mq.addEventListener('change', sync);
           else if (mq.addListener) mq.addListener(sync);
           sync();
-          // One open dropdown at a time (click/tap, not hover)
           nav.querySelectorAll('details.nav-group').forEach(function (d) {
             d.addEventListener('toggle', function () {
               if (!d.open) return;
@@ -75,7 +74,6 @@
               });
             });
           });
-          // Mark active link + open its group
           var path = window.location.pathname.replace(/\/+$/, '') || '/';
           nav.querySelectorAll('a[href]').forEach(function (a) {
             try {
@@ -91,9 +89,9 @@
       </script>
       {% else %}
       <nav class="nav-links nav-public">
-        <a class="nav-item nav-home" href="/"><span class="nav-ico" aria-hidden="true">⌂</span> Home</a>
-        <a class="nav-item nav-help" href="/help/"><span class="nav-ico" aria-hidden="true">?</span> Help</a>
-        <a class="nav-item nav-roadmap" href="/roadmap/"><span class="nav-ico" aria-hidden="true">↦</span> Roadmap</a>
+        <a class="nav-item nav-home" href="/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 10v10h14V10"/></svg> Home</a>
+        <a class="nav-item nav-help" href="/help/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg> Help</a>
+        <a class="nav-item nav-roadmap" href="/roadmap/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg> Roadmap</a>
       </nav>
       {% endif %}
     </header>
