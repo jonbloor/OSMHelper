@@ -10,6 +10,41 @@ final class MembersController
 {
     private const INDIVIDUAL_CONCURRENCY = 5;
 
+    private static function isYoungLeaderPatrol(string $patrol): bool
+    {
+        $p = strtolower($patrol);
+        if ($p === '') {
+            return false;
+        }
+        // Any YL variant: Young Leaders, Young Leaders (YLs), YL, etc.
+        if (str_contains($p, 'young leader')) {
+            return true;
+        }
+        if ($p === 'yl' || $p === 'yls' || str_starts_with($p, 'yl ')) {
+            return true;
+        }
+        return false;
+    }
+
+    private static function isLeaderPatrol(string $patrol): bool
+    {
+        return trim($patrol) === 'Leaders';
+    }
+
+    /** @param array<string, mixed> $ind @return array<string, mixed> */
+    private static function individualPayload(array $ind): array
+    {
+        // Node: indRes?.data?.data || indRes?.data
+        if (isset($ind['data']) && is_array($ind['data'])) {
+            $d = $ind['data'];
+            if (isset($d['data']) && is_array($d['data'])) {
+                return $d['data'];
+            }
+            return $d;
+        }
+        return $ind;
+    }
+
     public function index(): void
     {
         $token = Auth::requireLogin();
@@ -20,7 +55,9 @@ final class MembersController
         try {
             $sections = $api->getDynamicSections($token);
             foreach ($sections as $sec) {
-                if (!is_array($sec)) continue;
+                if (!is_array($sec)) {
+                    continue;
+                }
                 if (($sec['section_type'] ?? '') !== 'adults' && !empty($sec['group_name'])) {
                     $groupName = (string) $sec['group_name'];
                     break;
@@ -33,11 +70,17 @@ final class MembersController
             $needIndividual = [];
 
             foreach ($sections as $sec) {
-                if (!is_array($sec)) continue;
+                if (!is_array($sec)) {
+                    continue;
+                }
                 $sectionType = (string) ($sec['section_type'] ?? 'unknown');
-                if (in_array($sectionType, ['waiting', 'unknown'], true)) continue;
+                if (in_array($sectionType, ['waiting', 'unknown'], true)) {
+                    continue;
+                }
                 $sectionId = (string) ($sec['section_id'] ?? $sec['id'] ?? '');
-                if ($sectionId === '') continue;
+                if ($sectionId === '') {
+                    continue;
+                }
                 $sectionName = (string) ($sec['section_name'] ?? $sec['name'] ?? '');
                 $termId = $sec['current_term_id'] ?? -1;
                 try {
@@ -53,9 +96,13 @@ final class MembersController
                     continue;
                 }
                 foreach ($list as $raw) {
-                    if (!is_array($raw)) continue;
+                    if (!is_array($raw)) {
+                        continue;
+                    }
                     $scoutid = (string) ($raw['scoutid'] ?? $raw['id'] ?? '');
-                    if ($scoutid === '') continue;
+                    if ($scoutid === '') {
+                        continue;
+                    }
                     $dob = (string) ($raw['dob'] ?? '');
                     $patrol = (string) ($raw['patrol'] ?? '');
                     if (!isset($all[$scoutid])) {
@@ -85,6 +132,7 @@ final class MembersController
                         'sectionId' => $sectionId,
                         'termId' => $termId,
                     ];
+                    // Node ~86-106: getIndividual when !dob || !patrol
                     if ($dob === '' || $patrol === '') {
                         $needIndividual[] = [
                             'sectionId' => $sectionId,
@@ -97,7 +145,6 @@ final class MembersController
                 }
             }
 
-            // Node parity: getIndividual when missing dob or patrol (batched)
             $needIndividual = array_values(array_unique($needIndividual, SORT_REGULAR));
             $chunks = array_chunk($needIndividual, self::INDIVIDUAL_CONCURRENCY);
             foreach ($chunks as $chunk) {
@@ -111,9 +158,10 @@ final class MembersController
                             'termid' => $job['termId'],
                             'context' => 'members',
                         ]);
-                        $d = $ind['data'] ?? $ind;
-                        if (!is_array($d)) continue;
-                        if (!isset($all[$scoutid])) continue;
+                        $d = self::individualPayload($ind);
+                        if (!isset($all[$scoutid])) {
+                            continue;
+                        }
                         if (!empty($d['dob']) && ($all[$scoutid]['dob'] ?? '') === '') {
                             $all[$scoutid]['dob'] = (string) $d['dob'];
                         }
@@ -153,26 +201,44 @@ final class MembersController
 
             foreach ($all as $m) {
                 $hasYL = false;
+                $hasLeader = false;
                 foreach ($m['sections'] as $s) {
-                    if (str_contains((string) $s['patrol'], 'Young Leaders')) $hasYL = true;
+                    $patrol = (string) ($s['patrol'] ?? '');
+                    if (self::isYoungLeaderPatrol($patrol)) {
+                        $hasYL = true;
+                    }
+                    if (self::isLeaderPatrol($patrol)) {
+                        $hasLeader = true;
+                    }
                 }
+
                 if ($hasYL) {
                     $issue = '';
-                    if (!array_filter($m['sections'], fn ($s) => $s['type'] === 'explorers')) $issue .= 'Not in Explorers; ';
-                    if (count($m['sections']) !== 2) $issue .= 'In ' . count($m['sections']) . ' sections; ';
+                    if (!array_filter($m['sections'], fn ($s) => ($s['type'] ?? '') === 'explorers')) {
+                        $issue .= 'Not in Explorers; ';
+                    }
+                    if (count($m['sections']) !== 2) {
+                        $issue .= 'In ' . count($m['sections']) . ' sections; ';
+                    }
+                    $status = rtrim($issue, '; ') ?: 'OK';
                     $ylMembers[] = [
-                        'firstname' => $m['firstname'], 'lastname' => $m['lastname'],
+                        'firstname' => $m['firstname'],
+                        'lastname' => $m['lastname'],
                         'sections' => implode(', ', array_column($m['sections'], 'name')),
-                        'issue' => rtrim($issue, '; ') ?: 'OK',
+                        'issue' => $status,
+                        'statusOk' => $status === 'OK',
                     ];
                 }
-                $hasLeader = array_filter($m['sections'], fn ($s) => $s['patrol'] === 'Leaders');
+
                 if ($hasLeader) {
-                    $ok = array_filter($m['sections'], fn ($s) => $s['type'] === 'adults');
+                    $ok = (bool) array_filter($m['sections'], fn ($s) => ($s['type'] ?? '') === 'adults');
+                    $status = $ok ? 'OK' : 'Not in Adults';
                     $leaderMembers[] = [
-                        'firstname' => $m['firstname'], 'lastname' => $m['lastname'],
+                        'firstname' => $m['firstname'],
+                        'lastname' => $m['lastname'],
                         'sections' => implode(', ', array_column($m['sections'], 'name')),
-                        'issue' => $ok ? 'OK' : 'Not in Adults',
+                        'issue' => $status,
+                        'statusOk' => $status === 'OK',
                     ];
                     $leaderRoster[] = [
                         'firstname' => $m['firstname'],
@@ -182,12 +248,21 @@ final class MembersController
                         'age' => number_format((float) $m['age'], 1),
                     ];
                 }
-                if ($m['age'] < 18 && count($m['sections']) > 1 && !$hasYL) {
-                    $youthDuplicates[] = $m;
+
+                // Youth in multiple sections: exclude Leaders and any YL variant
+                if ($m['age'] < 18 && count($m['sections']) > 1 && !$hasYL && !$hasLeader) {
+                    $youthDuplicates[] = [
+                        'firstname' => $m['firstname'],
+                        'lastname' => $m['lastname'],
+                        'age' => number_format((float) $m['age'], 1),
+                        'sections' => implode(', ', array_column($m['sections'], 'name')),
+                    ];
                 }
+
                 foreach ($m['sections'] as $sec) {
-                    // Main members table: exclude pure Leaders patrol rows
-                    if (($sec['patrol'] ?? '') === 'Leaders') continue;
+                    if (self::isLeaderPatrol((string) ($sec['patrol'] ?? ''))) {
+                        continue;
+                    }
                     $flatMembers[] = [
                         'section_type' => $sec['type'],
                         'section_name' => $sec['name'],

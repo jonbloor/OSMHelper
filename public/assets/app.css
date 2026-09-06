@@ -450,3 +450,19 @@ body.is-loading { cursor: progress; }
   font-size: 0.9rem;
   margin: -0.5rem 0 1rem;
 }
+
+
+/* Members troubleshooting status */
+tr.status-ok td,
+td.status-ok {
+  background: #e6f6ec;
+  color: var(--text);
+}
+tr.status-warn td,
+td.status-warn {
+  background: #fff4e5;
+  color: var(--text);
+}
+td.status-warn {
+  font-weight: 600;
+}

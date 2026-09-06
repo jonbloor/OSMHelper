@@ -8,19 +8,61 @@
 
 <div class="card">
   <h2>Troubleshooting</h2>
+
+  <h3>Youth in multiple sections</h3>
   {% if youthDuplicates %}
-    <h3>Youth in multiple sections</h3>
-    <ul>{% for m in youthDuplicates %}<li>{{ m.firstname }} {{ m.lastname }}</li>{% endfor %}</ul>
+  <div class="table-wrap">
+  <table class="data">
+    <thead><tr><th>Name</th><th>Age</th><th>Sections</th></tr></thead>
+    <tbody>
+    {% for m in youthDuplicates %}
+      <tr><td>{{ m.firstname }} {{ m.lastname }}</td><td>{{ m.age }}</td><td>{{ m.sections }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
   {% else %}
     <p class="muted">No youth multi-section issues found.</p>
   {% endif %}
+
+  <h3>Young Leaders checks</h3>
   {% if ylMembers %}
-    <h3>Young Leaders checks</h3>
-    <ul>{% for m in ylMembers %}<li>{{ m.firstname }} {{ m.lastname }} — {{ m.issue }} ({{ m.sections }})</li>{% endfor %}</ul>
+  <div class="table-wrap">
+  <table class="data">
+    <thead><tr><th>Name</th><th>Sections</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for m in ylMembers %}
+      <tr class="{% if m.statusOk %}status-ok{% else %}status-warn{% endif %}">
+        <td>{{ m.firstname }} {{ m.lastname }}</td>
+        <td>{{ m.sections }}</td>
+        <td class="{% if m.statusOk %}status-ok{% else %}status-warn{% endif %}">{{ m.issue }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+    <p class="muted">No Young Leaders found.</p>
   {% endif %}
+
+  <h3>Leaders checks</h3>
   {% if leaderMembers %}
-    <h3>Leaders checks</h3>
-    <ul>{% for m in leaderMembers %}<li>{{ m.firstname }} {{ m.lastname }} — {{ m.issue }} ({{ m.sections }})</li>{% endfor %}</ul>
+  <div class="table-wrap">
+  <table class="data">
+    <thead><tr><th>Name</th><th>Sections</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for m in leaderMembers %}
+      <tr class="{% if m.statusOk %}status-ok{% else %}status-warn{% endif %}">
+        <td>{{ m.firstname }} {{ m.lastname }}</td>
+        <td>{{ m.sections }}</td>
+        <td class="{% if m.statusOk %}status-ok{% else %}status-warn{% endif %}">{{ m.issue }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+    <p class="muted">No Leaders found.</p>
   {% endif %}
 </div>
 
@@ -43,7 +85,7 @@
 
 {% if leaderRoster %}
 <div class="card">
-  <h2>Leaders roster</h2>
+  <h2>Leaders</h2>
   <div class="table-wrap">
   <table class="data">
     <thead><tr><th>Name</th><th>Sections</th><th>Age</th><th>DoB</th></tr></thead>
