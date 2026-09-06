@@ -3,16 +3,42 @@
 {% if needsConfig %}
 <p class="muted">Using a guessed adults section. Set the Equipment section under <a href="/settings/">Settings</a>.</p>
 {% endif %}
+{% if flash %}
+<div class="alert {% if flash.type == 'error' %}alert-error{% endif %}">{{ flash.message }}</div>
+{% endif %}
 <div class="card">
   <h2>Equipment{% if sectionName %} — {{ sectionName }}{% endif %}</h2>
   {% if sectionId is defined and sectionId %}
   <p class="muted">Section id {{ sectionId }} · type {{ sectionType }} · {{ listCount|default(0) }} list(s)</p>
   {% endif %}
   {% if parseHint %}<div class="alert alert-error">{{ parseHint }}</div>{% endif %}
+
+  {% if equipmentLocations is defined and equipmentLocations|length > 0 %}
+  <form method="post" action="/equipment/move/" id="equipment-move-form" class="equipment-bulk">
+    <input type="hidden" name="step" value="review">
+    <div class="row equipment-bulk-bar">
+      <label class="bulk-select-all"><input type="checkbox" id="equip-select-all"> Select all</label>
+      <label>Move selected to
+        <select name="location" id="equip-move-location" required>
+          <option value="">— choose location —</option>
+          {% for loc in equipmentLocations %}
+          <option value="{{ loc }}">{{ loc }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button class="btn" type="submit" id="equip-move-btn">Review move…</button>
+      <span class="muted" id="equip-selected-count">0 selected</span>
+    </div>
+    <p class="muted">Writes to OSM are rate-limit aware. You will confirm before anything is attempted. Locations are managed in <a href="/settings/">Settings</a>.</p>
+  {% elseif equipment is not empty %}
+  <p class="muted">To bulk-move kit, add named locations under <a href="/settings/">Settings → Equipment locations</a>.</p>
+  {% endif %}
+
   <div class="table-wrap">
-  <table class="data" data-table-tools data-export-name="equipment">
+  <table class="data" data-table-tools data-export-name="equipment" id="equipment-table">
     <thead>
       <tr>
+        {% if equipmentLocations is defined and equipmentLocations|length > 0 %}<th class="col-check">Sel</th>{% endif %}
         <th>List</th>
         <th>Name</th>
         <th>Quantity</th>
@@ -28,6 +54,13 @@
     <tbody>
     {% for e in equipment %}
       <tr class="{% if e.brokenCount is defined and e.brokenCount > 0 %}row-broken{% endif %}">
+        {% if equipmentLocations is defined and equipmentLocations|length > 0 %}
+        <td class="col-check">
+          {% if e.selectable %}
+          <input type="checkbox" form="equipment-move-form" name="items[]" value="{{ e.listId }}:{{ e.rowid }}:{{ e.itemName|e('html_attr') }}" class="equip-item-cb" data-name="{{ e.itemName }}">
+          {% endif %}
+        </td>
+        {% endif %}
         <td>{{ e.listName }}</td>
         <td>{{ e.itemName }}</td>
         <td>{{ e.quantity }}</td>
@@ -40,10 +73,57 @@
         <td>{{ e.renewalPrice }}</td>
       </tr>
     {% else %}
-      <tr><td colspan="10" class="muted">No equipment found for this section. If that looks wrong, pick another Equipment section under Settings.</td></tr>
+      <tr><td colspan="{% if equipmentLocations is defined and equipmentLocations|length > 0 %}11{% else %}10{% endif %}" class="muted">No equipment found for this section. If that looks wrong, pick another Equipment section under Settings.</td></tr>
     {% endfor %}
     </tbody>
   </table>
   </div>
+  {% if equipmentLocations is defined and equipmentLocations|length > 0 %}
+  </form>
+  {% endif %}
 </div>
+{% if equipmentLocations is defined and equipmentLocations|length > 0 %}
+<script>
+(function () {
+  var form = document.getElementById('equipment-move-form');
+  var all = document.getElementById('equip-select-all');
+  var countEl = document.getElementById('equip-selected-count');
+  var loc = document.getElementById('equip-move-location');
+  if (!form) return;
+  function boxes() { return Array.prototype.slice.call(document.querySelectorAll('.equip-item-cb')); }
+  function refresh() {
+    var n = boxes().filter(function (b) { return b.checked; }).length;
+    if (countEl) countEl.textContent = n + ' selected';
+    if (all) {
+      var total = boxes().length;
+      all.checked = total > 0 && n === total;
+      all.indeterminate = n > 0 && n < total;
+    }
+  }
+  if (all) {
+    all.addEventListener('change', function () {
+      boxes().forEach(function (b) { b.checked = all.checked; });
+      refresh();
+    });
+  }
+  document.addEventListener('change', function (e) {
+    if (e.target && e.target.classList && e.target.classList.contains('equip-item-cb')) refresh();
+  });
+  form.addEventListener('submit', function (e) {
+    var n = boxes().filter(function (b) { return b.checked; }).length;
+    if (n < 1) {
+      e.preventDefault();
+      alert('Select at least one item.');
+      return;
+    }
+    if (!loc || !loc.value) {
+      e.preventDefault();
+      alert('Choose a destination location.');
+      return;
+    }
+  });
+  refresh();
+})();
+</script>
+{% endif %}
 {% endblock %}

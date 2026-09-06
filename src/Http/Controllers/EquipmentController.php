@@ -364,6 +364,9 @@ final class EquipmentController
                         // still show the list shell so user sees QM is reachable
                         $equipment[] = [
                             'listName' => $listName,
+                            'listId' => (string) $listId,
+                            'rowid' => '',
+                            'selectable' => false,
                             'itemName' => '(no items in list)',
                             'quantity' => '',
                             'description' => '',
@@ -382,8 +385,12 @@ final class EquipmentController
                         }
                         $brokenRaw = $item['_7'] ?? '';
                         $brokenNum = is_numeric($brokenRaw) ? (float) $brokenRaw : 0.0;
+                        $rowid = (string) ($item['rowid'] ?? '');
                         $equipment[] = [
                             'listName' => $listName,
+                            'listId' => (string) $listId,
+                            'rowid' => $rowid,
+                            'selectable' => $rowid !== '',
                             'itemName' => $item['_1'] ?? ($item['name'] ?? ''),
                             'quantity' => $item['_6'] ?? '',
                             'description' => $item['_2'] ?? '',
@@ -405,6 +412,9 @@ final class EquipmentController
                     ]);
                     $equipment[] = [
                         'listName' => $listName,
+                        'listId' => (string) $listId,
+                        'rowid' => '',
+                        'selectable' => false,
                         'itemName' => '(could not load items)',
                         'quantity' => '',
                         'description' => $ie->getMessage(),
@@ -449,6 +459,10 @@ final class EquipmentController
                 . '. Lists still shown below.';
         }
 
+        $locations = self::savedLocations();
+        $flash = $_SESSION['equipmentFlash'] ?? null;
+        unset($_SESSION['equipmentFlash']);
+
         App::render('equipment-list.twig', Auth::baseContext([
             'title' => 'Equipment',
             'equipment' => $equipment,
@@ -458,6 +472,173 @@ final class EquipmentController
             'listCount' => $listCount,
             'needsConfig' => $savedId === '',
             'parseHint' => $parseHint,
+            'equipmentLocations' => $locations,
+            'flash' => is_array($flash) ? $flash : null,
         ]));
+    }
+
+    /**
+     * Review or commit a bulk location move.
+     * OSM quartermaster WRITE action is not confirmed in Node (stubs) or community docs —
+     * commit runs as dry-run/stub with an honest error rather than inventing POSTs.
+     */
+    public function move(): void
+    {
+        $token = Auth::requireLogin();
+        $step = (string) ($_POST['step'] ?? 'review');
+        $location = trim((string) ($_POST['location'] ?? ''));
+        $rawItems = $_POST['items'] ?? [];
+        if (!is_array($rawItems)) {
+            $rawItems = [];
+        }
+
+        $locations = self::savedLocations();
+        if ($location === '' || !in_array($location, $locations, true)) {
+            $_SESSION['equipmentFlash'] = [
+                'type' => 'error',
+                'message' => 'Pick a location from Settings → Equipment locations before moving kit.',
+            ];
+            header('Location: /equipment/');
+            exit;
+        }
+
+        $parsed = [];
+        foreach ($rawItems as $raw) {
+            if (!is_string($raw) && !is_numeric($raw)) {
+                continue;
+            }
+            $parts = explode(':', (string) $raw, 3);
+            if (count($parts) < 2) {
+                continue;
+            }
+            $listId = trim($parts[0]);
+            $rowid = trim($parts[1]);
+            $itemName = isset($parts[2]) ? trim($parts[2]) : '';
+            if ($listId === '' || $rowid === '') {
+                continue;
+            }
+            $parsed[] = [
+                'listId' => $listId,
+                'rowid' => $rowid,
+                'itemName' => $itemName !== '' ? $itemName : ('Item ' . $rowid),
+                'key' => $listId . ':' . $rowid,
+            ];
+        }
+        // de-dupe
+        $seen = [];
+        $items = [];
+        foreach ($parsed as $p) {
+            if (isset($seen[$p['key']])) {
+                continue;
+            }
+            $seen[$p['key']] = true;
+            $items[] = $p;
+        }
+
+        if ($items === []) {
+            $_SESSION['equipmentFlash'] = [
+                'type' => 'error',
+                'message' => 'Select at least one equipment item to move.',
+            ];
+            header('Location: /equipment/');
+            exit;
+        }
+
+        $savedId = (string) SettingsStore::get('equipmentSectionId', '');
+        $savedType = (string) SettingsStore::get('equipmentSectionType', 'adults');
+        $sectionId = $savedId;
+        $sectionType = $savedType !== '' ? $savedType : 'adults';
+        $sectionName = '';
+        try {
+            $api = new OsmApi();
+            $sections = $api->getDynamicSections($token);
+            foreach ($sections as $s) {
+                if (is_array($s) && (string) ($s['section_id'] ?? '') === $savedId) {
+                    $sectionType = (string) ($s['section_type'] ?? $sectionType);
+                    $sectionName = (string) ($s['section_name'] ?? '');
+                    break;
+                }
+            }
+            if ($sectionId === '') {
+                foreach ($sections as $s) {
+                    if (is_array($s) && ($s['section_type'] ?? '') === 'adults' && !empty($s['section_id'])) {
+                        $sectionId = (string) $s['section_id'];
+                        $sectionType = (string) ($s['section_type'] ?? 'adults');
+                        $sectionName = (string) ($s['section_name'] ?? '');
+                        break;
+                    }
+                }
+            }
+        } catch (Throwable) {
+            // keep saved ids
+        }
+
+        if ($step !== 'commit') {
+            App::render('equipment-move-confirm.twig', Auth::baseContext([
+                'title' => 'Confirm move',
+                'location' => $location,
+                'items' => $items,
+                'sectionId' => $sectionId,
+                'sectionType' => $sectionType,
+                'sectionName' => $sectionName,
+                'itemCount' => count($items),
+            ]));
+            return;
+        }
+
+        // Commit = dry-run stub (no invented OSM POSTs)
+        $results = [];
+        $delayUs = 150000; // 150ms between would-be writes (rate-limit friendly when real)
+        foreach ($items as $i => $item) {
+            if ($i > 0) {
+                usleep($delayUs);
+            }
+            $results[] = [
+                'listId' => $item['listId'],
+                'rowid' => $item['rowid'],
+                'itemName' => $item['itemName'],
+                'ok' => false,
+                'dryRun' => true,
+                'message' => 'Dry-run only — quartermaster location write action not confirmed (Node POSTs were stubs; no community docs). Nothing written to OSM.',
+            ];
+            OsmDebug::log('equipment_move_dryrun_' . $item['listId'] . '_' . $item['rowid'], [
+                'listId' => $item['listId'],
+                'rowid' => $item['rowid'],
+                'location' => $location,
+                'sectionId' => $sectionId,
+                'sectionType' => $sectionType,
+                'mode' => 'dry-run-stub',
+            ]);
+        }
+
+        App::render('equipment-move-result.twig', Auth::baseContext([
+            'title' => 'Move result',
+            'location' => $location,
+            'results' => $results,
+            'sectionName' => $sectionName,
+            'wrote' => false,
+            'dryRun' => true,
+            'honestError' => 'OSM quartermaster write API for updating item location (column _3) is not documented in the Node reference (add/edit POSTs redirect only) or community OpenAPI. OSMHelper did not invent a POST. UI and dry-run are ready for a real write once the action is captured.',
+        ]));
+    }
+
+    /** @return list<string> */
+    private static function savedLocations(): array
+    {
+        $raw = SettingsStore::get('equipmentLocations', []);
+        if (!is_array($raw)) {
+            return [];
+        }
+        $out = [];
+        foreach ($raw as $item) {
+            if (!is_string($item) && !is_numeric($item)) {
+                continue;
+            }
+            $label = trim((string) $item);
+            if ($label !== '') {
+                $out[] = $label;
+            }
+        }
+        return $out;
     }
 }

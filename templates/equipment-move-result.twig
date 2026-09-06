@@ -1,0 +1,31 @@
+{% extends 'layout.twig' %}
+{% block body %}
+<div class="card">
+  <h2>Move result — {{ location }}</h2>
+  {% if dryRun %}
+  <div class="alert alert-error">{{ honestError }}</div>
+  <p class="muted">Dry-run complete: planned updates are listed below. Nothing was written to OSM.</p>
+  {% elseif wrote %}
+  <div class="alert">Location updates sent to OSM.</div>
+  {% endif %}
+  <div class="table-wrap">
+  <table class="data">
+    <thead><tr><th>Item</th><th>List</th><th>Row</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for r in results %}
+      <tr>
+        <td>{{ r.itemName }}</td>
+        <td>{{ r.listId }}</td>
+        <td>{{ r.rowid }}</td>
+        <td>{% if r.dryRun %}Dry-run{% elseif r.ok %}Updated{% else %}Failed{% endif %}{% if r.message %} — {{ r.message }}{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="row" style="margin-top:1rem">
+    <a class="btn" href="/equipment/">Back to Equipment</a>
+    <a class="btn btn-secondary" href="/settings/">Settings / locations</a>
+  </p>
+</div>
+{% endblock %}

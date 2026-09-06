@@ -1,0 +1,27 @@
+{% extends 'layout.twig' %}
+{% block body %}
+<div class="card">
+  <h2>Confirm move to {{ location }}</h2>
+  <p>You are about to update <strong>{{ itemCount }}</strong> item(s) in OSM quartermaster{% if sectionName %} ({{ sectionName }}){% endif %}.</p>
+  <div class="alert">Please confirm the list below. OSMHelper spaces writes to stay rate-limit friendly.</div>
+  <div class="table-wrap">
+  <table class="data">
+    <thead><tr><th>List id</th><th>Row</th><th>Item</th><th>New location</th></tr></thead>
+    <tbody>
+    {% for it in items %}
+      <tr><td>{{ it.listId }}</td><td>{{ it.rowid }}</td><td>{{ it.itemName }}</td><td>{{ location }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <form method="post" action="/equipment/move/" class="row" style="margin-top:1rem">
+    <input type="hidden" name="step" value="commit">
+    <input type="hidden" name="location" value="{{ location }}">
+    {% for it in items %}
+    <input type="hidden" name="items[]" value="{{ it.listId }}:{{ it.rowid }}:{{ it.itemName|e('html_attr') }}">
+    {% endfor %}
+    <button class="btn" type="submit">Confirm move</button>
+    <a class="btn btn-secondary" href="/equipment/">Cancel</a>
+  </form>
+</div>
+{% endblock %}

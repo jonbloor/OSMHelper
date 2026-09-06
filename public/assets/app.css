@@ -659,3 +659,29 @@ td.cell-broken {
   font-weight: 700;
   color: #9b1c1c;
 }
+
+
+/* Equipment bulk move */
+.equipment-bulk-bar {
+  margin: 0 0 0.75rem;
+  padding: 0.65rem 0.75rem;
+  background: #f3f7f5;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.equipment-bulk-bar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.95rem;
+}
+.equipment-bulk-bar select {
+  margin-left: 0.35rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+.col-check {
+  width: 2.5rem;
+  text-align: center;
+}
