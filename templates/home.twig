@@ -1,23 +1,79 @@
 {% extends 'layout.twig' %}
 
 {% block body %}
-  <div class="card">
-    <h2>Connect to Online Scout Manager</h2>
+{% if authed %}
+  <div class="card home-signed-in">
+    <h2>{% if groupName %}{{ groupName }}{% else %}Your group{% endif %}</h2>
     <p class="muted">
-      OSMHelper helps Scout leaders with membership, quartermaster, and finance tools
-      using your OSM account. Only your access token and basic profile stay in the server session.
+      Signed in{% if fullName %} as <strong>{{ fullName }}</strong>{% endif %}.
+      Tools use your OSM account; data is fetched when you open each page.
     </p>
-
-    {% if authed %}
-      <p>Signed in{% if fullName %} as <strong>{{ fullName }}</strong>{% endif %}{% if groupName %} ({{ groupName }}){% endif %}.</p>
-      <div class="row">
-        <a class="btn" href="/dashboard/">Go to dashboard</a>
-        <a class="btn btn-secondary" href="/logout/">Logout</a>
-      </div>
-    {% else %}
-      <p>
-        <a class="btn" href="/auth/">Connect with OSM</a>
-      </p>
-    {% endif %}
+    <div class="row">
+      <a class="btn" href="/dashboard/">Go to dashboard</a>
+      <a class="btn btn-secondary" href="/logout/">Logout</a>
+    </div>
   </div>
+{% else %}
+  <section class="home-hero card">
+    <p class="eyebrow">Volunteer Scouts tooling</p>
+    <h2>OSMHelper for group leaders</h2>
+    <p class="lede">
+      Connect with Online Scout Manager once, then check group numbers, the waiting list,
+      members, equipment and bank transfers without digging through OSM screens.
+    </p>
+    <p>
+      <a class="btn" href="/auth/">Connect with OSM</a>
+    </p>
+    <p class="muted home-oauth-note">
+      You will be sent to OSM to authorise. We only keep your access token in the server session.
+    </p>
+  </section>
+
+  <section class="card home-tools">
+    <h3>What you can do</h3>
+    <ul class="tool-cards">
+      <li>
+        <strong>Group numbers</strong>
+        <span>Section membership, leaders, capacity and spaces at a glance.</span>
+      </li>
+      <li>
+        <strong>Waiting list</strong>
+        <span>Who is waiting, age scoring, and who is still too young.</span>
+      </li>
+      <li>
+        <strong>Members</strong>
+        <span>Browse members for your accessible OSM sections.</span>
+      </li>
+      <li>
+        <strong>Equipment</strong>
+        <span>Quartermaster list for the section you pick in Settings.</span>
+      </li>
+      <li>
+        <strong>Bank transfers</strong>
+        <span>Finance transfer view for the section you pick in Settings.</span>
+      </li>
+      <li>
+        <strong>Settings</strong>
+        <span>Age cutoffs, section capacity, and which sections Equipment and Bank use.</span>
+      </li>
+    </ul>
+  </section>
+
+  <section class="card home-trust">
+    <h3>Privacy &amp; independence</h3>
+    <p class="disclaimer">
+      This is an independent project, not affiliated with Online Scout Manager. Use it at your own risk.
+    </p>
+    <p class="muted">
+      We only keep your OSM access token in a server session (not stored as lasting scout records).
+      No scout data is permanently saved on this server — pages fetch fresh from OSM when you need them.
+    </p>
+    <p class="home-links muted">
+      Leader resources:
+      <a href="https://wogglehq.com" rel="noopener noreferrer" target="_blank">Woggle HQ</a>
+      · Source:
+      <a href="https://github.com/jonbloor/OSMHelper" rel="noopener noreferrer" target="_blank">GitHub</a>
+    </p>
+  </section>
+{% endif %}
 {% endblock %}
