@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% if title and title != 'OSMHelper' %}{{ title }} · {% endif %}OSMHelper</title>
-  <link rel="stylesheet" href="/assets/app.css?v=d6chk1">
+  <link rel="stylesheet" href="/assets/app.css?v=d6road1">
 </head>
 <body>
   <div id="page-loading" class="page-loading" hidden aria-live="polite" aria-busy="true">
@@ -24,6 +24,8 @@
         <a href="/equipment/">Equipment</a>
         <a href="/bank-transfers/" title="Bank transfers">Bank</a>
         <a href="/settings/">Settings</a>
+        <a href="/help/">Help</a>
+        <a href="/roadmap/">Roadmap</a>
         <a class="nav-logout" href="/logout/">Logout</a>
       </nav>
       <script>
@@ -50,6 +52,12 @@
           sync();
         })();
       </script>
+      {% else %}
+      <nav class="nav-links nav-public">
+        <a href="/help/">Help</a>
+        <a href="/roadmap/">Roadmap</a>
+        <a href="/auth/">Connect with OSM</a>
+      </nav>
       {% endif %}
     </header>
     {% block body %}{% endblock %}

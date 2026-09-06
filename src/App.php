@@ -6,6 +6,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BankTransfersController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EquipmentController;
+use App\Http\Controllers\HelpController;
+use App\Http\Controllers\RoadmapController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MembersController;
 use App\Http\Controllers\MembershipDashboardController;
@@ -35,6 +37,8 @@ final class App
         $mem = new MembersController();
         $bank = new BankTransfersController();
         $set = new SettingsController();
+        $help = new HelpController();
+        $roadmap = new RoadmapController();
 
         $router->get('/', [$home, 'index']);
         $router->get('/auth', [$auth, 'redirectToOsm']);
@@ -49,6 +53,8 @@ final class App
         $router->get('/bank-transfers', [$bank, 'index']);
         $router->post('/bank-transfers/select', [$bank, 'select']);
         $router->get('/settings', [$set, 'index']);
+        $router->get('/help', [$help, 'index']);
+        $router->get('/roadmap', [$roadmap, 'index']);
         $router->post('/settings/update-cutoffs', [$set, 'updateCutoffs']);
         $router->post('/settings/update-sections', [$set, 'updateSections']);
         $router->post('/settings/update-tool-sections', [$set, 'updateToolSections']);

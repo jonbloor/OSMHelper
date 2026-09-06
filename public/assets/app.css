@@ -485,3 +485,13 @@ td.status-warn {
   user-select: none;
 }
 .filter-chip input { margin: 0; }
+
+
+/* Help page */
+.help-page .lede { max-width: 42rem; }
+.help-section { margin-top: 1.25rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+.help-section h3 { margin: 0 0 0.35rem; }
+.help-section p { margin: 0; max-width: 42rem; }
+.nav-public { margin-left: auto; }
+
+.roadmap-page .lede { max-width: 42rem; }

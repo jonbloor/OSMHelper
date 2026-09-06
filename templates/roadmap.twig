@@ -1,0 +1,49 @@
+{% extends 'layout.twig' %}
+
+{% block body %}
+  <div class="card roadmap-page">
+    <h2>Roadmap</h2>
+    <p class="lede">Planned work from the PHP rewrite plan. Phases after the current read tools (P1). Timings are indicative, not commitments.</p>
+
+    <section class="help-section" id="p2">
+      <h3>Phase 2 — Writes</h3>
+      <table class="data">
+        <thead><tr><th>Area</th><th>Item</th><th>Phase</th></tr></thead>
+        <tbody>
+          <tr><td>Equipment</td><td>Add / edit quartermaster items (real OSM writes)</td><td>P2</td></tr>
+          <tr><td>Waiting list</td><td>Push scores / notes to OSM custom fields</td><td>P2</td></tr>
+          <tr><td>Settings</td><td>Equipment locations list for updates</td><td>P2</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="help-section" id="p3">
+      <h3>Phase 3 — Badge spreadsheet ingest</h3>
+      <table class="data">
+        <thead><tr><th>Area</th><th>Item</th><th>Phase</th></tr></thead>
+        <tbody>
+          <tr><td>Badges</td><td>Upload CSV/XLSX → map columns → dry-run → commit via OSM badge APIs</td><td>P3</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="help-section" id="p4">
+      <h3>Phase 4 / backlog</h3>
+      <table class="data">
+        <thead><tr><th>Area</th><th>Item</th><th>Phase</th></tr></thead>
+        <tbody>
+          <tr><td>Members</td><td>Duplicates polish</td><td>P4</td></tr>
+          <tr><td>Badges</td><td>Challenge badge printout</td><td>P4</td></tr>
+          <tr><td>Badges</td><td>Top-awards calculation</td><td>P4</td></tr>
+          <tr><td>Sections</td><td>Section overview</td><td>P4</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="help-section" id="requests">
+      <h3>Feature requests</h3>
+      <p>Got an idea? Email <a href="mailto:jon@osmhelper.co.uk">jon@osmhelper.co.uk</a>.</p>
+      <p class="muted"><a href="/help/">Help</a> explains what works today.</p>
+    </section>
+  </div>
+{% endblock %}

@@ -1,0 +1,63 @@
+{% extends 'layout.twig' %}
+
+{% block body %}
+  <div class="card help-page">
+    <h2>Help</h2>
+    <p class="lede">What each part of OSMHelper does, and how to use it. Pages fetch fresh data from Online Scout Manager when you open them, so some tools take a moment.</p>
+
+    <section class="help-section" id="home">
+      <h3>Home</h3>
+      <p>After you sign in, Home (nav label for the signed-in hub at <code>/dashboard/</code>) shows your name and group, and shortcuts into the tools. The public home page at <code>/</code> explains the product and lets you connect with OSM.</p>
+    </section>
+
+    <section class="help-section" id="dashboard">
+      <h3>Dashboard (group numbers)</h3>
+      <p>Membership counts by section type (Beavers, Cubs, Scouts, and Squirrels when anyone of that age is on the waiting list). Shows leaders, capacity, spaces, and waiting subtotals. The header reconciles waiting-list size with <strong>Waiting of age</strong>, <strong>Squirrels</strong>, <strong>Too young</strong>, and <strong>Explorers / too old</strong>.</p>
+    </section>
+
+    <section class="help-section" id="members">
+      <h3>Members</h3>
+      <p>A flat list of youth and young leaders across your accessible sections, with age/DoB filled in where OSM needs an extra lookup. Use the section checkboxes to show or hide rows without reloading the page. Leaders are not listed here.</p>
+    </section>
+
+    <section class="help-section" id="checks">
+      <h3>Checks</h3>
+      <p>Troubleshooting tables: youth in more than one section (excluding Leaders and Young Leaders patrols), Young Leaders checks, and Leaders checks. Status cells use green for OK and amber for issues.</p>
+    </section>
+
+    <section class="help-section" id="waiting">
+      <h3>Waiting</h3>
+      <p>Pulls your OSM waiting list, scores ages against the cutoffs in Settings, and suggests ideal sections. An empty list can be normal if everyone has moved elsewhere (for example Scoutworks).</p>
+    </section>
+
+    <section class="help-section" id="equipment">
+      <h3>Equipment</h3>
+      <p>Quartermaster lists and items for the section you choose under Settings → Equipment. Pick the section that holds your kit (often Adults). If OSM blocks item detail for a list, the list names still show with a short note.</p>
+    </section>
+
+    <section class="help-section" id="bank">
+      <h3>Bank</h3>
+      <p>Bank transfer view for the finance section you pick in Settings. Needs OSM accounts access on that section. If you see an error, check Settings and that your OSM role can open finance for that section.</p>
+    </section>
+
+    <section class="help-section" id="settings">
+      <h3>Settings</h3>
+      <p>Age cutoffs, capacity per section, which section Equipment uses, and which section Bank uses. Saves on this server (not only in your browser session) so they stick after logout.</p>
+    </section>
+
+    <section class="help-section" id="rate-limit">
+      <h3>API rate limit</h3>
+      <p>OSM limits how many requests we can make in a short time. When signed in, Home and the hub show <strong>How busy OSM is right now</strong> (limit, remaining, resets). If remaining is low, open fewer heavy pages until it refreshes. Opening Members, Checks, Dashboard, Waiting, Equipment or Bank each uses quota.</p>
+    </section>
+
+    <section class="help-section" id="roadmap">
+      <h3>Roadmap</h3>
+      <p>See what is planned next on the <a href="/roadmap/">Roadmap</a> page (phases P2–P4 and backlog).</p>
+    </section>
+
+    <section class="help-section" id="contact">
+      <h3>Questions?</h3>
+      <p>Email <a href="mailto:jon@osmhelper.co.uk">jon@osmhelper.co.uk</a>.</p>
+    </section>
+  </div>
+{% endblock %}
