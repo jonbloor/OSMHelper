@@ -162,6 +162,12 @@ final class OsmApi
                     $errHint = ' — ' . $msg . ($code ? " [{$code}]" : '');
                 }
             }
+            if ($status === 429) {
+                $ra = $this->getRetryAfterSeconds();
+                if ($ra !== null) {
+                    $errHint .= ' (Retry-After ' . $ra . 's)';
+                }
+            }
             throw new \RuntimeException(
                 'OSM HTTP ' . $status . ' for /' . ltrim(explode('?', $path, 2)[0], '/') . (str_contains($path, '?') ? '?…' : '') . $errHint,
                 $status
@@ -200,6 +206,26 @@ final class OsmApi
         return $decoded;
     }
 
+    /** Seconds to wait after a 429, if OSM sent Retry-After. */
+    public function getRetryAfterSeconds(): ?int
+    {
+        $v = $this->lastRateLimit['retryAfterSec'] ?? null;
+        return is_int($v) ? $v : null;
+    }
+
+    /**
+     * True when remaining quota is too low for another fan-out burst.
+     * Threshold is deliberately conservative for badge-heavy tools.
+     */
+    public function isRateLow(int $minRemaining = 25): bool
+    {
+        $snap = $this->getRateLimitSnapshot();
+        if ($snap === null || $snap['remaining'] === null) {
+            return false;
+        }
+        return $snap['remaining'] <= $minRemaining;
+    }
+
     /** @param array<string, list<string>> $headers */
     private function captureRateLimit(array $headers): void
     {
@@ -216,15 +242,34 @@ final class OsmApi
         $limit = $pick($headers, 'X-RateLimit-Limit', 'X-Ratelimit-Limit', 'x-ratelimit-limit');
         $remaining = $pick($headers, 'X-RateLimit-Remaining', 'X-Ratelimit-Remaining', 'x-ratelimit-remaining');
         $reset = $pick($headers, 'X-RateLimit-Reset', 'X-Ratelimit-Reset', 'x-ratelimit-reset');
-        if ($limit === null && $remaining === null && $reset === null) {
+        $retryAfter = $pick($headers, 'Retry-After', 'retry-after');
+        if ($limit === null && $remaining === null && $reset === null && $retryAfter === null) {
             return;
+        }
+        $retrySec = null;
+        if ($retryAfter !== null && is_numeric($retryAfter)) {
+            $retrySec = max(1, (int) $retryAfter);
         }
         $state = [
             'limit' => $limit !== null && is_numeric($limit) ? (int) $limit : null,
             'remaining' => $remaining !== null && is_numeric($remaining) ? (int) $remaining : null,
             'resetInSec' => $reset !== null && is_numeric($reset) ? (int) $reset : null,
+            'retryAfterSec' => $retrySec,
             'lastUpdatedMs' => (int) round(microtime(true) * 1000),
         ];
+        // Preserve prior limit/remaining if this response only had Retry-After
+        if (session_status() === PHP_SESSION_ACTIVE && is_array($_SESSION['osmRateLimit'] ?? null)) {
+            $prev = $_SESSION['osmRateLimit'];
+            if ($state['limit'] === null && isset($prev['limit'])) {
+                $state['limit'] = $prev['limit'];
+            }
+            if ($state['remaining'] === null && isset($prev['remaining'])) {
+                $state['remaining'] = $prev['remaining'];
+            }
+            if ($state['resetInSec'] === null && isset($prev['resetInSec'])) {
+                $state['resetInSec'] = $prev['resetInSec'];
+            }
+        }
         $this->lastRateLimit = $state;
         if (session_status() === PHP_SESSION_ACTIVE) {
             $_SESSION['osmRateLimit'] = $state;

@@ -1,9 +1,9 @@
 {% extends 'layout.twig' %}
 {% block body %}
 <div class="card">
-  <h2>Top awards write result — {{ awardLabel|default('Gold') }}</h2>
+  <h2>Write result</h2>
   {% if section %}
-  <p class="muted">{{ section.name }} ({{ section.type }}){% if challengeBadge %} · {{ challengeBadge.name }}{% endif %}</p>
+  <p class="muted">{{ section.name }} ({{ section.type }}){% if challengeBadge %} · {{ challengeBadge.name }}{% endif %} · {{ awardLabel|default('Gold') }}</p>
   {% endif %}
   {% if wrote %}
   <div class="alert">At least one update was accepted by OSM. Check Failed rows below. Write path: <code>{{ writePathUsed|default('—') }}</code></div>
@@ -33,7 +33,7 @@
   </table>
   </div>
   <p class="row" style="margin-top:1rem">
-    <a class="btn" href="/top-awards/">Back to Top awards</a>
+    <a class="btn btn-secondary" href="/top-awards/">Back to Top awards</a>
   </p>
 </div>
 {% endblock %}

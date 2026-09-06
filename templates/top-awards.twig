@@ -4,52 +4,88 @@
 <div class="alert {% if flash.type == 'error' %}alert-error{% endif %}">{{ flash.message }}</div>
 {% endif %}
 
+{# Card 1 — Intro (always) #}
 <div class="card">
   <h2>Top awards</h2>
-  <p class="muted">Counts activity + staged badges awarded on/after each member’s <code>startedsection</code>. Each staged level counts as 1. Proposed {{ awardLabel|default('Gold') }} string uses the section threshold{% if threshold %} ({{ threshold }}){% endif %}. Adults / waiting list are skipped.</p>
+  <p>See how close each member is to their section’s top award. We count activity and staged badges earned since they joined this section, then suggest progress for the Chief Scout’s / top award.</p>
+  <p class="muted">Adults and waiting-list sections are not included. Nothing is written to OSM until you export and confirm.</p>
+  <details>
+    <summary class="muted">How the count works</summary>
+    <p class="muted">Each activity badge and each staged level counts as 1. Only badges dated on or after the member’s section start date are included. The proposed progress string uses this section’s threshold (Beavers 4 · Cubs / Scouts / Explorers 6).</p>
+  </details>
+</div>
 
-  <form method="post" action="/top-awards/select/" class="row" style="margin-top:0.75rem;align-items:end;flex-wrap:wrap;gap:0.75rem">
+{# Card 2 — Choose a section #}
+<div class="card">
+  <h3>Choose a section</h3>
+  {% if sectionOptions is empty %}
+  <p class="alert alert-error">No Beavers, Cubs, Scouts or Explorers sections found on this login. Check your OSM role, or open Help.</p>
+  {% else %}
+  <form method="post" action="/top-awards/select/" class="stack top-awards-pick">
     {% include '_csrf.twig' %}
-    <label>Youth section
+    <label>Which section?
       <select name="sectionId" required>
-        <option value="">— choose one section —</option>
+        <option value="">Choose a Beavers, Cubs, Scouts or Explorers section…</option>
         {% for s in sectionOptions %}
-          <option value="{{ s.id }}|{{ s.type }}" {% if section and section.id == s.id %}selected{% endif %}>{{ s.name }} ({{ s.type }})</option>
+          <option value="{{ s.id }}|{{ s.type }}" {% if section and section.id == s.id %}selected{% endif %}>{{ s.label|default(s.name) }}</option>
         {% endfor %}
       </select>
     </label>
-    <button class="btn" type="submit">Calculate</button>
+    <div>
+      <button class="btn" type="submit">Calculate progress</button>
+      <p class="muted" style="margin:0.5rem 0 0">This may take a moment — we fetch badge data from OSM.</p>
+    </div>
   </form>
-
-  {% if section %}
-  <p style="margin-top:0.75rem"><strong>Section:</strong> {{ section.name }} <span class="muted">(id {{ section.id }}, type {{ section.type }}, term {{ section.termId }})</span>
-    {% if challengeBadge %} · <strong>Challenge badge:</strong> {{ challengeBadge.name }}{% if challengeBadge.chal %} <span class="muted">({{ challengeBadge.chal }})</span>{% endif %}{% endif %}
-  </p>
   {% endif %}
 
+  {% if section and not needsSection %}
+  <div class="top-awards-summary" style="margin-top:1.25rem">
+    <p><strong>Section:</strong> {{ section.name }}</p>
+    <p><strong>Award:</strong> {{ awardLabel|default('Top award') }}{% if threshold %} · needs <strong>{{ threshold }}</strong> qualifying badges{% endif %}
+      {% if challengeBadge %} · {{ challengeBadge.name }}{% endif %}
+    </p>
+    <details>
+      <summary class="muted">Technical details</summary>
+      <p class="muted">Section id {{ section.id }} · type {{ section.type }} · term {{ section.termId }}
+        {% if challengeBadge %} · badge_id {{ challengeBadge.badge_id }}{% if challengeBadge.progress_requirement_id %} · requirement {{ challengeBadge.progress_requirement_id }}{% endif %}{% endif %}
+        {% if debugMeta %} · mode {{ debugMeta.mode|default('—') }} · API calls {{ debugMeta.badgeApiCalls|default(0) }} · progress field {{ debugMeta.progressField|default('—') }}{% endif %}
+      </p>
+    </details>
+  </div>
+  {% endif %}
+
+  {% if fromCache and cacheAt %}
+  <p class="muted" style="margin-top:0.75rem">Showing cached results from {{ cacheAt }} (UTC).
+    <a href="/top-awards/?refresh=1">Refresh now</a> (bypasses cache; uses OSM quota).
+  </p>
+  {% elseif section and not needsSection %}
+  <p class="muted" style="margin-top:0.75rem"><a href="/top-awards/?refresh=1">Refresh now</a></p>
+  {% endif %}
+
+  {% if rateLimitBanner %}
+  <p class="alert alert-error" style="margin-top:0.75rem"><strong>Rate limit:</strong> {{ rateLimitBanner }}</p>
+  {% endif %}
   {% if error %}
   <p class="alert alert-error">{{ error }}</p>
   {% endif %}
   {% if scopeHint %}
-  <p class="alert alert-error"><strong>Possible scope/403:</strong> {{ scopeHint }} — after deploy, re-login so OSM grants <code>section:badge:write</code> as well as read.</p>
+  <p class="alert alert-error"><strong>Possible scope/403:</strong> {{ scopeHint }} — after deploy, re-login so OSM grants <code>section:badge:write</code>.</p>
   {% endif %}
   {% if notes %}
-  <details><summary class="muted">Notes ({{ notes|length }})</summary>
+  <details style="margin-top:0.5rem"><summary class="muted">Notes ({{ notes|length }})</summary>
     <ul>{% for n in notes %}<li>{{ n }}</li>{% endfor %}</ul>
   </details>
-  {% endif %}
-  {% if debugMeta %}
-  <p class="muted">Mode: {{ debugMeta.mode|default('—') }} · badge API calls: {{ debugMeta.badgeApiCalls|default(0) }} · date keys: {{ debugMeta.awardedDateKeysSeen|default([])|join(', ')|default('none') }} · progress field: {{ debugMeta.progressField|default('completed') }}</p>
   {% endif %}
 </div>
 
 {% if rows %}
+{# Card 4 — Export nudge #}
 <div class="card export-nudge" role="region" aria-label="Export before write">
-  <h3>Save a copy before any write</h3>
-  <p><strong>Please export or copy this table first</strong> (CSV, Excel, or PDF via the table tools above the grid). OSMHelper will not write until you confirm you have a backup.</p>
-  <p class="muted">Use the export buttons on the results table — do not skip this step.</p>
+  <h3>Save a copy before writing</h3>
+  <p>Export this table first (CSV, Excel or PDF). OSMHelper will not write until you confirm you have a backup.</p>
 </div>
 
+{# Card 3 — Results #}
 <div class="card">
   <div class="table-wrap">
   <table class="data" data-table-tools data-export-name="top-awards">
@@ -58,13 +94,13 @@
         <th data-sort="text">Name</th>
         <th data-sort="text">Section</th>
         <th data-sort="text">Patrol</th>
-        <th data-sort="date">Section start</th>
-        <th data-sort="num">Activity</th>
-        <th data-sort="num">Staged</th>
+        <th data-sort="date">Joined section</th>
+        <th data-sort="num">Activity badges</th>
+        <th data-sort="num">Staged levels</th>
         <th data-sort="num">Total</th>
-        <th data-sort="text">Current {{ awardLabel|default('Gold') }}</th>
-        <th data-sort="text">Proposed {{ awardLabel|default('Gold') }}</th>
-        <th data-sort="text">Flags</th>
+        <th data-sort="text">Current progress</th>
+        <th data-sort="text">Proposed progress</th>
+        <th data-sort="text">Notes</th>
       </tr>
     </thead>
     <tbody>
@@ -73,7 +109,7 @@
         <td>{{ r.name }}</td>
         <td>{{ r.section_name|default(section.name|default('')) }}</td>
         <td>{{ r.patrol }}</td>
-        <td>{% if r.missing_start %}<span class="status-warn">missing</span>{% else %}{{ r.startedsection }}{% endif %}</td>
+        <td>{% if r.missing_start %}<span class="status-warn">No start date</span>{% else %}{{ r.startedsection }}{% endif %}</td>
         <td>{{ r.activity }}</td>
         <td>{{ r.staged }}</td>
         <td><strong>{{ r.total }}</strong>{% if r.unknown_type %} <span class="muted">(+{{ r.unknown_type }} untyped)</span>{% endif %}</td>
@@ -92,19 +128,20 @@
     <div class="export-nudge" style="margin-bottom:0.75rem">
       <label class="row" style="align-items:flex-start;gap:0.5rem">
         <input type="checkbox" name="saved_copy" value="1" required>
-        <span><strong>I have saved a copy</strong> of this table (CSV / Excel / PDF export or equivalent). I understand OSMHelper will propose writing {{ awardLabel|default('Gold') }} progress strings into OSM.</span>
+        <span><strong>I have saved a copy of this table.</strong></span>
       </label>
     </div>
-    <p class="muted">{{ changesCount }} member(s) have a different current vs proposed value.</p>
+    <p class="muted">{{ changesCount }} member(s) would change. Others already match.</p>
     <button class="btn" type="submit" {% if changesCount == 0 %}disabled{% endif %}>Review updates…</button>
+    {% if changesCount == 0 %}
+    <p class="muted">No changes to write for this section.</p>
+    {% endif %}
   </form>
   {% else %}
   <p class="alert alert-error" style="margin-top:1rem">No matching challenge badge found for this section — cannot prepare writes. See notes above.</p>
   {% endif %}
 </div>
-{% elseif section and not error %}
+{% elseif section and not error and not needsSection %}
 <p class="muted">No youth members found in this section.</p>
-{% elseif needsSection %}
-<p class="muted">Pick a section above to calculate.</p>
 {% endif %}
 {% endblock %}

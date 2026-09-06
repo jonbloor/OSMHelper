@@ -8,7 +8,14 @@ final class Config
 {
     public const OSM_API_BASE = 'https://www.onlinescoutmanager.co.uk';
 
-    public const OAUTH_SCOPES = 'section:member:read section:quartermaster:write section:finance:read section:badge:read section:badge:write';
+    /**
+     * Space-separated OSM OAuth scopes (deduped).
+     * Badge: request section:badge:write only — OSM's consent UI lists "Badges" once per
+     * badge:* scope, so read+write showed twice. Same pattern as quartermaster:write
+     * (no separate :read); write covers Top awards reads and progress writes.
+     * Re-login after changing scopes.
+     */
+    public const OAUTH_SCOPES = 'section:member:read section:quartermaster:write section:finance:read section:badge:write';
 
     /** @var list<string> */
     public const SECTION_TYPE_ORDER = [

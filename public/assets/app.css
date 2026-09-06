@@ -886,3 +886,17 @@ table.data tbody tr.row-no-section td {
   font-size: 1.05rem;
 }
 .export-nudge p { margin: 0.35rem 0; }
+
+
+/* Top awards — section picker (stacked like Settings) */
+.top-awards-pick label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-width: 28rem;
+}
+.top-awards-pick select {
+  width: 100%;
+  max-width: 28rem;
+}
+.top-awards-summary p { margin: 0.25rem 0; }
