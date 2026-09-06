@@ -455,3 +455,21 @@ input[type=number], select {
   color: var(--accent);
 }
 body.is-loading { cursor: progress; }
+
+.loading-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 3px solid rgba(11, 110, 79, 0.25);
+  border-radius: 50%;
+  border-top-color: var(--accent);
+  animation: osm-spin 1s linear infinite;
+  margin-right: 0.5rem;
+  vertical-align: -0.15em;
+}
+@keyframes osm-spin { to { transform: rotate(360deg); } }
+.slow-fetch-warning {
+  font-style: italic;
+  font-size: 0.9rem;
+  margin: -0.5rem 0 1rem;
+}

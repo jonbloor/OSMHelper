@@ -2,25 +2,35 @@
 declare(strict_types=1);
 namespace App\Http\Controllers;
 use App\App;
+use App\Config;
+use App\Store\SettingsStore;
 use App\Http\Auth;
 use App\Osm\OsmApi;
 use App\Osm\OsmLists;
 use Throwable;
 final class WaitingListController
 {
-    private static function idealSection(float $age): string
+    /** @param array<string, float|int> $cutoffs */
+    private static function idealSection(float $age, array $cutoffs): string
     {
-        if ($age < 4) return 'Too Young';
-        if ($age < 5.75) return 'Squirrels';
-        if ($age < 7.5) return 'Beavers';
-        if ($age < 10) return 'Cubs';
-        if ($age < 13.5) return 'Scouts';
+        $sq = (float) ($cutoffs['squirrels'] ?? 4.0);
+        $bv = (float) ($cutoffs['beavers'] ?? 5.75);
+        $cb = (float) ($cutoffs['cubs'] ?? 7.5);
+        $sc = (float) ($cutoffs['scouts'] ?? 10.0);
+        $ex = (float) ($cutoffs['explorers'] ?? 13.5);
+        if ($age < $sq) return 'Too Young';
+        if ($age < $bv) return 'Squirrels';
+        if ($age < $cb) return 'Beavers';
+        if ($age < $sc) return 'Cubs';
+        if ($age < $ex) return 'Scouts';
         return 'Explorers';
     }
 
     public function index(): void
     {
         $token = Auth::requireLogin();
+        $saved = SettingsStore::all();
+        $cutoffs = array_merge(Config::DEFAULT_CUTOFFS, is_array($saved['cutoffs'] ?? null) ? $saved['cutoffs'] : []);
         $api = new OsmApi();
         try {
             $sections = $api->getDynamicSections($token);
@@ -134,7 +144,7 @@ final class WaitingListController
                     'leadersNotes' => $leadersNotes,
                     'joiningComments' => $joiningComments,
                     'placeAccepted' => $placeAccepted,
-                    'idealSection' => self::idealSection($age ?? 0),
+                    'idealSection' => self::idealSection($age ?? 0, $cutoffs),
                     'scoreNum' => $scoreNum,
                     'score' => number_format($scoreNum, 1),
                     'rank' => 0,
