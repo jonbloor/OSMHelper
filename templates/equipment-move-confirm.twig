@@ -15,6 +15,7 @@
   </table>
   </div>
   <form method="post" action="/equipment/move/" class="row" style="margin-top:1rem">
+    {% include '_csrf.twig' %}
     <input type="hidden" name="step" value="commit">
     <input type="hidden" name="location" value="{{ location }}">
     {% for it in items %}

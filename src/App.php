@@ -26,6 +26,7 @@ final class App
     {
         $this->loadEnv();
         $this->bootSession();
+        self::sendSecurityHeaders();
         $this->bootTwig();
         $router = new Router();
         $home = new HomeController();
@@ -74,6 +75,9 @@ final class App
     {
         if (self::$twig === null) throw new \RuntimeException('Twig not initialised');
         if (!isset($context['authed'])) $context['authed'] = self::isAuthenticated();
+        if (!isset($context['csrfToken'])) {
+            $context['csrfToken'] = \App\Http\Csrf::token();
+        }
         if (!empty($context['authed']) && !array_key_exists('rateLimit', $context)) {
             $context = array_merge(Auth::rateLimitContext(), $context);
         }
@@ -98,6 +102,28 @@ final class App
         session_start();
         if (!isset($_SESSION['_init'])) $_SESSION['_init'] = hash('sha256', $secret);
     }
+    private static function sendSecurityHeaders(): void
+    {
+        if (headers_sent()) {
+            return;
+        }
+        header('X-Frame-Options: DENY');
+        header('Referrer-Policy: strict-origin-when-cross-origin');
+        header('X-Content-Type-Options: nosniff');
+        // Modest CSP: allow self + existing inline layout/table-tools bootstrap scripts
+        header(
+            "Content-Security-Policy: default-src 'self'; "
+            . "script-src 'self' 'unsafe-inline'; "
+            . "style-src 'self' 'unsafe-inline'; "
+            . "img-src 'self' data:; "
+            . "font-src 'self'; "
+            . "connect-src 'self'; "
+            . "frame-ancestors 'none'; "
+            . "base-uri 'self'; "
+            . "form-action 'self'"
+        );
+    }
+
     private function bootTwig(): void
     {
         self::$twig = new Environment(new FilesystemLoader($this->root . '/templates'), [

@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 namespace App\Http\Controllers;
+use App\Http\Csrf;
 use App\App;
 use App\Http\Auth;
 use App\Osm\OsmApi;
@@ -460,6 +461,7 @@ final class BankTransfersController
     public function select(): void
     {
         Auth::requireLogin();
+        Csrf::requireValid();
         $sectionId = (string) ($_POST['sectionId'] ?? '');
         $sectionType = (string) ($_POST['sectionType'] ?? 'adults');
         if (str_contains($sectionId, '|')) {

@@ -15,6 +15,7 @@
 
   {% if equipmentLocations is defined and equipmentLocations|length > 0 %}
   <form method="post" action="/equipment/move/" id="equipment-move-form" class="equipment-bulk">
+    {% include '_csrf.twig' %}
     <input type="hidden" name="step" value="review">
     <div class="row equipment-bulk-bar">
       <label class="bulk-select-all"><input type="checkbox" id="equip-select-all"> Select all</label>

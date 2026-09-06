@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 namespace App\Http\Controllers;
+use App\Http\Csrf;
 use App\App;
 use App\Http\Auth;
 use App\Osm\OsmApi;
@@ -529,6 +530,7 @@ final class EquipmentController
     public function move(): void
     {
         $token = Auth::requireLogin();
+        Csrf::requireValid();
         $step = (string) ($_POST['step'] ?? 'review');
         $location = trim((string) ($_POST['location'] ?? ''));
         $rawItems = $_POST['items'] ?? [];

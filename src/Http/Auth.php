@@ -21,6 +21,7 @@ final class Auth
     {
         $ctx = [
             'authed' => App::isAuthenticated(),
+            'csrfToken' => Csrf::token(),
             'fullName' => (string) ($_SESSION['fullName'] ?? ''),
             'email' => (string) ($_SESSION['email'] ?? ''),
             'groupName' => (string) ($_SESSION['groupName'] ?? 'OSM Helper'),

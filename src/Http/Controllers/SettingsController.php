@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 namespace App\Http\Controllers;
+use App\Http\Csrf;
 use App\App;
 use App\Config;
 use App\Http\Auth;
@@ -78,6 +79,7 @@ final class SettingsController
     public function updateCutoffs(): void
     {
         Auth::requireLogin();
+        Csrf::requireValid();
         $cutoffs = [];
         foreach (['squirrels', 'beavers', 'cubs', 'scouts', 'explorers'] as $type) {
             $years = (int) ($_POST[$type . '_years'] ?? 0);
@@ -93,6 +95,7 @@ final class SettingsController
     public function updateSections(): void
     {
         Auth::requireLogin();
+        Csrf::requireValid();
         $capacities = [];
         $visible = [];
         foreach ($_POST as $key => $value) {
@@ -124,6 +127,7 @@ final class SettingsController
     public function updateToolSections(): void
     {
         Auth::requireLogin();
+        Csrf::requireValid();
         $equip = (string) ($_POST['equipmentSectionId'] ?? '');
         $equipType = (string) ($_POST['equipmentSectionType'] ?? '');
         $finance = (string) ($_POST['financeSectionId'] ?? '');
@@ -154,6 +158,7 @@ final class SettingsController
     public function updateEquipmentLocations(): void
     {
         Auth::requireLogin();
+        Csrf::requireValid();
         $raw = $_POST['locations'] ?? [];
         if (!is_array($raw)) {
             $raw = [];

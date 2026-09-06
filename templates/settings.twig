@@ -6,6 +6,7 @@
 <div class="card">
   <h2>Age cutoffs</h2>
   <form method="post" action="/settings/update-cutoffs/">
+    {% include '_csrf.twig' %}
     <div class="table-wrap">
     <table class="data">
       <thead><tr><th>Section</th><th>Years</th><th>Months</th></tr></thead>
@@ -27,6 +28,7 @@
   <h2>Section capacity &amp; visibility</h2>
   <p class="muted">Set capacity per OSM section (editable). Defaults shown for reference.</p>
   <form method="post" action="/settings/update-sections/">
+    {% include '_csrf.twig' %}
     <div class="table-wrap">
     <table class="data">
       <thead><tr><th>Show</th><th>Section</th><th>Type</th><th>Capacity</th><th>Default</th></tr></thead>
@@ -50,6 +52,7 @@
   <h2>Tool sections</h2>
   <p class="muted">One-time picks: which OSM section Equipment and Bank transfers use. Change anytime here.</p>
   <form method="post" action="/settings/update-tool-sections/">
+    {% include '_csrf.twig' %}
     <label>Equipment section
       <select name="equipmentSectionId">
         <option value="">— use first adults section —</option>
@@ -73,6 +76,7 @@
   <h2>Equipment locations</h2>
   <p class="muted">Named places for kit (shed, trailer, HQ loft, …). Used when updating equipment locations. Order is the dropdown order.</p>
   <form method="post" action="/settings/update-equipment-locations/" id="equipment-locations-form">
+    {% include '_csrf.twig' %}
     <ul class="location-list" id="equipment-location-list">
       {% for loc in equipmentLocations %}
       <li class="location-row">
