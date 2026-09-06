@@ -4,7 +4,7 @@
   <h2>Waiting list</h2>
   <p class="muted">Fetched {{ fetchedAt }} · scored locally (P2 will push scores to OSM)</p>
   <div class="table-wrap">
-  <table class="data">
+  <table class="data" data-table-tools data-export-name="waiting-list">
     <thead><tr><th>#</th><th>Name</th><th>Age</th><th>Days</th><th>Help?</th><th>Ideal</th><th>Score</th><th>Notes</th></tr></thead>
     <tbody>
     {% for a in applicants %}

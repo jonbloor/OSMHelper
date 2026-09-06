@@ -495,3 +495,27 @@ td.status-warn {
 .nav-public { margin-left: auto; }
 
 .roadmap-page .lede { max-width: 42rem; }
+
+
+/* Table tools: sort / search / export */
+.table-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0.5rem 0 0.65rem;
+}
+.table-search input {
+  margin-left: 0.35rem;
+  min-width: 12rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.table-export { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.btn-sm { padding: 0.25rem 0.55rem; font-size: 0.85rem; }
+th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+th.sortable:hover { color: var(--accent, #0b6e4f); }
+th.sort-asc::after { content: " ▲"; font-size: 0.75em; }
+th.sort-desc::after { content: " ▼"; font-size: 0.75em; }

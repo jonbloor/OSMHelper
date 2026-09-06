@@ -18,7 +18,7 @@
   {% endif %}
 
   <div class="table-wrap">
-  <table class="data" id="members-table">
+  <table class="data" id="members-table" data-table-tools data-export-name="members">
     <thead><tr><th>Section</th><th>Type</th><th>Name</th><th>Patrol</th><th>Age</th><th>DoB</th></tr></thead>
     <tbody>
     {% for m in members %}
@@ -50,6 +50,7 @@
     var visible = 0;
     rows.forEach(function (tr) {
       var show = !!enabled[tr.getAttribute('data-section') || ''];
+      tr.dataset.filterHidden = show ? '0' : '1';
       tr.hidden = !show;
       if (show) visible++;
     });

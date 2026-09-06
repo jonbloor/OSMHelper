@@ -1,7 +1,7 @@
 {% if authed is defined and authed %}
 <div class="rate-limit-info">
-  <p><strong>How busy OSM is right now</strong></p>
-  <p class="muted">Online Scout Manager limits how many requests we can make in a short time. This shows how many you have left, and when that allowance refreshes.</p>
+  <p><strong>Your OSM API allowance</strong></p>
+  <p class="muted">This is <strong>per user</strong> (your OSM account), not a measure of how busy Online Scout Manager is overall. OSM caps how many API requests your login can make in a short window. Opening tools like Members, Checks, Dashboard, Waiting, Equipment or Bank uses that allowance.</p>
   <ul>
     <li>Limit: {{ rateLimit.limit ?? 'Unknown' }}</li>
     <li>Remaining: {{ rateLimit.remaining ?? 'Unknown' }}</li>
