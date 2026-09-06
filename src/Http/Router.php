@@ -32,20 +32,39 @@ final class Router
         $path = parse_url($uri, PHP_URL_PATH) ?: '/';
         $path = $this->normalize($path);
         $method = strtoupper($method);
+        // Treat HEAD like GET but discard the body (soft fix for uptime probes).
+        $isHead = $method === 'HEAD';
+        if ($isHead) {
+            $method = 'GET';
+        }
 
         $handler = $this->routes[$method][$path] ?? null;
         if ($handler !== null) {
+            if ($isHead) {
+                ob_start();
+                $handler();
+                ob_end_clean();
+                return;
+            }
             $handler();
             return;
         }
 
         if ($this->notFound !== null) {
+            if ($isHead) {
+                ob_start();
+                ($this->notFound)();
+                ob_end_clean();
+                return;
+            }
             ($this->notFound)();
             return;
         }
 
         http_response_code(404);
-        echo 'Not Found';
+        if (!$isHead) {
+            echo 'Not Found';
+        }
     }
 
     private function normalize(string $path): string
