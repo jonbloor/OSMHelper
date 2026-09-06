@@ -538,10 +538,16 @@ th.sort-desc::after { content: " ▼"; font-size: 0.75em; }
 .bar-chart { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.55rem; }
 .bar-chart > li { margin: 0; }
 .bar-label { font-size: 0.85rem; font-weight: 600; margin-bottom: 0.2rem; }
-.bar-pair { display: flex; flex-direction: column; gap: 0.2rem; }
+.bar-pair { display: flex; flex-direction: column; gap: 0.25rem; }
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
 .bar-track {
-  position: relative;
-  height: 1.35rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 0.85rem;
   background: #eef2f0;
   border-radius: 4px;
   overflow: hidden;
@@ -552,20 +558,26 @@ th.sort-desc::after { content: " ▼"; font-size: 0.75em; }
   min-width: 0;
   border-radius: 4px;
 }
-.bar-members { background: #2a6f97; }
-.bar-spaces { background: #52b788; }
-.bar-waiting { background: #b08968; }
-.bar-fullness { background: #40916c; }
+/* Members vs spaces — calm, readable */
+.bar-members { background: #5b7c99; }
+.bar-spaces { background: #8fb39b; }
 .bar-over { background: #c1121f; }
+/* UK Scouts Association section colours */
+.band-squirrels { background: #EF3B24; }
+.band-beavers { background: #006DD7; }
+.band-cubs { background: #23A845; }
+.band-scouts { background: #004851; }
+.band-explorers { background: #7413DC; }
+.band-too-young,
+.band-other { background: #8a8f98; }
 .bar-value {
-  position: absolute;
-  left: 0.4rem;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 0.75rem;
+  flex: 0 0 auto;
+  min-width: 4.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
   color: #123;
   white-space: nowrap;
-  text-shadow: 0 0 3px #fff, 0 0 3px #fff;
+  text-align: left;
 }
 
 

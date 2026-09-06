@@ -224,12 +224,12 @@ final class MembershipDashboardController
             }
         }
         $chartWaiting = [
-            ['label' => 'Too young', 'count' => $tooYoungWaiting],
-            ['label' => 'Squirrels', 'count' => $squirrelsWaiting],
-            ['label' => 'Beavers', 'count' => (int) ($waitingCounts['beavers'] ?? 0)],
-            ['label' => 'Cubs', 'count' => (int) ($waitingCounts['cubs'] ?? 0)],
-            ['label' => 'Scouts', 'count' => (int) ($waitingCounts['scouts'] ?? 0)],
-            ['label' => 'Explorers', 'count' => $explorersWaiting],
+            ['label' => 'Too young', 'band' => 'too-young', 'count' => $tooYoungWaiting],
+            ['label' => 'Squirrels', 'band' => 'squirrels', 'count' => $squirrelsWaiting],
+            ['label' => 'Beavers', 'band' => 'beavers', 'count' => (int) ($waitingCounts['beavers'] ?? 0)],
+            ['label' => 'Cubs', 'band' => 'cubs', 'count' => (int) ($waitingCounts['cubs'] ?? 0)],
+            ['label' => 'Scouts', 'band' => 'scouts', 'count' => (int) ($waitingCounts['scouts'] ?? 0)],
+            ['label' => 'Explorers', 'band' => 'explorers', 'count' => $explorersWaiting],
         ];
         $chartFullness = [];
         foreach ($sorted as $typeName => $g) {
@@ -246,8 +246,23 @@ final class MembershipDashboardController
             if (!$hasCap || $cap <= 0) {
                 continue;
             }
+            $band = strtolower(preg_replace('/[^a-z]/i', '', (string) $typeName) ?? '');
+            if (str_contains(strtolower((string) $typeName), 'squirrel')) {
+                $band = 'squirrels';
+            } elseif (str_contains(strtolower((string) $typeName), 'beaver')) {
+                $band = 'beavers';
+            } elseif (str_contains(strtolower((string) $typeName), 'cub')) {
+                $band = 'cubs';
+            } elseif (str_contains(strtolower((string) $typeName), 'explorer')) {
+                $band = 'explorers';
+            } elseif (str_contains(strtolower((string) $typeName), 'scout')) {
+                $band = 'scouts';
+            } else {
+                $band = 'other';
+            }
             $chartFullness[] = [
                 'typeName' => (string) $typeName,
+                'band' => $band,
                 'members' => $mem,
                 'capacity' => $cap,
                 'pct' => (int) round(($mem / $cap) * 100),

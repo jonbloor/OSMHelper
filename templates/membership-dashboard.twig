@@ -22,12 +22,16 @@
             <li>
               <div class="bar-label">{{ s.name }}</div>
               <div class="bar-pair">
-                <div class="bar-track" title="Members {{ s.members }}">
-                  <span class="bar-fill bar-members" style="width: {{ memPct }}%"></span>
+                <div class="bar-row">
+                  <div class="bar-track" title="Members {{ s.members }}">
+                    <span class="bar-fill bar-members" style="width: {{ memPct }}%"></span>
+                  </div>
                   <span class="bar-value">{{ s.members }} mem</span>
                 </div>
-                <div class="bar-track" title="Spaces {{ s.spaces is not null ? s.spaces : 'n/a' }}">
-                  <span class="bar-fill {{ s.overCapacity ? 'bar-over' : 'bar-spaces' }}" style="width: {{ spPct }}%"></span>
+                <div class="bar-row">
+                  <div class="bar-track" title="Spaces {{ s.spaces is not null ? s.spaces : 'n/a' }}">
+                    <span class="bar-fill {{ s.overCapacity ? 'bar-over' : 'bar-spaces' }}" style="width: {{ spPct }}%"></span>
+                  </div>
                   <span class="bar-value">{{ s.spaces is not null ? s.spaces : '—' }} sp{% if s.overCapacity %} (over){% endif %}</span>
                 </div>
               </div>
@@ -44,8 +48,10 @@
           {% set pct = maxWaiting > 0 ? (w.count / maxWaiting * 100) : 0 %}
           <li>
             <div class="bar-label">{{ w.label }}</div>
-            <div class="bar-track" title="{{ w.count }}">
-              <span class="bar-fill bar-waiting" style="width: {{ pct }}%"></span>
+            <div class="bar-row">
+              <div class="bar-track" title="{{ w.count }}">
+                <span class="bar-fill band-{{ w.band|default('other') }}" style="width: {{ pct }}%"></span>
+              </div>
               <span class="bar-value">{{ w.count }}</span>
             </div>
           </li>
@@ -63,8 +69,10 @@
             {% set pct = f.pct > 100 ? 100 : (f.pct < 0 ? 0 : f.pct) %}
             <li>
               <div class="bar-label">{{ f.typeName }}</div>
-              <div class="bar-track" title="{{ f.members }} / {{ f.capacity }} ({{ f.pct }}%)">
-                <span class="bar-fill {{ f.pct > 100 ? 'bar-over' : 'bar-fullness' }}" style="width: {{ pct }}%"></span>
+              <div class="bar-row">
+                <div class="bar-track" title="{{ f.members }} / {{ f.capacity }} ({{ f.pct }}%)">
+                  <span class="bar-fill {{ f.pct > 100 ? 'bar-over' : 'band-' ~ (f.band|default('other')) }}" style="width: {{ pct }}%"></span>
+                </div>
                 <span class="bar-value">{{ f.pct }}% <span class="muted">({{ f.members }}/{{ f.capacity }})</span></span>
               </div>
             </li>
