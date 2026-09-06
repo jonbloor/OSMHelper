@@ -28,6 +28,7 @@
     <thead>
       <tr>
         <th data-sort="text">Name</th>
+        <th data-sort="text">Section</th>
         <th data-sort="text">Patrol</th>
         <th data-sort="date">Section start</th>
         <th data-sort="num">Activity</th>
@@ -41,6 +42,7 @@
     {% for r in rows %}
       <tr>
         <td>{{ r.name }}</td>
+        <td>{{ r.section_name|default(section.name|default('')) }}</td>
         <td>{{ r.patrol }}</td>
         <td>{% if r.missing_start %}<span class="status-warn">missing</span>{% else %}{{ r.startedsection }}{% endif %}</td>
         <td>{{ r.activity }}</td>
