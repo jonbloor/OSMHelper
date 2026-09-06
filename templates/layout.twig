@@ -3,28 +3,54 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% if title %}{{ title }} · {% endif %}OSMHelper</title>
+  <title>{% if title and title != 'OSMHelper' %}{{ title }} · {% endif %}OSMHelper</title>
   <link rel="stylesheet" href="/assets/app.css">
 </head>
 <body>
   <div class="wrap wrap-wide">
     <header class="app-header">
       <h1><a href="/">OSMHelper</a></h1>
-      <nav class="row nav-links">
-        {% if authed is defined and authed %}
-          <a href="/dashboard/">Dashboard</a>
-          <a href="/membership-dashboard/">Group numbers</a>
-          <a href="/members/">Members</a>
-          <a href="/waiting-list/">Waiting list</a>
-          <a href="/equipment/">Equipment</a>
-          <a href="/bank-transfers/">Bank</a>
-          <a href="/settings/">Settings</a>
-          <a href="/logout/">Logout</a>
-        {% endif %}
+      {% if authed is defined and authed %}
+      <button type="button" class="nav-toggle" aria-controls="app-nav" aria-expanded="false">Menu</button>
+      <nav id="app-nav" class="nav-links">
+        <a href="/dashboard/">Dashboard</a>
+        <a href="/membership-dashboard/" title="Group numbers">Group</a>
+        <a href="/members/">Members</a>
+        <a href="/waiting-list/" title="Waiting list">Waiting</a>
+        <a href="/equipment/">Equipment</a>
+        <a href="/bank-transfers/" title="Bank transfers">Bank</a>
+        <a href="/settings/">Settings</a>
+        <a class="nav-logout" href="/logout/">Logout</a>
       </nav>
+      <script>
+        (function () {
+          var btn = document.querySelector('.nav-toggle');
+          var nav = document.getElementById('app-nav');
+          if (!btn || !nav) return;
+          var mq = window.matchMedia('(max-width: 720px)');
+          function sync() {
+            /* CSS hides toggle on desktop; keep aria in sync */
+            if (!mq.matches) {
+              nav.classList.add('is-open');
+              btn.setAttribute('aria-expanded', 'true');
+            } else {
+              nav.classList.remove('is-open');
+              btn.setAttribute('aria-expanded', 'false');
+            }
+          }
+          btn.addEventListener('click', function () {
+            var open = nav.classList.toggle('is-open');
+            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+          });
+          if (mq.addEventListener) mq.addEventListener('change', sync);
+          else if (mq.addListener) mq.addListener(sync);
+          sync();
+        })();
+      </script>
+      {% endif %}
     </header>
     {% block body %}{% endblock %}
-    <footer class="app-footer">Volunteer Scouts tooling · Online Scout Manager OAuth · PHP rewrite</footer>
+    <footer class="app-footer">Volunteer Scouts tooling · Online Scout Manager OAuth</footer>
   </div>
 </body>
 </html>

@@ -153,12 +153,160 @@ footer.app-footer {
   font-size: 0.85rem;
 }
 
+/* OSMHelper shell patch — apply on top of current main app.css
+   Goal: width + nav wrap + light spacing. Do not change Settings form logic. */
+
 .wrap-wide { max-width: 1100px; }
-.nav-links { flex-wrap: wrap; gap: 0.65rem; font-size: 0.9rem; }
-.tool-grid { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.25rem; }
-.table-wrap { overflow-x: auto; margin: 0.75rem 0 1.25rem; }
-table.data { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-table.data th, table.data td { border-bottom: 1px solid var(--border); padding: 0.4rem 0.5rem; text-align: left; vertical-align: top; }
-table.data tr.subtotal td { font-weight: 600; background: #f0f3f5; }
+
+/* Two-row header: brand, then full-width nav (stops wrap-under-title) */
+header.app-header {
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.75rem 1.25rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+header.app-header h1 {
+  font-size: 1.25rem;
+  line-height: 1.2;
+  flex: 0 0 auto;
+}
+
+.nav-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.85rem;
+  font-size: 0.9rem;
+  flex: 1 1 100%;
+  align-items: center;
+}
+
+.nav-links a {
+  color: var(--text);
+  padding: 0.35rem 0.15rem;
+  border-bottom: 2px solid transparent;
+  text-decoration: none;
+}
+
+.nav-links a:hover {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.nav-links a.is-active,
+.nav-links a[aria-current="page"] {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.nav-links a.nav-logout {
+  margin-left: auto;
+  color: var(--muted);
+}
+
+/* Mobile: collapse nav */
+@media (max-width: 720px) {
+  .nav-toggle {
+    margin-left: auto;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.4rem 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .nav-links {
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    width: 100%;
+  }
+
+  .nav-links.is-open { display: flex; }
+
+  .nav-links a {
+    padding: 0.65rem 0.25rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-links a.nav-logout { margin-left: 0; }
+}
+
+.tool-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  margin: 0.75rem 0 1.25rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+table.data {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+table.data th,
+table.data td {
+  border-bottom: 1px solid var(--border);
+  padding: 0.5rem 0.6rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+table.data th {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+table.data tr.subtotal td {
+  font-weight: 600;
+  background: #f0f3f5;
+}
+
+/* Settings cards: breathing room without touching field behaviour */
+.card + .card { margin-top: 1.25rem; }
+.card form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.85rem;
+  font-weight: 500;
+}
+.card form label select,
+.card form label input {
+  max-width: 28rem;
+}
+
+.btn:focus-visible,
+.nav-links a:focus-visible,
+.nav-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+
 table.data td.notes { max-width: 220px; font-size: 0.85rem; color: var(--muted); }
-input[type=number], select { padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: 6px; }
+input[type=number], select {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+/* Desktop: hide Menu toggle via CSS so nav stays usable if JS fails */
+.nav-toggle { display: none; }
+@media (max-width: 720px) {
+  .nav-toggle { display: inline-block; }
+}

@@ -11,12 +11,12 @@
     {% if authed %}
       <p>Signed in{% if fullName %} as <strong>{{ fullName }}</strong>{% endif %}{% if groupName %} ({{ groupName }}){% endif %}.</p>
       <div class="row">
-        <a class="btn" href="/dashboard">Go to dashboard</a>
-        <a class="btn btn-secondary" href="/logout">Logout</a>
+        <a class="btn" href="/dashboard/">Go to dashboard</a>
+        <a class="btn btn-secondary" href="/logout/">Logout</a>
       </div>
     {% else %}
       <p>
-        <a class="btn" href="/auth">Connect with OSM</a>
+        <a class="btn" href="/auth/">Connect with OSM</a>
       </p>
     {% endif %}
   </div>
