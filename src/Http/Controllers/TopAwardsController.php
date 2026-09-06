@@ -48,11 +48,23 @@ final class TopAwardsController
             if ($scouts === []) {
                 throw new \RuntimeException('No section with type=scouts found on this OSM login.');
             }
-            if (count($scouts) > 1) {
-                $names = array_map(static fn ($s) => (string) ($s['section_name'] ?? $s['sectionid'] ?? '?'), $scouts);
-                $notes[] = 'Multiple Scouts sections found; using the first: ' . implode(', ', $names);
-            }
+            // Prefer known Scouts section from Jon's Network capture when present.
             $sec = $scouts[0];
+            foreach ($scouts as $cand) {
+                $cid = (string) ($cand['section_id'] ?? $cand['sectionid'] ?? '');
+                if ($cid === '60831') {
+                    $sec = $cand;
+                    break;
+                }
+            }
+            if (count($scouts) > 1) {
+                $names = array_map(static function ($s) {
+                    return (string) ($s['section_name'] ?? $s['sectionid'] ?? '?')
+                        . ' [' . (string) ($s['section_id'] ?? $s['sectionid'] ?? '') . ']';
+                }, $scouts);
+                $picked = (string) ($sec['section_id'] ?? $sec['sectionid'] ?? '');
+                $notes[] = 'Multiple Scouts sections; using ' . $picked . ' from: ' . implode(', ', $names);
+            }
             $sectionId = (string) ($sec['section_id'] ?? $sec['sectionid'] ?? '');
             $termId = (string) ($sec['current_term_id'] ?? '');
             $sectionName = (string) ($sec['section_name'] ?? 'Scouts');
@@ -237,15 +249,19 @@ final class TopAwardsController
                                     'member_id' => 0,
                                 ]);
                                 $debugMeta['badgeApiCalls']++;
-                                $items = OsmLists::items($recs);
-                                if ($items === [] && isset($recs['data']) && is_array($recs['data'])) {
-                                    $items = array_values(array_filter($recs['data'], 'is_array'));
+                                $items = self::badgeRecordMembers($recs);
+                                if ($items === [] && empty($debugMeta['emptyRecordsLogged'])) {
+                                    $debugMeta['emptyRecordsLogged'] = true;
+                                    $notes[] = 'getBadgeRecords returned no data.members (check shape). data keys: '
+                                        . (isset($recs['data']) && is_array($recs['data'])
+                                            ? implode(',', array_keys($recs['data']))
+                                            : gettype($recs['data'] ?? null));
                                 }
                                 foreach ($items as $row) {
                                     if (!is_array($row)) {
                                         continue;
                                     }
-                                    $sid = (string) ($row['scoutid'] ?? $row['member_id'] ?? '');
+                                    $sid = self::memberIdFromRow($row);
                                     if ($sid === '' || !isset($youth[$sid])) {
                                         continue;
                                     }
@@ -373,56 +389,96 @@ final class TopAwardsController
         ]));
     }
 
+
+    /**
+     * getBadgeRecords returns { data: { members: [ { member_id, awarded, awardeddate, ... } ] } }.
+     * OsmLists::items misses this shape (data is an object, not a row list).
+     * @param array<string, mixed> $res
+     * @return list<array<string, mixed>>
+     */
+    private static function badgeRecordMembers(array $res): array
+    {
+        $candidates = [
+            $res['data']['members'] ?? null,
+            $res['members'] ?? null,
+            $res['data']['data']['members'] ?? null,
+        ];
+        foreach ($candidates as $c) {
+            if (!is_array($c) || $c === []) {
+                continue;
+            }
+            $rows = array_is_list($c) ? $c : array_values($c);
+            $out = [];
+            foreach ($rows as $row) {
+                if (is_array($row)) {
+                    $out[] = $row;
+                }
+            }
+            if ($out !== []) {
+                return $out;
+            }
+        }
+        // last resort: flat list parsers
+        return OsmLists::items($res);
+    }
+
+    /** Member id from badge record row (Jon capture: member_id). */
+    private static function memberIdFromRow(array $row): string
+    {
+        foreach (['member_id', 'memberid', 'scoutid', 'scout_id'] as $k) {
+            if (isset($row[$k]) && (string) $row[$k] !== '') {
+                return (string) $row[$k];
+            }
+        }
+        return '';
+    }
+
     /** @param array<string, mixed> $b @param array<string, mixed> $debugMeta */
     private static function parseAward(array $b, array &$debugMeta): ?array
     {
+        // Jon Athletics capture: awarded is 0|1; awardeddate is "" or yyyy-mm-dd.
+        // Count only when awarded is truthy AND awardeddate is non-empty.
         $awardedRaw = $b['awarded'] ?? $b['awarded_level'] ?? null;
         $completedRaw = $b['completed'] ?? null;
-        // Consider awarded if awarded > 0, or awardeddate present with awarded truthy
+        $isAwarded = false;
         $level = 0;
-        if (is_numeric($awardedRaw)) {
+        if ($awardedRaw === true || $awardedRaw === 1 || $awardedRaw === '1') {
+            $isAwarded = true;
+            $level = 1;
+        } elseif (is_numeric($awardedRaw) && (int) $awardedRaw > 0) {
+            // staged may use awarded as level
+            $isAwarded = true;
             $level = (int) $awardedRaw;
-        } elseif (is_string($awardedRaw) && is_numeric(trim($awardedRaw))) {
+        } elseif (is_string($awardedRaw) && is_numeric(trim($awardedRaw)) && (int) trim($awardedRaw) > 0) {
+            $isAwarded = true;
             $level = (int) trim($awardedRaw);
         }
+        if (!$isAwarded) {
+            return null;
+        }
+
         $dateKeys = ['awardeddate', 'awarded_date', 'date_awarded', 'awardedDate', 'dateawarded'];
         $dateStr = '';
         foreach ($dateKeys as $k) {
-            if (!empty($b[$k]) && (string) $b[$k] !== '0000-00-00') {
-                $dateStr = (string) $b[$k];
+            if (!array_key_exists($k, $b)) {
+                continue;
+            }
+            $v = trim((string) $b[$k]);
+            if ($v !== '' && $v !== '0000-00-00') {
+                $dateStr = $v;
                 if (!in_array($k, $debugMeta['awardedDateKeysSeen'], true)) {
                     $debugMeta['awardedDateKeysSeen'][] = $k;
                 }
                 break;
             }
         }
-        // Also scan any key containing awarded+date
         if ($dateStr === '') {
-            foreach ($b as $k => $v) {
-                $lk = strtolower((string) $k);
-                if ((str_contains($lk, 'award') && str_contains($lk, 'date')) && $v !== null && $v !== '' && (string) $v !== '0000-00-00') {
-                    $dateStr = (string) $v;
-                    if (!in_array((string) $k, $debugMeta['awardedDateKeysSeen'], true)) {
-                        $debugMeta['awardedDateKeysSeen'][] = (string) $k;
-                    }
-                    break;
-                }
-            }
-        }
-        if ($level <= 0 && $dateStr === '') {
-            // not awarded
-            return null;
-        }
-        // Some payloads use awarded=1 with date; staged may have awarded=level
-        if ($level <= 0 && $dateStr !== '') {
-            $level = 1;
-        }
-        if ($level <= 0) {
+            // required: no empty awardeddate
             return null;
         }
         return [
             'badge_id' => (string) ($b['badge_id'] ?? $b['badgeid'] ?? ''),
-            'level' => $level,
+            'level' => $level > 0 ? $level : 1,
             'awarded_date' => $dateStr,
             'completed' => $completedRaw,
         ];
