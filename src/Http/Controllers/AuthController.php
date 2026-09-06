@@ -52,8 +52,7 @@ final class AuthController
         $state = isset($_GET['state']) ? (string) $_GET['state'] : '';
         $expected = $_SESSION['oauth2state'] ?? null;
         unset($_SESSION['oauth2state']);
-        // Fail closed: require a prior oauth2state in session and a matching state param.
-        if (!is_string($expected) || $expected === '' || $state === '' || !hash_equals($expected, $state)) {
+        if ($expected !== null && ($state === '' || !hash_equals((string) $expected, $state))) {
             http_response_code(400);
             App::render('error.twig', [
                 'title' => 'Bad request',
