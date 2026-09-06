@@ -12,7 +12,7 @@
       {% for s in g.sections %}
         <tr>
           <td>{{ s.name }}</td><td>{{ s.members }}</td><td title="{{ s.leaderInitials }}">{{ s.leaders }}</td>
-          <td title="{{ s.youngLeaderInitials }}">{{ s.youngLeaders }}</td><td>{{ s.capacity }}</td><td>{{ s.spaces }}</td><td>{{ g.subtotalWaiting }}</td>
+          <td title="{{ s.youngLeaderInitials }}">{{ s.youngLeaders }}</td><td>{{ s.capacity }}</td><td>{{ s.spaces }}</td><td class="muted" title="Waiting is counted by age band, not per section">—</td>
         </tr>
       {% endfor %}
       <tr class="subtotal"><td>Subtotal</td><td>{{ g.subtotalMembers }}</td><td>{{ g.subtotalLeaders }}</td><td>{{ g.subtotalYLs }}</td><td>{{ g.subtotalCapacity }}</td><td>{{ g.subtotalSpaces }}</td><td>{{ g.subtotalWaiting }}</td></tr>

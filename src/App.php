@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 namespace App;
+use App\Http\Auth;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BankTransfersController;
 use App\Http\Controllers\DashboardController;
@@ -63,6 +64,9 @@ final class App
     {
         if (self::$twig === null) throw new \RuntimeException('Twig not initialised');
         if (!isset($context['authed'])) $context['authed'] = self::isAuthenticated();
+        if (!empty($context['authed']) && !array_key_exists('rateLimit', $context)) {
+            $context = array_merge(Auth::rateLimitContext(), $context);
+        }
         echo self::$twig->render($template, $context);
     }
     public static function isAuthenticated(): bool { return !empty($_SESSION['accessToken']); }

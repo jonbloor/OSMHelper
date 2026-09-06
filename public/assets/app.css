@@ -420,3 +420,38 @@ input[type=number], select {
   font-weight: 700;
   margin: 0.65rem 0 0;
 }
+
+/* Compact rate limit (all signed-in pages) */
+.rate-limit-bar {
+  font-size: 0.85rem;
+  color: var(--muted);
+  background: #f0f3f5;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+  padding: 0.45rem 0.75rem;
+  margin: -0.5rem 0 1.25rem;
+}
+.rate-limit-bar .warning { color: var(--danger); font-weight: 700; }
+
+/* Page loading overlay */
+.page-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(244, 246, 248, 0.72);
+}
+.page-loading[hidden] { display: none !important; }
+.page-loading-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: 0.85rem 1.25rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+body.is-loading { cursor: progress; }

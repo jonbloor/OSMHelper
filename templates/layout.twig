@@ -4,9 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% if title and title != 'OSMHelper' %}{{ title }} · {% endif %}OSMHelper</title>
-  <link rel="stylesheet" href="/assets/app.css?v=d6rate1">
+  <link rel="stylesheet" href="/assets/app.css?v=d6fix1">
 </head>
 <body>
+  <div id="page-loading" class="page-loading" hidden aria-live="polite" aria-busy="true">
+    <span class="page-loading-box">Loading…</span>
+  </div>
   <div class="wrap wrap-wide">
     <header class="app-header">
       <h1><a href="/">OSMHelper</a></h1>
@@ -29,7 +32,6 @@
           if (!btn || !nav) return;
           var mq = window.matchMedia('(max-width: 720px)');
           function sync() {
-            /* CSS hides toggle on desktop; keep aria in sync */
             if (!mq.matches) {
               nav.classList.add('is-open');
               btn.setAttribute('aria-expanded', 'true');
@@ -49,8 +51,40 @@
       </script>
       {% endif %}
     </header>
+    {% if authed is defined and authed and rateLimit %}
+    <div class="rate-limit-bar" title="OSM API rate limit for this session">
+      API {{ rateLimit.remaining ?? '?' }}/{{ rateLimit.limit ?? '?' }} left · resets {{ rateResetText|default('?') }}
+      {% if rateLimit.remaining is not null and rateLimit.remaining <= 50 %}
+        <span class="warning"> · Low — use sparingly</span>
+      {% endif %}
+    </div>
+    {% endif %}
     {% block body %}{% endblock %}
     <footer class="app-footer">Volunteer Scouts tooling · Online Scout Manager OAuth</footer>
   </div>
+  <script>
+    (function () {
+      var el = document.getElementById('page-loading');
+      if (!el) return;
+      function show() { el.hidden = false; document.body.classList.add('is-loading'); }
+      document.addEventListener('click', function (e) {
+        if (e.defaultPrevented) return;
+        if (e.button !== 0) return;
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        var a = e.target.closest && e.target.closest('a[href]');
+        if (!a) return;
+        var href = a.getAttribute('href') || '';
+        if (!href || href.charAt(0) === '#' || href.indexOf('mailto:') === 0 || href.indexOf('javascript:') === 0) return;
+        if (a.target === '_blank' || a.hasAttribute('download')) return;
+        try {
+          var url = new URL(a.href, window.location.href);
+          if (url.origin !== window.location.origin) return;
+          if (url.pathname === window.location.pathname && url.search === window.location.search && url.hash) return;
+        } catch (err) { return; }
+        show();
+      }, true);
+      document.addEventListener('submit', function () { show(); }, true);
+    })();
+  </script>
 </body>
 </html>
