@@ -1,4 +1,4 @@
-/* cache-bust d6eq3 */
+/* cache-bust d6eq4 */
 :root {
   --bg: #f4f6f8;
   --card: #ffffff;
@@ -157,7 +157,7 @@ footer.app-footer {
 /* OSMHelper shell patch — apply on top of current main app.css
    Goal: width + nav wrap + light spacing. Do not change Settings form logic. */
 
-.wrap-wide { max-width: 1100px; }
+.wrap-wide { max-width: min(1480px, 98vw); }
 
 /* Two-row header: brand, then full-width nav (stops wrap-under-title) */
 header.app-header {
@@ -252,10 +252,7 @@ header.app-header h1 {
 }
 
 table.data {
-  /* Full width with a sensible min so cols don't crush; wrap long cells
-     instead of nowrap+max-content (Amazon URLs made the table absurdly wide). */
   width: 100%;
-  min-width: 52rem;
   border-collapse: collapse;
   font-size: 0.9rem;
   table-layout: auto;
@@ -265,23 +262,33 @@ table.data th {
 }
 table.data td {
   white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  word-break: normal;
+  overflow-wrap: break-word;
   vertical-align: top;
 }
-table.data td.col-name,
-table.data td.col-location {
-  max-width: 12rem;
+/* List / Name: prefer readable width; wrap on spaces, not mid-word */
+table.data td.col-list {
+  min-width: 10rem;
+  max-width: 16rem;
+  overflow-wrap: normal;
 }
+table.data td.col-name {
+  min-width: 11rem;
+  max-width: 20rem;
+  overflow-wrap: break-word;
+}
+table.data td.col-location {
+  min-width: 8rem;
+  max-width: 14rem;
+}
+/* Long free text / URLs */
 table.data td.col-description,
 table.data td.notes {
-  max-width: 16rem;
-  min-width: 8rem;
+  max-width: 22rem;
+  min-width: 10rem;
   font-size: 0.85rem;
   color: var(--muted);
-}
-table.data td.col-list {
-  max-width: 10rem;
+  overflow-wrap: anywhere;
 }
 
 table.data th,
