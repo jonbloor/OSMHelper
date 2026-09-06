@@ -175,6 +175,21 @@ final class MembershipDashboardController
         }
         unset($g);
 
+        // Show Squirrels when waiting squirrels exist even without an earlyyears OSM section
+        if (($waitingCounts['squirrels'] ?? 0) > 0 && !isset($grouped['Squirrels'])) {
+            $grouped['Squirrels'] = [
+                'sections' => [],
+                'subtotalMembers' => 0,
+                'subtotalLeaders' => 0,
+                'subtotalYLs' => 0,
+                'subtotalCapacity' => 0,
+                'subtotalSpaces' => 0,
+                'subtotalWaiting' => (int) $waitingCounts['squirrels'],
+            ];
+        } elseif (isset($grouped['Squirrels'])) {
+            $grouped['Squirrels']['subtotalWaiting'] = (int) ($waitingCounts['squirrels'] ?? $grouped['Squirrels']['subtotalWaiting']);
+        }
+
         $sorted = [];
         foreach (Config::SECTION_TYPE_ORDER as $name) {
             if (isset($grouped[$name])) $sorted[$name] = $grouped[$name];
@@ -183,6 +198,13 @@ final class MembershipDashboardController
             if (!isset($sorted[$k])) $sorted[$k] = $v;
         }
 
+        // Waiting of age for Beavers+Cubs+Scouts subtotals only (plus Squirrels when shown)
+        $waitingOfAgeYouth = (int) ($waitingCounts['beavers'] ?? 0)
+            + (int) ($waitingCounts['cubs'] ?? 0)
+            + (int) ($waitingCounts['scouts'] ?? 0);
+        $squirrelsWaiting = (int) ($waitingCounts['squirrels'] ?? 0);
+        $explorersWaiting = (int) ($waitingCounts['explorers'] ?? 0);
+        $tooYoungWaiting = (int) ($waitingCounts['tooYoung'] ?? 0);
         $totalWaiting = array_sum(array_column($sorted, 'subtotalWaiting'));
         App::render('membership-dashboard.twig', Auth::baseContext([
             'title' => 'Group numbers',
@@ -192,9 +214,11 @@ final class MembershipDashboardController
             'totalYLs' => $totals['yls'],
             'totalCapacity' => $totals['capacity'],
             'totalSpaces' => $totals['spaces'],
-            'totalWaiting' => $totalWaiting,
-            'tooYoungWaiting' => $waitingCounts['tooYoung'],
-            'totalWaitingFull' => $totalWaiting + $waitingCounts['tooYoung'] + $waitingCounts['explorers'],
+            'totalWaiting' => $waitingOfAgeYouth,
+            'squirrelsWaiting' => $squirrelsWaiting,
+            'explorersWaiting' => $explorersWaiting,
+            'tooYoungWaiting' => $tooYoungWaiting,
+            'totalWaitingFull' => $waitingOfAgeYouth + $squirrelsWaiting + $tooYoungWaiting + $explorersWaiting,
             'dataUpdated' => (new \DateTimeImmutable('now', new \DateTimeZone('Europe/London')))->format('d/m/y H:i'),
         ]));
     }

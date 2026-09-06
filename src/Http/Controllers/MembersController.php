@@ -16,7 +16,6 @@ final class MembersController
         if ($p === '') {
             return false;
         }
-        // Any YL variant: Young Leaders, Young Leaders (YLs), YL, etc.
         if (str_contains($p, 'young leader')) {
             return true;
         }
@@ -34,7 +33,6 @@ final class MembersController
     /** @param array<string, mixed> $ind @return array<string, mixed> */
     private static function individualPayload(array $ind): array
     {
-        // Node: indRes?.data?.data || indRes?.data
         if (isset($ind['data']) && is_array($ind['data'])) {
             $d = $ind['data'];
             if (isset($d['data']) && is_array($d['data'])) {
@@ -45,13 +43,26 @@ final class MembersController
         return $ind;
     }
 
-    public function index(): void
+    /**
+     * Shared OSM membership load (list + checks).
+     * @return array{
+     *   groupName: string,
+     *   flatMembers: list<array<string, mixed>>,
+     *   sectionNames: list<string>,
+     *   youthDuplicates: list<array<string, mixed>>,
+     *   ylMembers: list<array<string, mixed>>,
+     *   leaderMembers: list<array<string, mixed>>,
+     *   errorMessage: ?string,
+     *   fetchedAt: string
+     * }
+     */
+    private static function loadData(string $token): array
     {
-        $token = Auth::requireLogin();
         $api = new OsmApi();
         $groupName = (string) ($_SESSION['groupName'] ?? 'OSM Helper');
-        $mainMembers = $youthDuplicates = $ylMembers = $leaderMembers = $flatMembers = $leaderRoster = [];
+        $youthDuplicates = $ylMembers = $leaderMembers = $flatMembers = [];
         $errorMessage = null;
+        $sectionNames = [];
         try {
             $sections = $api->getDynamicSections($token);
             foreach ($sections as $sec) {
@@ -132,7 +143,6 @@ final class MembersController
                         'sectionId' => $sectionId,
                         'termId' => $termId,
                     ];
-                    // Node ~86-106: getIndividual when !dob || !patrol
                     if ($dob === '' || $patrol === '') {
                         $needIndividual[] = [
                             'sectionId' => $sectionId,
@@ -146,8 +156,7 @@ final class MembersController
             }
 
             $needIndividual = array_values(array_unique($needIndividual, SORT_REGULAR));
-            $chunks = array_chunk($needIndividual, self::INDIVIDUAL_CONCURRENCY);
-            foreach ($chunks as $chunk) {
+            foreach (array_chunk($needIndividual, self::INDIVIDUAL_CONCURRENCY) as $chunk) {
                 foreach ($chunk as $job) {
                     $scoutid = $job['scoutid'];
                     try {
@@ -199,6 +208,7 @@ final class MembersController
             }
             unset($m);
 
+            $sectionSet = [];
             foreach ($all as $m) {
                 $hasYL = false;
                 $hasLeader = false;
@@ -240,16 +250,8 @@ final class MembersController
                         'issue' => $status,
                         'statusOk' => $status === 'OK',
                     ];
-                    $leaderRoster[] = [
-                        'firstname' => $m['firstname'],
-                        'lastname' => $m['lastname'],
-                        'sections' => implode(', ', array_column($m['sections'], 'name')),
-                        'dob' => $m['dob'],
-                        'age' => number_format((float) $m['age'], 1),
-                    ];
                 }
 
-                // Youth in multiple sections: exclude Leaders and any YL variant
                 if ($m['age'] < 18 && count($m['sections']) > 1 && !$hasYL && !$hasLeader) {
                     $youthDuplicates[] = [
                         'firstname' => $m['firstname'],
@@ -260,12 +262,17 @@ final class MembersController
                 }
 
                 foreach ($m['sections'] as $sec) {
+                    // Members list excludes pure Leaders patrol rows
                     if (self::isLeaderPatrol((string) ($sec['patrol'] ?? ''))) {
                         continue;
                     }
+                    $secName = (string) ($sec['name'] ?? '');
+                    if ($secName !== '') {
+                        $sectionSet[$secName] = true;
+                    }
                     $flatMembers[] = [
                         'section_type' => $sec['type'],
-                        'section_name' => $sec['name'],
+                        'section_name' => $secName,
                         'firstname' => $m['firstname'],
                         'lastname' => $m['lastname'],
                         'dob' => $m['dob'],
@@ -274,24 +281,52 @@ final class MembersController
                     ];
                 }
             }
-            $mainMembers = array_values($all);
-            usort($mainMembers, fn ($a, $b) => strcmp($a['firstname'] . $a['lastname'], $b['firstname'] . $b['lastname']));
+            $sectionNames = array_keys($sectionSet);
+            sort($sectionNames, SORT_NATURAL | SORT_FLAG_CASE);
             $ylMembers = array_values(array_unique($ylMembers, SORT_REGULAR));
             $leaderMembers = array_values(array_unique($leaderMembers, SORT_REGULAR));
         } catch (Throwable) {
             $errorMessage = 'Could not load membership data. Please try again later.';
         }
-        App::render('members.twig', Auth::baseContext([
-            'title' => 'Members',
+
+        return [
             'groupName' => $groupName,
-            'mainMembers' => $mainMembers,
+            'flatMembers' => $flatMembers,
+            'sectionNames' => $sectionNames,
             'youthDuplicates' => $youthDuplicates,
             'ylMembers' => $ylMembers,
             'leaderMembers' => $leaderMembers,
-            'leaderRoster' => $leaderRoster,
-            'members' => $flatMembers,
             'errorMessage' => $errorMessage,
             'fetchedAt' => (new \DateTimeImmutable('now', new \DateTimeZone('Europe/London')))->format('d/m/y H:i'),
+        ];
+    }
+
+    public function index(): void
+    {
+        $token = Auth::requireLogin();
+        $data = self::loadData($token);
+        App::render('members.twig', Auth::baseContext([
+            'title' => 'Members',
+            'groupName' => $data['groupName'],
+            'members' => $data['flatMembers'],
+            'sectionNames' => $data['sectionNames'],
+            'errorMessage' => $data['errorMessage'],
+            'fetchedAt' => $data['fetchedAt'],
+        ]));
+    }
+
+    public function checks(): void
+    {
+        $token = Auth::requireLogin();
+        $data = self::loadData($token);
+        App::render('member-checks.twig', Auth::baseContext([
+            'title' => 'Member checks',
+            'groupName' => $data['groupName'],
+            'youthDuplicates' => $data['youthDuplicates'],
+            'ylMembers' => $data['ylMembers'],
+            'leaderMembers' => $data['leaderMembers'],
+            'errorMessage' => $data['errorMessage'],
+            'fetchedAt' => $data['fetchedAt'],
         ]));
     }
 }

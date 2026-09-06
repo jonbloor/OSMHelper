@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% if title and title != 'OSMHelper' %}{{ title }} · {% endif %}OSMHelper</title>
-  <link rel="stylesheet" href="/assets/app.css?v=d6mem1">
+  <link rel="stylesheet" href="/assets/app.css?v=d6chk1">
 </head>
 <body>
   <div id="page-loading" class="page-loading" hidden aria-live="polite" aria-busy="true">
@@ -16,9 +16,10 @@
       {% if authed is defined and authed %}
       <button type="button" class="nav-toggle" aria-controls="app-nav" aria-expanded="false">Menu</button>
       <nav id="app-nav" class="nav-links">
-        <a href="/dashboard/">Dashboard</a>
-        <a href="/membership-dashboard/" title="Group numbers">Group</a>
+        <a href="/dashboard/">Home</a>
+        <a href="/membership-dashboard/" title="Group numbers">Dashboard</a>
         <a href="/members/">Members</a>
+        <a href="/member-checks/" title="Member checks">Checks</a>
         <a href="/waiting-list/" title="Waiting list">Waiting</a>
         <a href="/equipment/">Equipment</a>
         <a href="/bank-transfers/" title="Bank transfers">Bank</a>

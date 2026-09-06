@@ -2,100 +2,73 @@
 {% block body %}
 <div class="card">
   <h2>Members — {{ groupName }}</h2>
-  <p class="muted">Fetched {{ fetchedAt }}</p>
+  <p class="muted">Fetched {{ fetchedAt }}. For Young Leaders / Leaders / multi-section checks see <a href="/member-checks/">Member checks</a>.</p>
   {% if errorMessage %}<div class="alert alert-error">{{ errorMessage }}</div>{% endif %}
-</div>
 
-<div class="card">
-  <h2>Troubleshooting</h2>
-
-  <h3>Youth in multiple sections</h3>
-  {% if youthDuplicates %}
-  <div class="table-wrap">
-  <table class="data">
-    <thead><tr><th>Name</th><th>Age</th><th>Sections</th></tr></thead>
-    <tbody>
-    {% for m in youthDuplicates %}
-      <tr><td>{{ m.firstname }} {{ m.lastname }}</td><td>{{ m.age }}</td><td>{{ m.sections }}</td></tr>
-    {% endfor %}
-    </tbody>
-  </table>
+  {% if sectionNames %}
+  <div class="section-filters" id="section-filters" data-members-filter>
+    <p class="muted" style="margin-bottom:0.35rem">Show sections:</p>
+    <div class="filter-chips">
+      <label class="filter-chip"><input type="checkbox" data-filter-all checked> All</label>
+      {% for name in sectionNames %}
+      <label class="filter-chip"><input type="checkbox" data-filter-section value="{{ name }}" checked> {{ name }}</label>
+      {% endfor %}
+    </div>
   </div>
-  {% else %}
-    <p class="muted">No youth multi-section issues found.</p>
   {% endif %}
 
-  <h3>Young Leaders checks</h3>
-  {% if ylMembers %}
   <div class="table-wrap">
-  <table class="data">
-    <thead><tr><th>Name</th><th>Sections</th><th>Status</th></tr></thead>
-    <tbody>
-    {% for m in ylMembers %}
-      <tr class="{% if m.statusOk %}status-ok{% else %}status-warn{% endif %}">
-        <td>{{ m.firstname }} {{ m.lastname }}</td>
-        <td>{{ m.sections }}</td>
-        <td class="{% if m.statusOk %}status-ok{% else %}status-warn{% endif %}">{{ m.issue }}</td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-  </div>
-  {% else %}
-    <p class="muted">No Young Leaders found.</p>
-  {% endif %}
-
-  <h3>Leaders checks</h3>
-  {% if leaderMembers %}
-  <div class="table-wrap">
-  <table class="data">
-    <thead><tr><th>Name</th><th>Sections</th><th>Status</th></tr></thead>
-    <tbody>
-    {% for m in leaderMembers %}
-      <tr class="{% if m.statusOk %}status-ok{% else %}status-warn{% endif %}">
-        <td>{{ m.firstname }} {{ m.lastname }}</td>
-        <td>{{ m.sections }}</td>
-        <td class="{% if m.statusOk %}status-ok{% else %}status-warn{% endif %}">{{ m.issue }}</td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-  </div>
-  {% else %}
-    <p class="muted">No Leaders found.</p>
-  {% endif %}
-</div>
-
-<div class="card">
-  <h2>Members</h2>
-  <p class="muted">Youth and Young Leaders (Leaders patrol rows listed separately below).</p>
-  <div class="table-wrap">
-  <table class="data">
+  <table class="data" id="members-table">
     <thead><tr><th>Section</th><th>Type</th><th>Name</th><th>Patrol</th><th>Age</th><th>DoB</th></tr></thead>
     <tbody>
     {% for m in members %}
-      <tr><td>{{ m.section_name }}</td><td>{{ m.section_type }}</td><td>{{ m.firstname }} {{ m.lastname }}</td><td>{{ m.patrol }}</td><td>{{ m.age }}</td><td>{{ m.dob }}</td></tr>
+      <tr data-section="{{ m.section_name }}">
+        <td>{{ m.section_name }}</td><td>{{ m.section_type }}</td><td>{{ m.firstname }} {{ m.lastname }}</td><td>{{ m.patrol }}</td><td>{{ m.age }}</td><td>{{ m.dob }}</td>
+      </tr>
     {% else %}
       <tr><td colspan="6" class="muted">No members loaded.</td></tr>
     {% endfor %}
     </tbody>
   </table>
   </div>
+  <p class="muted"><span id="members-visible-count">{{ members|length }}</span> shown</p>
 </div>
-
-{% if leaderRoster %}
-<div class="card">
-  <h2>Leaders</h2>
-  <div class="table-wrap">
-  <table class="data">
-    <thead><tr><th>Name</th><th>Sections</th><th>Age</th><th>DoB</th></tr></thead>
-    <tbody>
-    {% for m in leaderRoster %}
-      <tr><td>{{ m.firstname }} {{ m.lastname }}</td><td>{{ m.sections }}</td><td>{{ m.age }}</td><td>{{ m.dob }}</td></tr>
-    {% endfor %}
-    </tbody>
-  </table>
-  </div>
-</div>
-{% endif %}
+<script>
+(function () {
+  var root = document.querySelector('[data-members-filter]');
+  var table = document.getElementById('members-table');
+  if (!root || !table) return;
+  var allCb = root.querySelector('[data-filter-all]');
+  var sectionCbs = Array.prototype.slice.call(root.querySelectorAll('[data-filter-section]'));
+  var countEl = document.getElementById('members-visible-count');
+  function apply() {
+    var enabled = {};
+    sectionCbs.forEach(function (cb) {
+      if (cb.checked) enabled[cb.value] = true;
+    });
+    var rows = table.querySelectorAll('tbody tr[data-section]');
+    var visible = 0;
+    rows.forEach(function (tr) {
+      var show = !!enabled[tr.getAttribute('data-section') || ''];
+      tr.hidden = !show;
+      if (show) visible++;
+    });
+    if (countEl) countEl.textContent = String(visible);
+    if (allCb) {
+      allCb.checked = sectionCbs.length > 0 && sectionCbs.every(function (cb) { return cb.checked; });
+      allCb.indeterminate = !allCb.checked && sectionCbs.some(function (cb) { return cb.checked; });
+    }
+  }
+  if (allCb) {
+    allCb.addEventListener('change', function () {
+      sectionCbs.forEach(function (cb) { cb.checked = allCb.checked; });
+      apply();
+    });
+  }
+  sectionCbs.forEach(function (cb) {
+    cb.addEventListener('change', apply);
+  });
+  apply();
+})();
+</script>
 {% endblock %}

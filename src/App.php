@@ -45,6 +45,7 @@ final class App
         $router->get('/equipment', [$eq, 'index']);
         $router->get('/waiting-list', [$wl, 'index']);
         $router->get('/members', [$mem, 'index']);
+        $router->get('/member-checks', [$mem, 'checks']);
         $router->get('/bank-transfers', [$bank, 'index']);
         $router->post('/bank-transfers/select', [$bank, 'select']);
         $router->get('/settings', [$set, 'index']);

@@ -2,7 +2,7 @@
 {% block body %}
 <div class="card">
   <h2>Group numbers — {{ groupName }}</h2>
-  <p class="muted">Updated {{ dataUpdated }} · Waiting of age {{ totalWaiting }} · Too young {{ tooYoungWaiting }}</p>
+  <p class="muted">Updated {{ dataUpdated }} · Waiting of age {{ totalWaiting }} · Squirrels {{ squirrelsWaiting|default(0) }} · Too young {{ tooYoungWaiting }} · Explorers / too old {{ explorersWaiting|default(0) }} · All waiting {{ totalWaitingFull|default(0) }}</p>
   {% for typeName, g in grouped %}
     <h3>{{ typeName }}</h3>
     <div class="table-wrap">
@@ -14,6 +14,8 @@
           <td>{{ s.name }}</td><td>{{ s.members }}</td><td title="{{ s.leaderInitials }}">{{ s.leaders }}</td>
           <td title="{{ s.youngLeaderInitials }}">{{ s.youngLeaders }}</td><td>{{ s.capacity }}</td><td>{{ s.spaces }}</td><td class="muted" title="Waiting is counted by age band, not per section">—</td>
         </tr>
+      {% else %}
+        <tr><td colspan="7" class="muted">No OSM section of this type — waiting count still shown below.</td></tr>
       {% endfor %}
       <tr class="subtotal"><td>Subtotal</td><td>{{ g.subtotalMembers }}</td><td>{{ g.subtotalLeaders }}</td><td>{{ g.subtotalYLs }}</td><td>{{ g.subtotalCapacity }}</td><td>{{ g.subtotalSpaces }}</td><td>{{ g.subtotalWaiting }}</td></tr>
       </tbody>
