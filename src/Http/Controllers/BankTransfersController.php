@@ -132,6 +132,18 @@ final class BankTransfersController
             ];
         }
 
+        $upgradeMap = [];
+        foreach ($sections as $s) {
+            if (!is_array($s) || empty($s['section_id'])) continue;
+            $upgradeMap[(string) $s['section_id']] = [
+                'name' => (string) ($s['section_name'] ?? ''),
+                'type' => (string) ($s['section_type'] ?? ''),
+                'accounts' => $s['upgrades']['accounts'] ?? null,
+                'accountsEnabled' => self::accountsEnabled($s),
+            ];
+        }
+        OsmDebug::log('bank_section_upgrades', ['preferId' => $preferId, 'preferType' => $preferType, 'sections' => $upgradeMap]);
+
         $seen = [];
         $lastError = null;
         $bestEmpty = null;
@@ -142,17 +154,40 @@ final class BankTransfersController
             }
             $seen[$key] = true;
             try {
-                $res = $api->get($token, '/ext/finances/bank/', [
-                    'action' => 'getBankAccounts',
-                    'section' => $a['type'],
-                    'sectionid' => $a['id'],
-                ]);
-                OsmDebug::log('bank_accounts_' . $a['id'] . '_' . $a['type'], [
-                    'sectionId' => $a['id'],
-                    'sectionType' => $a['type'],
-                    'top_keys' => array_keys($res),
-                    'body' => $res,
-                ]);
+                $res = null;
+                $paths = [
+                    '/ext/finances/bank/',
+                    '/ext/finance/bank/',
+                ];
+                $paramSets = [
+                    ['action' => 'getBankAccounts', 'section' => $a['type'], 'sectionid' => $a['id']],
+                    ['action' => 'getBankAccounts', 'sectionid' => $a['id'], 'section' => $a['type']],
+                    ['action' => 'getBankAccounts', 'sectionid' => $a['id']],
+                ];
+                $lastPathErr = null;
+                foreach ($paths as $path) {
+                    foreach ($paramSets as $params) {
+                        try {
+                            $res = $api->get($token, $path, $params);
+                            OsmDebug::log('bank_accounts_' . $a['id'] . '_' . $a['type'], [
+                                'sectionId' => $a['id'],
+                                'sectionType' => $a['type'],
+                                'path' => $path,
+                                'params' => $params,
+                                'top_keys' => array_keys($res),
+                                'body' => $res,
+                            ]);
+                            $lastPathErr = null;
+                            break 2;
+                        } catch (Throwable $pe) {
+                            $lastPathErr = $pe;
+                            continue;
+                        }
+                    }
+                }
+                if ($res === null) {
+                    throw $lastPathErr ?? new \RuntimeException('bank accounts fetch failed');
+                }
                 $accounts = self::bankItems($res);
                 $payload = [
                     'sectionId' => $a['id'],

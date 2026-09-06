@@ -284,40 +284,78 @@ final class EquipmentController
 
             $listCount = count($lists);
             $sectionType = $usedType;
+            $itemErrors = [];
+            // osm-debug: list rows use id/name (not Node listid)
             foreach ($lists as $equipList) {
                 $listId = $equipList['listid'] ?? $equipList['list_id'] ?? $equipList['id'] ?? null;
                 if ($listId === null || $listId === '') {
                     continue;
                 }
                 $listName = (string) ($equipList['name'] ?? ('List ' . $listId));
-                $itemsRes = $api->get($token, '/ext/quartermaster/', [
-                    'action' => 'getItemsInList',
-                    'section' => $sectionType,
-                    'sectionid' => $sectionId,
-                    'listid' => $listId,
-                ]);
-                if ($listCount <= 5) {
-                    OsmDebug::log('equipment_items_' . $listId, [
-                        'listId' => $listId,
-                        'top_keys' => array_keys($itemsRes),
-                        'body' => $itemsRes,
+                try {
+                    $itemsRes = $api->get($token, '/ext/quartermaster/', [
+                        'action' => 'getItemsInList',
+                        'section' => $sectionType,
+                        'sectionid' => $sectionId,
+                        'listid' => $listId,
                     ]);
-                }
-                foreach (self::quartermasterItems($itemsRes) as $item) {
-                    if (!is_array($item)) {
-                        continue;
+                    if ($listCount <= 5) {
+                        OsmDebug::log('equipment_items_' . $listId, [
+                            'listId' => $listId,
+                            'top_keys' => array_keys($itemsRes),
+                            'body' => $itemsRes,
+                        ]);
                     }
+                    $rows = self::quartermasterItems($itemsRes);
+                    if ($rows === []) {
+                        // still show the list shell so user sees QM is reachable
+                        $equipment[] = [
+                            'listName' => $listName,
+                            'itemName' => '(no items in list)',
+                            'description' => '',
+                            'location' => '',
+                            'notes' => '',
+                            'condition' => '',
+                            'quantity' => '',
+                            'broken' => '',
+                        ];
+                    }
+                    foreach ($rows as $item) {
+                        if (!is_array($item)) {
+                            continue;
+                        }
+                        $equipment[] = [
+                            'listName' => $listName,
+                            'itemName' => $item['_1'] ?? ($item['name'] ?? ''),
+                            'description' => $item['_2'] ?? '',
+                            'location' => $item['_3'] ?? '',
+                            'notes' => $item['_4'] ?? '',
+                            'condition' => $item['_5'] ?? '',
+                            'quantity' => $item['_6'] ?? '',
+                            'broken' => $item['_7'] ?? '',
+                        ];
+                    }
+                } catch (Throwable $ie) {
+                    $itemErrors[] = $listName . ' (HTTP ' . (int) $ie->getCode() . ')';
+                    OsmDebug::log('equipment_items_error_' . $listId, [
+                        'listId' => $listId,
+                        'message' => $ie->getMessage(),
+                        'code' => (int) $ie->getCode(),
+                    ]);
                     $equipment[] = [
                         'listName' => $listName,
-                        'itemName' => $item['_1'] ?? ($item['name'] ?? ''),
-                        'description' => $item['_2'] ?? '',
-                        'location' => $item['_3'] ?? '',
-                        'notes' => $item['_4'] ?? '',
-                        'condition' => $item['_5'] ?? '',
-                        'quantity' => $item['_6'] ?? '',
-                        'broken' => $item['_7'] ?? '',
+                        'itemName' => '(could not load items)',
+                        'description' => $ie->getMessage(),
+                        'location' => '',
+                        'notes' => '',
+                        'condition' => '',
+                        'quantity' => '',
+                        'broken' => '',
                     ];
                 }
+            }
+            if ($itemErrors !== [] && $equipment !== []) {
+                $debugShape = ['top_keys' => ['item_errors'], 'data_type' => implode('; ', $itemErrors)];
             }
         } catch (Throwable $e) {
             $code = (int) $e->getCode();
@@ -336,11 +374,15 @@ final class EquipmentController
         }
 
         $parseHint = null;
-        if ($equipment === [] && $listCount === 0 && is_array($debugShape)) {
+        if ($listCount === 0 && is_array($debugShape)) {
             $parseHint = 'OSM returned no quartermaster lists for this section (keys: '
                 . implode(', ', $debugShape['top_keys'] ?? [])
                 . '; data=' . ($debugShape['data_type'] ?? '?')
                 . '). Confirm the Equipment section in Settings, or that quartermaster is enabled in OSM.';
+        } elseif (is_array($debugShape) && ($debugShape['top_keys'][0] ?? '') === 'item_errors') {
+            $parseHint = 'Found ' . $listCount . ' quartermaster list(s) but some item fetches failed: '
+                . ($debugShape['data_type'] ?? '')
+                . '. Lists still shown below.';
         }
 
         App::render('equipment-list.twig', Auth::baseContext([
