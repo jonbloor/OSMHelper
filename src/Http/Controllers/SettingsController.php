@@ -26,6 +26,7 @@ final class SettingsController
         $equipmentSectionType = (string) ($saved['equipmentSectionType'] ?? '');
         $financeSectionId = (string) ($saved['financeSectionId'] ?? '');
         $financeSectionType = (string) ($saved['financeSectionType'] ?? '');
+        $equipmentLocations = self::normaliseLocations($saved['equipmentLocations'] ?? null);
 
         $displayCutoffs = [];
         foreach (['squirrels', 'beavers', 'cubs', 'scouts', 'explorers'] as $key) {
@@ -69,6 +70,7 @@ final class SettingsController
             'equipmentSectionType' => $equipmentSectionType,
             'financeSectionId' => $financeSectionId,
             'financeSectionType' => $financeSectionType,
+            'equipmentLocations' => $equipmentLocations,
             'saved' => !empty($saved),
         ]));
     }
@@ -147,5 +149,48 @@ final class SettingsController
         }
         header('Location: /settings/');
         exit;
+    }
+
+    public function updateEquipmentLocations(): void
+    {
+        Auth::requireLogin();
+        $raw = $_POST['locations'] ?? [];
+        if (!is_array($raw)) {
+            $raw = [];
+        }
+        $locations = self::normaliseLocations($raw);
+        SettingsStore::merge(['equipmentLocations' => $locations]);
+        header('Location: /settings/');
+        exit;
+    }
+
+    /**
+     * Ordered unique non-empty location labels (trim; preserve order; drop blanks/dupes case-insensitively).
+     * @param mixed $raw
+     * @return list<string>
+     */
+    private static function normaliseLocations(mixed $raw): array
+    {
+        if (!is_array($raw)) {
+            return [];
+        }
+        $out = [];
+        $seen = [];
+        foreach ($raw as $item) {
+            if (!is_string($item) && !is_numeric($item)) {
+                continue;
+            }
+            $label = trim((string) $item);
+            if ($label === '') {
+                continue;
+            }
+            $key = strtolower($label);
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $out[] = $label;
+        }
+        return $out;
     }
 }

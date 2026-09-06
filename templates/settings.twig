@@ -70,3 +70,92 @@
   </form>
 </div>
 {% endblock %}
+
+<div class="card">
+  <h2>Equipment locations</h2>
+  <p class="muted">Named places for kit (shed, trailer, HQ loft, …). Used when updating equipment locations. Order is the dropdown order.</p>
+  <form method="post" action="/settings/update-equipment-locations/" id="equipment-locations-form">
+    <ul class="location-list" id="equipment-location-list">
+      {% for loc in equipmentLocations %}
+      <li class="location-row">
+        <input type="text" name="locations[]" value="{{ loc }}" maxlength="120" aria-label="Location name">
+        <span class="location-actions">
+          <button type="button" class="btn btn-secondary btn-small" data-loc-up title="Move up">↑</button>
+          <button type="button" class="btn btn-secondary btn-small" data-loc-down title="Move down">↓</button>
+          <button type="button" class="btn btn-danger btn-small" data-loc-remove title="Remove">Remove</button>
+        </span>
+      </li>
+      {% else %}
+      <li class="location-row location-empty muted">No locations yet — add one below.</li>
+      {% endfor %}
+    </ul>
+    <div class="row location-add">
+      <input type="text" id="new-location-input" maxlength="120" placeholder="New location name" aria-label="New location name">
+      <button type="button" class="btn btn-secondary" id="add-location-btn">Add</button>
+    </div>
+    <p class="muted">Tip: edit names in place, reorder with ↑↓, then save.</p>
+    <button class="btn" type="submit">Save locations</button>
+  </form>
+</div>
+<script>
+(function () {
+  var list = document.getElementById('equipment-location-list');
+  var addBtn = document.getElementById('add-location-btn');
+  var addInput = document.getElementById('new-location-input');
+  if (!list || !addBtn || !addInput) return;
+
+  function clearEmpty() {
+    var empty = list.querySelector('.location-empty');
+    if (empty) empty.remove();
+  }
+
+  function makeRow(value) {
+    var li = document.createElement('li');
+    li.className = 'location-row';
+    li.innerHTML =
+      '<input type="text" name="locations[]" value="" maxlength="120" aria-label="Location name">' +
+      '<span class="location-actions">' +
+      '<button type="button" class="btn btn-secondary btn-small" data-loc-up title="Move up">↑</button>' +
+      '<button type="button" class="btn btn-secondary btn-small" data-loc-down title="Move down">↓</button>' +
+      '<button type="button" class="btn btn-danger btn-small" data-loc-remove title="Remove">Remove</button>' +
+      '</span>';
+    li.querySelector('input').value = value;
+    return li;
+  }
+
+  addBtn.addEventListener('click', function () {
+    var v = (addInput.value || '').trim();
+    if (!v) { addInput.focus(); return; }
+    clearEmpty();
+    list.appendChild(makeRow(v));
+    addInput.value = '';
+    addInput.focus();
+  });
+  addInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); addBtn.click(); }
+  });
+
+  list.addEventListener('click', function (e) {
+    var btn = e.target.closest('button');
+    if (!btn) return;
+    var row = btn.closest('.location-row');
+    if (!row || !list.contains(row)) return;
+    if (btn.hasAttribute('data-loc-remove')) {
+      row.remove();
+      if (!list.querySelector('.location-row')) {
+        var empty = document.createElement('li');
+        empty.className = 'location-row location-empty muted';
+        empty.textContent = 'No locations yet — add one below.';
+        list.appendChild(empty);
+      }
+      return;
+    }
+    if (btn.hasAttribute('data-loc-up') && row.previousElementSibling) {
+      list.insertBefore(row, row.previousElementSibling);
+    }
+    if (btn.hasAttribute('data-loc-down') && row.nextElementSibling) {
+      list.insertBefore(row.nextElementSibling, row);
+    }
+  });
+})();
+</script>

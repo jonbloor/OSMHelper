@@ -149,7 +149,19 @@ final class OsmApi
         $status = $response->getStatusCode();
         $body = (string) $response->getBody();
         if ($status >= 400) {
-            throw new \RuntimeException('OSM HTTP ' . $status . ' for /' . ltrim(explode('?', $path, 2)[0], '/') . (str_contains($path, '?') ? '?…' : ''), $status);
+            $errHint = '';
+            $decodedErr = json_decode($body, true);
+            if (is_array($decodedErr)) {
+                $msg = $decodedErr['error']['message'] ?? ($decodedErr['error'] ?? null);
+                $code = is_array($decodedErr['error'] ?? null) ? ($decodedErr['error']['code'] ?? null) : null;
+                if (is_string($msg) && $msg !== '') {
+                    $errHint = ' — ' . $msg . ($code ? " [{$code}]" : '');
+                }
+            }
+            throw new \RuntimeException(
+                'OSM HTTP ' . $status . ' for /' . ltrim(explode('?', $path, 2)[0], '/') . (str_contains($path, '?') ? '?…' : '') . $errHint,
+                $status
+            );
         }
         return self::decodeBody($body);
     }

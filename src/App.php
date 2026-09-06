@@ -58,6 +58,7 @@ final class App
         $router->post('/settings/update-cutoffs', [$set, 'updateCutoffs']);
         $router->post('/settings/update-sections', [$set, 'updateSections']);
         $router->post('/settings/update-tool-sections', [$set, 'updateToolSections']);
+        $router->post('/settings/update-equipment-locations', [$set, 'updateEquipmentLocations']);
 
         $router->setNotFound(static function (): void {
             http_response_code(404);
