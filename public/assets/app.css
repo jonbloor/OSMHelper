@@ -567,3 +567,23 @@ th.sort-desc::after { content: " ▼"; font-size: 0.75em; }
   white-space: nowrap;
   text-shadow: 0 0 3px #fff, 0 0 3px #fff;
 }
+
+
+/* Zebra rows on data tables — gentle; status colours still win */
+table.data tbody tr:nth-child(even) {
+  background: #f6f8fa;
+}
+table.data tbody tr:nth-child(odd) {
+  background: #fff;
+}
+table.data tbody tr.status-ok:nth-child(even),
+table.data tbody tr.status-ok:nth-child(odd) {
+  background: #e6f6ec;
+}
+table.data tbody tr.status-warn:nth-child(even),
+table.data tbody tr.status-warn:nth-child(odd) {
+  background: #fff4e5;
+}
+table.data tbody tr:hover {
+  filter: brightness(0.98);
+}
