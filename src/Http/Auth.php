@@ -3,6 +3,7 @@ declare(strict_types=1);
 namespace App\Http;
 use App\App;
 use App\Osm\OsmApi;
+use Throwable;
 final class Auth
 {
     public static function requireLogin(): string
@@ -30,21 +31,43 @@ final class Auth
         return array_merge($ctx, $extra);
     }
 
-    /** @return array{rateLimit: ?array, rateResetText: ?string} */
+    /**
+     * Always returns a rateLimit array when called (Unknowns if OSM headers missing).
+     * @return array{rateLimit: array<string, mixed>, rateResetText: string}
+     */
     public static function rateLimitContext(): array
     {
+        return self::ensureRateLimit();
+    }
+
+    /** @return array{rateLimit: array<string, mixed>, rateResetText: string} */
+    public static function ensureRateLimit(): array
+    {
+        $token = (string) ($_SESSION['accessToken'] ?? '');
         $rate = OsmApi::sessionSnapshot();
-        $text = null;
-        if (is_array($rate)) {
-            $secs = $rate['secondsUntilReset'] ?? null;
-            if ($secs === null) {
-                $text = 'Unknown';
-            } elseif ((int) $secs <= 0) {
-                $text = 'now';
-            } else {
-                $mins = (int) ceil(((int) $secs) / 60);
-                $text = $mins . ' min';
+        if ($rate === null && $token !== '') {
+            try {
+                (new OsmApi())->get($token, '/oauth/resource');
+            } catch (Throwable) {
             }
+            $rate = OsmApi::sessionSnapshot();
+        }
+        if ($rate === null) {
+            $rate = [
+                'limit' => null,
+                'remaining' => null,
+                'resetInSec' => null,
+                'secondsUntilReset' => null,
+            ];
+        }
+        $secs = $rate['secondsUntilReset'] ?? null;
+        if ($secs === null) {
+            $text = 'Unknown';
+        } elseif ((int) $secs <= 0) {
+            $text = 'now';
+        } else {
+            $mins = (int) ceil(((int) $secs) / 60);
+            $text = $mins . ' minute' . ($mins === 1 ? '' : 's');
         }
         return ['rateLimit' => $rate, 'rateResetText' => $text];
     }

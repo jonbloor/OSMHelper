@@ -1,0 +1,14 @@
+{% if authed is defined and authed %}
+<div class="rate-limit-info">
+  <p><strong>How busy OSM is right now</strong></p>
+  <p class="muted">Online Scout Manager limits how many requests we can make in a short time. This shows how many you have left, and when that allowance refreshes.</p>
+  <ul>
+    <li>Limit: {{ rateLimit.limit ?? 'Unknown' }}</li>
+    <li>Remaining: {{ rateLimit.remaining ?? 'Unknown' }}</li>
+    <li>Resets in: {{ rateResetText|default('Unknown') }}</li>
+  </ul>
+  {% if rateLimit.remaining is not null and rateLimit.remaining <= 50 %}
+    <p class="warning">⚠️ Low remaining requests – use sparingly!</p>
+  {% endif %}
+</div>
+{% endif %}

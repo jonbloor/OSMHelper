@@ -91,7 +91,7 @@ final class AuthController
             // Only keep the four session fields long-term; drop ephemeral count helper after dashboard reads it
             // (_sections_count is P0 display only, not PII)
 
-            header('Location: /dashboard');
+            header('Location: /');
             exit;
         } catch (Throwable $e) {
             error_log('OAuth callback failed: ' . $e->getMessage());

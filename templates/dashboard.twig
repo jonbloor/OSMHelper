@@ -10,6 +10,7 @@
       <dt>Email</dt><dd>{{ email }}</dd>
       <dt>Group</dt><dd>{{ groupName }}</dd>
     </dl>
+    {% include '_rate_limit.twig' %}
     <div class="tool-grid">
       <a class="btn" href="/membership-dashboard/">Group numbers</a>
       <a class="btn" href="/members/">Members</a>
