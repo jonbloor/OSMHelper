@@ -382,6 +382,7 @@ final class BankTransfersController
                         'accountId' => $account['id'],
                         'reference' => $row['reference'],
                         'amount' => $row['amount'],
+                        'amountPence' => is_numeric($row['amountPence'] ?? null) ? (float) $row['amountPence'] : 0.0,
                         'description' => $row['description'],
                         'type' => $row['type'],
                     ];
@@ -395,8 +396,19 @@ final class BankTransfersController
             }
         }
 
+        // Primary: date desc; secondary: absolute amount so +X and -X legs pair.
         usort($transfers, static function ($a, $b) {
-            return strcmp($b['date'], $a['date']) ?: strcmp($a['accountName'], $b['accountName']);
+            $d = strcmp((string) $b['date'], (string) $a['date']);
+            if ($d !== 0) {
+                return $d;
+            }
+            $aa = abs((float) ($a['amountPence'] ?? 0));
+            $ba = abs((float) ($b['amountPence'] ?? 0));
+            if ($aa === $ba) {
+                return strcmp((string) $a['accountName'], (string) $b['accountName']);
+            }
+            // Larger absolute amounts first within the same day (pairs stay adjacent).
+            return $ba <=> $aa;
         });
 
         App::render('bank-all-transfers.twig', Auth::baseContext([
