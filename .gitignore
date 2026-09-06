@@ -3,3 +3,7 @@ vendor/
 composer.phar
 *.log
 .DS_Store
+
+# Durable settings
+/storage/
+!/storage/.gitkeep

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\App;
 use App\Http\Auth;
 use App\Osm\OsmApi;
+use App\Osm\OsmLists;
 use Throwable;
 final class MembersController
 {
@@ -37,8 +38,7 @@ final class MembersController
                         'action' => 'getListOfMembers', 'sectionid' => $sectionId,
                         'termid' => $termId, 'section' => $sectionType, 'sort' => 'patrol',
                     ]);
-                    $list = $res['items'] ?? $res['data'] ?? [];
-                    if (!is_array($list)) $list = [];
+                    $list = OsmLists::items($res);
                 } catch (Throwable) { continue; }
                 foreach ($list as $raw) {
                     if (!is_array($raw)) continue;

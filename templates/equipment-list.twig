@@ -1,5 +1,8 @@
 {% extends 'layout.twig' %}
 {% block body %}
+{% if needsConfig %}
+<p class="muted">Using a guessed adults section. Set the Equipment section under <a href="/settings/">Settings</a>.</p>
+{% endif %}
 <div class="card">
   <h2>Equipment</h2>
   <div class="table-wrap">

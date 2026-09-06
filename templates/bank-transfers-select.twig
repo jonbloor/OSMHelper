@@ -2,16 +2,17 @@
 {% block body %}
 <div class="card">
   <h2>Select finance section</h2>
-  <p class="muted">No section with accounts access was auto-detected. Pick one:</p>
+  <p class="muted">{{ message|default('No finance section configured yet. Pick one (or set it under Settings):') }}</p>
   <form method="post" action="/bank-transfers/select">
     <label>Section
       <select name="sectionId" required>
-        {% for s in sections if s.section_id is defined %}
-          <option value="{{ s.section_id }}">{{ s.section_name }} ({{ s.section_type }})</option>
+        {% for s in sections %}
+          {% if s.section_id is defined %}
+            <option value="{{ s.section_id }}|{{ s.section_type|default('adults') }}">{{ s.section_name }} ({{ s.section_type }})</option>
+          {% endif %}
         {% endfor %}
       </select>
     </label>
-    <input type="hidden" name="sectionType" value="adults">
     <button class="btn" type="submit">Continue</button>
   </form>
 </div>

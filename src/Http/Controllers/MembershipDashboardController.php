@@ -6,6 +6,8 @@ use App\Config;
 use App\Http\Auth;
 use App\Osm\OsmApi;
 use App\Store\CapacitiesStore;
+use App\Store\SettingsStore;
+use App\Osm\OsmLists;
 use Throwable;
 final class MembershipDashboardController
 {
@@ -24,9 +26,10 @@ final class MembershipDashboardController
         }
 
         $excluded = ['explorers', 'adults', 'waiting'];
-        $capacities = $_SESSION['capacities'] ?? [];
-        $visible = $_SESSION['visibleSections'] ?? [];
-        $cutoffs = array_merge(Config::DEFAULT_CUTOFFS, is_array($_SESSION['cutoffs'] ?? null) ? $_SESSION['cutoffs'] : []);
+        $saved = SettingsStore::all();
+        $capacities = is_array($saved['capacities'] ?? null) ? $saved['capacities'] : [];
+        $visible = is_array($saved['visibleSections'] ?? null) ? $saved['visibleSections'] : [];
+        $cutoffs = array_merge(Config::DEFAULT_CUTOFFS, is_array($saved['cutoffs'] ?? null) ? $saved['cutoffs'] : []);
 
         $filtered = array_values(array_filter($sections, static function ($sec) use ($excluded, $visible) {
             if (!is_array($sec)) return false;
@@ -58,8 +61,7 @@ final class MembershipDashboardController
                     'section' => $waitingType,
                     'sort' => 'dob',
                 ]);
-                $waitingList = $listRes['items'] ?? [];
-                if (!is_array($waitingList)) $waitingList = [];
+                $waitingList = OsmLists::items($listRes);
                 $now = time();
                 foreach ($waitingList as $applicant) {
                     if (!is_array($applicant) || empty($applicant['scoutid'])) continue;
@@ -118,8 +120,7 @@ final class MembershipDashboardController
                     'section' => $type,
                     'sort' => 'patrol',
                 ]);
-                $members = $listRes['items'] ?? [];
-                if (!is_array($members)) $members = [];
+                $members = OsmLists::items($listRes);
                 foreach ($members as $m) {
                     if (!is_array($m)) continue;
                     $patrol = (string) ($m['patrol'] ?? '');

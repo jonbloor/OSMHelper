@@ -5,6 +5,7 @@ use App\App;
 use App\Config;
 use App\Http\Auth;
 use App\Osm\OsmApi;
+use App\Store\SettingsStore;
 use Throwable;
 final class SettingsController
 {
@@ -17,11 +18,15 @@ final class SettingsController
         } catch (Throwable) {
             $sections = [];
         }
-        $excluded = ['waiting', 'adults', 'unknown'];
-        $filtered = array_values(array_filter($sections, static fn ($s) => is_array($s) && !in_array($s['section_type'] ?? '', $excluded, true)));
-        $cutoffs = array_merge(Config::DEFAULT_CUTOFFS, is_array($_SESSION['cutoffs'] ?? null) ? $_SESSION['cutoffs'] : []);
-        $capacities = is_array($_SESSION['capacities'] ?? null) ? $_SESSION['capacities'] : [];
-        $visible = is_array($_SESSION['visibleSections'] ?? null) ? $_SESSION['visibleSections'] : [];
+        $saved = SettingsStore::all();
+        $cutoffs = array_merge(Config::DEFAULT_CUTOFFS, is_array($saved['cutoffs'] ?? null) ? $saved['cutoffs'] : []);
+        $capacities = is_array($saved['capacities'] ?? null) ? $saved['capacities'] : [];
+        $visible = is_array($saved['visibleSections'] ?? null) ? $saved['visibleSections'] : [];
+        $equipmentSectionId = (string) ($saved['equipmentSectionId'] ?? '');
+        $equipmentSectionType = (string) ($saved['equipmentSectionType'] ?? '');
+        $financeSectionId = (string) ($saved['financeSectionId'] ?? '');
+        $financeSectionType = (string) ($saved['financeSectionType'] ?? '');
+
         $displayCutoffs = [];
         foreach (['squirrels', 'beavers', 'cubs', 'scouts', 'explorers'] as $key) {
             $decimal = (float) ($cutoffs[$key] ?? 0);
@@ -29,23 +34,42 @@ final class SettingsController
             $months = (int) round(($decimal - $years) * 12);
             $displayCutoffs[$key] = ['years' => $years, 'months' => $months];
         }
-        $displaySections = [];
-        foreach ($filtered as $sec) {
-            $id = (string) ($sec['section_id'] ?? '');
+
+        $excluded = ['waiting', 'unknown'];
+        $youthSections = [];
+        $allSections = [];
+        foreach ($sections as $sec) {
+            if (!is_array($sec) || empty($sec['section_id'])) {
+                continue;
+            }
+            $id = (string) $sec['section_id'];
             $type = (string) ($sec['section_type'] ?? '');
-            $displaySections[] = [
+            $row = [
                 'id' => $id,
                 'name' => (string) ($sec['section_name'] ?? ''),
-                'type' => Config::FRIENDLY_SECTION_TYPES[$type] ?? $type,
-                'defaultCapacity' => Config::DEFAULT_CAPACITIES[$type] ?? 'Not set',
-                'capacity' => $capacities[$id] ?? (Config::DEFAULT_CAPACITIES[$type] ?? ''),
-                'visible' => !isset($visible[$id]) || $visible[$id] !== false,
+                'type' => $type,
+                'typeLabel' => Config::FRIENDLY_SECTION_TYPES[$type] ?? $type,
             ];
+            $allSections[] = $row;
+            if (!in_array($type, $excluded, true) && $type !== 'adults') {
+                $youthSections[] = array_merge($row, [
+                    'capacity' => $capacities[$id] ?? (Config::DEFAULT_CAPACITIES[$type] ?? ''),
+                    'defaultCapacity' => Config::DEFAULT_CAPACITIES[$type] ?? 'Not set',
+                    'visible' => !isset($visible[$id]) || $visible[$id] !== false,
+                ]);
+            }
         }
+
         App::render('settings.twig', Auth::baseContext([
             'title' => 'Settings',
             'displayCutoffs' => $displayCutoffs,
-            'displaySections' => $displaySections,
+            'displaySections' => $youthSections,
+            'allSections' => $allSections,
+            'equipmentSectionId' => $equipmentSectionId,
+            'equipmentSectionType' => $equipmentSectionType,
+            'financeSectionId' => $financeSectionId,
+            'financeSectionType' => $financeSectionType,
+            'saved' => !empty($saved),
         ]));
     }
 
@@ -58,6 +82,7 @@ final class SettingsController
             $months = (int) ($_POST[$type . '_months'] ?? 0);
             $cutoffs[$type] = $years + ($months / 12);
         }
+        SettingsStore::merge(['cutoffs' => $cutoffs]);
         $_SESSION['cutoffs'] = $cutoffs;
         header('Location: /settings/');
         exit;
@@ -69,20 +94,57 @@ final class SettingsController
         $capacities = [];
         $visible = [];
         foreach ($_POST as $key => $value) {
-            if (str_starts_with($key, 'capacity_')) {
-                $id = substr($key, 9);
-                if (is_numeric($value)) $capacities[$id] = (int) $value;
-            } elseif (str_starts_with($key, 'visible_')) {
-                $id = substr($key, 8);
+            if (str_starts_with((string) $key, 'capacity_')) {
+                $id = substr((string) $key, 9);
+                if (is_numeric($value)) {
+                    $capacities[$id] = (int) $value;
+                }
+            } elseif (str_starts_with((string) $key, 'visible_')) {
+                $id = substr((string) $key, 8);
                 $visible[$id] = ($value === 'on');
             }
         }
-        // unchecked checkboxes absent — mark missing as false for known capacity keys
         foreach ($capacities as $id => $_) {
-            if (!isset($visible[$id])) $visible[$id] = false;
+            if (!isset($visible[$id])) {
+                $visible[$id] = false;
+            }
         }
+        SettingsStore::merge([
+            'capacities' => $capacities,
+            'visibleSections' => $visible,
+        ]);
         $_SESSION['capacities'] = $capacities;
         $_SESSION['visibleSections'] = $visible;
+        header('Location: /settings/');
+        exit;
+    }
+
+    public function updateToolSections(): void
+    {
+        Auth::requireLogin();
+        $equip = (string) ($_POST['equipmentSectionId'] ?? '');
+        $equipType = (string) ($_POST['equipmentSectionType'] ?? '');
+        $finance = (string) ($_POST['financeSectionId'] ?? '');
+        $financeType = (string) ($_POST['financeSectionType'] ?? '');
+
+        // Allow type to be passed as "id|type" from a single select
+        if (str_contains($equip, '|')) {
+            [$equip, $equipType] = explode('|', $equip, 2);
+        }
+        if (str_contains($finance, '|')) {
+            [$finance, $financeType] = explode('|', $finance, 2);
+        }
+
+        $patch = [
+            'equipmentSectionId' => $equip,
+            'equipmentSectionType' => $equipType !== '' ? $equipType : 'adults',
+            'financeSectionId' => $finance,
+            'financeSectionType' => $financeType !== '' ? $financeType : 'adults',
+        ];
+        SettingsStore::merge($patch);
+        if ($finance !== '') {
+            $_SESSION['financeSection'] = ['sectionId' => $finance, 'sectionType' => $patch['financeSectionType']];
+        }
         header('Location: /settings/');
         exit;
     }
