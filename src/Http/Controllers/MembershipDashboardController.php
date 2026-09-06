@@ -206,6 +206,63 @@ final class MembershipDashboardController
         $explorersWaiting = (int) ($waitingCounts['explorers'] ?? 0);
         $tooYoungWaiting = (int) ($waitingCounts['tooYoung'] ?? 0);
         $totalWaiting = array_sum(array_column($sorted, 'subtotalWaiting'));
+
+        // Charts use the same in-memory page data — no extra OSM calls.
+        $chartSections = [];
+        foreach ($sorted as $typeName => $g) {
+            foreach ($g['sections'] as $s) {
+                $cap = $s['capacity'];
+                $spacesVal = $s['spaces'];
+                $chartSections[] = [
+                    'name' => (string) $s['name'],
+                    'typeName' => (string) $typeName,
+                    'members' => (int) $s['members'],
+                    'spaces' => is_int($spacesVal) ? $spacesVal : null,
+                    'capacity' => is_int($cap) ? $cap : null,
+                    'overCapacity' => is_int($spacesVal) && $spacesVal < 0,
+                ];
+            }
+        }
+        $chartWaiting = [
+            ['label' => 'Too young', 'count' => $tooYoungWaiting],
+            ['label' => 'Squirrels', 'count' => $squirrelsWaiting],
+            ['label' => 'Beavers', 'count' => (int) ($waitingCounts['beavers'] ?? 0)],
+            ['label' => 'Cubs', 'count' => (int) ($waitingCounts['cubs'] ?? 0)],
+            ['label' => 'Scouts', 'count' => (int) ($waitingCounts['scouts'] ?? 0)],
+            ['label' => 'Explorers', 'count' => $explorersWaiting],
+        ];
+        $chartFullness = [];
+        foreach ($sorted as $typeName => $g) {
+            $mem = (int) $g['subtotalMembers'];
+            $cap = (int) $g['subtotalCapacity'];
+            // Omit types with no numeric capacity ("Not set" contributes 0 and no section ints).
+            $hasCap = false;
+            foreach ($g['sections'] as $s) {
+                if (is_int($s['capacity'])) {
+                    $hasCap = true;
+                    break;
+                }
+            }
+            if (!$hasCap || $cap <= 0) {
+                continue;
+            }
+            $chartFullness[] = [
+                'typeName' => (string) $typeName,
+                'members' => $mem,
+                'capacity' => $cap,
+                'pct' => (int) round(($mem / $cap) * 100),
+            ];
+        }
+
+        $chartMaxMembersSpaces = 1;
+        foreach ($chartSections as $s) {
+            $chartMaxMembersSpaces = max($chartMaxMembersSpaces, abs((int) $s['members']), abs((int) ($s['spaces'] ?? 0)));
+        }
+        $chartMaxWaiting = 1;
+        foreach ($chartWaiting as $w) {
+            $chartMaxWaiting = max($chartMaxWaiting, (int) $w['count']);
+        }
+
         App::render('membership-dashboard.twig', Auth::baseContext([
             'title' => 'Group numbers',
             'grouped' => $sorted,
@@ -220,6 +277,11 @@ final class MembershipDashboardController
             'tooYoungWaiting' => $tooYoungWaiting,
             'totalWaitingFull' => $waitingOfAgeYouth + $squirrelsWaiting + $tooYoungWaiting + $explorersWaiting,
             'dataUpdated' => (new \DateTimeImmutable('now', new \DateTimeZone('Europe/London')))->format('d/m/y H:i'),
+            'chartSections' => $chartSections,
+            'chartWaiting' => $chartWaiting,
+            'chartFullness' => $chartFullness,
+            'chartMaxMembersSpaces' => $chartMaxMembersSpaces,
+            'chartMaxWaiting' => $chartMaxWaiting,
         ]));
     }
 }

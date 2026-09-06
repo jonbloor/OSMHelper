@@ -3,6 +3,77 @@
 <div class="card">
   <h2>Group numbers — {{ groupName }}</h2>
   <p class="muted">Updated {{ dataUpdated }} · Waiting of age {{ totalWaiting }} · Squirrels {{ squirrelsWaiting|default(0) }} · Too young {{ tooYoungWaiting }} · Explorers / too old {{ explorersWaiting|default(0) }} · All waiting {{ totalWaitingFull|default(0) }}</p>
+  <p class="muted chart-snapshot">Charts: snapshot as of page load (same data as the tables below — no extra OSM calls).</p>
+
+  {% set maxMembersSpaces = chartMaxMembersSpaces|default(1) %}
+  {% set maxWaiting = chartMaxWaiting|default(1) %}
+
+  <div class="chart-grid">
+    <section class="chart-card" aria-label="Members vs spaces by section">
+      <h3>Members vs spaces by section</h3>
+      {% if chartSections|default([]) is empty %}
+        <p class="muted">No section rows to chart.</p>
+      {% else %}
+        <ul class="bar-chart">
+          {% for s in chartSections %}
+            {% set memPct = maxMembersSpaces > 0 ? ((s.members|abs) / maxMembersSpaces * 100) : 0 %}
+            {% set spVal = s.spaces is not null ? s.spaces : 0 %}
+            {% set spPct = maxMembersSpaces > 0 ? ((spVal|abs) / maxMembersSpaces * 100) : 0 %}
+            <li>
+              <div class="bar-label">{{ s.name }}</div>
+              <div class="bar-pair">
+                <div class="bar-track" title="Members {{ s.members }}">
+                  <span class="bar-fill bar-members" style="width: {{ memPct }}%"></span>
+                  <span class="bar-value">{{ s.members }} mem</span>
+                </div>
+                <div class="bar-track" title="Spaces {{ s.spaces is not null ? s.spaces : 'n/a' }}">
+                  <span class="bar-fill {{ s.overCapacity ? 'bar-over' : 'bar-spaces' }}" style="width: {{ spPct }}%"></span>
+                  <span class="bar-value">{{ s.spaces is not null ? s.spaces : '—' }} sp{% if s.overCapacity %} (over){% endif %}</span>
+                </div>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </section>
+
+    <section class="chart-card" aria-label="Waiting by age band">
+      <h3>Waiting by age band</h3>
+      <ul class="bar-chart">
+        {% for w in chartWaiting|default([]) %}
+          {% set pct = maxWaiting > 0 ? (w.count / maxWaiting * 100) : 0 %}
+          <li>
+            <div class="bar-label">{{ w.label }}</div>
+            <div class="bar-track" title="{{ w.count }}">
+              <span class="bar-fill bar-waiting" style="width: {{ pct }}%"></span>
+              <span class="bar-value">{{ w.count }}</span>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section class="chart-card" aria-label="Fullness percent by section type">
+      <h3>Fullness % by section type</h3>
+      {% if chartFullness|default([]) is empty %}
+        <p class="muted">No section types with a set capacity.</p>
+      {% else %}
+        <ul class="bar-chart">
+          {% for f in chartFullness %}
+            {% set pct = f.pct > 100 ? 100 : (f.pct < 0 ? 0 : f.pct) %}
+            <li>
+              <div class="bar-label">{{ f.typeName }}</div>
+              <div class="bar-track" title="{{ f.members }} / {{ f.capacity }} ({{ f.pct }}%)">
+                <span class="bar-fill {{ f.pct > 100 ? 'bar-over' : 'bar-fullness' }}" style="width: {{ pct }}%"></span>
+                <span class="bar-value">{{ f.pct }}% <span class="muted">({{ f.members }}/{{ f.capacity }})</span></span>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </section>
+  </div>
+
   {% for typeName, g in grouped %}
     <h3>{{ typeName }}</h3>
     <div class="table-wrap">
