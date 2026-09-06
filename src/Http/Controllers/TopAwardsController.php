@@ -341,6 +341,7 @@ final class TopAwardsController
                     'name' => trim(($m['firstname'] ?? '') . ' ' . ($m['lastname'] ?? '')),
                     'firstname' => $m['firstname'],
                     'lastname' => $m['lastname'],
+                    'section_name' => $sectionName,
                     'patrol' => $m['patrol'],
                     'startedsection' => $start,
                     'activity' => $activity,
