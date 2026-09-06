@@ -1,4 +1,4 @@
-/* cache-bust d6fin2 */
+/* cache-bust d6over1 */
 :root {
   --bg: #f4f6f8;
   --card: #ffffff;
@@ -848,4 +848,11 @@ table.data tbody tr.row-missing-leg:hover td {
 }
 table.data tbody tr.row-no-section td {
   color: var(--muted);
+}
+
+
+/* Group numbers — over capacity label (match .bar-over) */
+.spaces-over {
+  color: #c1121f;
+  font-weight: 700;
 }

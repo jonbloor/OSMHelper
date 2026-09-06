@@ -32,7 +32,7 @@
                   <div class="bar-track" title="Spaces {{ s.spaces is not null ? s.spaces : 'n/a' }}">
                     <span class="bar-fill {{ s.overCapacity ? 'bar-over' : 'bar-spaces' }}" style="width: {{ spPct }}%"></span>
                   </div>
-                  <span class="bar-value">{% if s.spaces is null %}—{% elseif s.overCapacity %}{{ s.spaces|abs }} over{% else %}{{ s.spaces }} sp{% endif %}</span>
+                  <span class="bar-value">{% if s.spaces is null %}—{% elseif s.overCapacity %}<span class="spaces-over">{{ s.spaces|abs }} over</span>{% else %}{{ s.spaces }} sp{% endif %}</span>
                 </div>
               </div>
             </li>
@@ -91,7 +91,7 @@
       {% for s in g.sections %}
         <tr>
           <td>{{ s.name }}</td><td>{{ s.members }}</td><td title="{{ s.leaderInitials }}">{{ s.leaders }}</td>
-          <td title="{{ s.youngLeaderInitials }}">{{ s.youngLeaders }}</td><td>{{ s.capacity }}</td><td>{% if s.spaces is same as('-') or s.spaces is null %}—{% elseif s.spaces < 0 %}{{ (-s.spaces) }} over{% else %}{{ s.spaces }}{% endif %}</td><td class="muted" title="Waiting is counted by age band, not per section">—</td>
+          <td title="{{ s.youngLeaderInitials }}">{{ s.youngLeaders }}</td><td>{{ s.capacity }}</td><td>{% if s.spaces is same as('-') or s.spaces is null %}—{% elseif s.spaces < 0 %}<span class="spaces-over">{{ (-s.spaces) }} over</span>{% else %}{{ s.spaces }}{% endif %}</td><td class="muted" title="Waiting is counted by age band, not per section">—</td>
         </tr>
       {% else %}
         {# Keep seven cells so Waiting still lines up with the header when there are no sections #}
