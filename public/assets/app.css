@@ -1,4 +1,4 @@
-/* cache-bust d6nav3 */
+/* cache-bust d6fin2 */
 :root {
   --bg: #f4f6f8;
   --card: #ffffff;
@@ -828,3 +828,24 @@ td.cell-broken {
 table.data tbody tr.row-deleted td { color: var(--muted); text-decoration: line-through; }
 table.data tbody tr.row-transfer td { }
 
+
+
+/* All transfers — unpaired legs */
+table.data tbody tr.row-missing-leg td {
+  background: #fff4e5;
+}
+table.data tbody tr.row-missing-leg:hover td {
+  background: #ffe8cc;
+}
+.badge-warn {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  background: #f6c000;
+  color: #1a1a1a;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+table.data tbody tr.row-no-section td {
+  color: var(--muted);
+}

@@ -6,8 +6,12 @@
     Transfer lines across {{ accountCount|default(0) }} active account(s)
     {% if sectionId %} · section {{ sectionId }}{% endif %}
     · fetched {{ fetchedAt }}.
-    Read-only. Use this to spot missing transfer legs when balances look wrong.
+    Read-only. Rows with the same date and absolute amount should appear as + and − legs;
+    unpaired legs are highlighted.
   </p>
+  {% if missingCount|default(0) > 0 %}
+  <div class="alert alert-error">{{ missingCount }} transfer row(s) look unpaired (missing the other leg).</div>
+  {% endif %}
   <p class="row">
     <a class="btn btn-secondary" href="/bank-transfers/">← Bank accounts</a>
   </p>
@@ -26,19 +30,21 @@
         <th>Reference</th>
         <th>Amount</th>
         <th>Description</th>
+        <th>Legs</th>
       </tr>
     </thead>
     <tbody>
     {% for t in transfers %}
-      <tr>
+      <tr class="{% if t.missingLeg %}row-missing-leg{% endif %}">
         <td>{{ t.date }}</td>
         <td><a href="/bank-transfers/?account={{ t.accountId }}">{{ t.accountName }}</a></td>
         <td>{{ t.reference }}</td>
         <td>{{ t.amount }}</td>
         <td>{{ t.description }}</td>
+        <td>{% if t.missingLeg %}<span class="badge-warn">Missing leg</span>{% else %}<span class="muted">Paired</span>{% endif %}</td>
       </tr>
     {% else %}
-      <tr><td colspan="5" class="muted">No transfer lines found across active accounts (or OSM returned none with is_transfer).</td></tr>
+      <tr><td colspan="6" class="muted">No transfer lines found across active accounts (or OSM returned none with is_transfer).</td></tr>
     {% endfor %}
     </tbody>
   </table>

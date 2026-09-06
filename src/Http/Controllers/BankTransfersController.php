@@ -411,12 +411,46 @@ final class BankTransfersController
             return $ba <=> $aa;
         });
 
+        // Flag unpaired legs: same date + same |amount| needs matching + and −.
+        $buckets = [];
+        foreach ($transfers as $i => $row) {
+            $abs = abs((float) ($row['amountPence'] ?? 0));
+            $key = (string) ($row['date'] ?? '') . '|' . sprintf('%.0f', $abs);
+            $buckets[$key][] = $i;
+        }
+        foreach ($transfers as $i => $_) {
+            $transfers[$i]['missingLeg'] = false;
+        }
+        foreach ($buckets as $idxs) {
+            $plus = [];
+            $minus = [];
+            foreach ($idxs as $i) {
+                $pence = (float) ($transfers[$i]['amountPence'] ?? 0);
+                if ($pence > 0) {
+                    $plus[] = $i;
+                } elseif ($pence < 0) {
+                    $minus[] = $i;
+                } else {
+                    $transfers[$i]['missingLeg'] = true;
+                }
+            }
+            $pairs = min(count($plus), count($minus));
+            foreach ($plus as $k => $i) {
+                $transfers[$i]['missingLeg'] = $k >= $pairs;
+            }
+            foreach ($minus as $k => $i) {
+                $transfers[$i]['missingLeg'] = $k >= $pairs;
+            }
+        }
+        $missingCount = count(array_filter($transfers, static fn ($r) => !empty($r['missingLeg'])));
+
         App::render('bank-all-transfers.twig', Auth::baseContext([
             'title' => 'All transfers',
             'sectionName' => $sectionName,
             'sectionId' => $sectionId,
             'sectionType' => $sectionType,
             'transfers' => $transfers,
+            'missingCount' => $missingCount,
             'accountCount' => count($active),
             'errors' => $errors,
             'fetchedAt' => (new \DateTimeImmutable('now', new \DateTimeZone('Europe/London')))->format('d/m/y H:i'),

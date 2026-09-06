@@ -94,7 +94,16 @@
           <td title="{{ s.youngLeaderInitials }}">{{ s.youngLeaders }}</td><td>{{ s.capacity }}</td><td>{{ s.spaces }}</td><td class="muted" title="Waiting is counted by age band, not per section">—</td>
         </tr>
       {% else %}
-        <tr><td colspan="7" class="muted">No OSM section of this type — waiting count still shown below.</td></tr>
+        {# Keep seven cells so Waiting still lines up with the header when there are no sections #}
+        <tr class="row-no-section">
+          <td class="muted">No OSM section of this type</td>
+          <td>0</td>
+          <td>0</td>
+          <td>0</td>
+          <td>0</td>
+          <td>0</td>
+          <td class="muted" title="Waiting is counted by age band on the subtotal row">—</td>
+        </tr>
       {% endfor %}
       <tr class="subtotal"><td>Subtotal</td><td>{{ g.subtotalMembers }}</td><td>{{ g.subtotalLeaders }}</td><td>{{ g.subtotalYLs }}</td><td>{{ g.subtotalCapacity }}</td><td>{{ g.subtotalSpaces }}</td><td>{{ g.subtotalWaiting }}</td></tr>
       </tbody>
