@@ -3,7 +3,7 @@
 <div class="card">
   <h2>Select finance section</h2>
   <p class="muted">{{ message|default('No finance section configured yet. Pick one (or set it under Settings):') }}</p>
-  <form method="post" action="/bank-transfers/select">
+  <form method="post" action="/bank-transfers/select/">
     <label>Section
       <select name="sectionId" required>
         {% for s in sections %}

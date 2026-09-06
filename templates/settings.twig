@@ -5,7 +5,7 @@
 {% endif %}
 <div class="card">
   <h2>Age cutoffs</h2>
-  <form method="post" action="/settings/update-cutoffs">
+  <form method="post" action="/settings/update-cutoffs/">
     <div class="table-wrap">
     <table class="data">
       <thead><tr><th>Section</th><th>Years</th><th>Months</th></tr></thead>
@@ -26,7 +26,7 @@
 <div class="card">
   <h2>Section capacity &amp; visibility</h2>
   <p class="muted">Set capacity per OSM section (editable). Defaults shown for reference.</p>
-  <form method="post" action="/settings/update-sections">
+  <form method="post" action="/settings/update-sections/">
     <div class="table-wrap">
     <table class="data">
       <thead><tr><th>Show</th><th>Section</th><th>Type</th><th>Capacity</th><th>Default</th></tr></thead>
@@ -49,7 +49,7 @@
 <div class="card">
   <h2>Tool sections</h2>
   <p class="muted">One-time picks: which OSM section Equipment and Bank transfers use. Change anytime here.</p>
-  <form method="post" action="/settings/update-tool-sections">
+  <form method="post" action="/settings/update-tool-sections/">
     <label>Equipment section
       <select name="equipmentSectionId">
         <option value="">— use first adults section —</option>

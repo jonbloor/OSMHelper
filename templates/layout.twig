@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% if title and title != 'OSMHelper' %}{{ title }} · {% endif %}OSMHelper</title>
-  <link rel="stylesheet" href="/assets/app.css?v=d6fix2">
+  <link rel="stylesheet" href="/assets/app.css?v=d6fix3">
 </head>
 <body>
   <div id="page-loading" class="page-loading" hidden aria-live="polite" aria-busy="true">
@@ -51,14 +51,6 @@
       </script>
       {% endif %}
     </header>
-    {% if authed is defined and authed and rateLimit %}
-    <div class="rate-limit-bar" title="OSM API rate limit for this session">
-      API {{ rateLimit.remaining ?? '?' }}/{{ rateLimit.limit ?? '?' }} left · resets {{ rateResetText|default('?') }}
-      {% if rateLimit.remaining is not null and rateLimit.remaining <= 50 %}
-        <span class="warning"> · Low — use sparingly</span>
-      {% endif %}
-    </div>
-    {% endif %}
     {% if authed is defined and authed %}
     <p class="slow-fetch-warning muted">Some tools take a moment — we fetch fresh data from OSM.</p>
     {% endif %}
