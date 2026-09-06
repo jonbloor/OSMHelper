@@ -1,0 +1,23 @@
+{% extends 'layout.twig' %}
+
+{% block body %}
+  <div class="card">
+    <h2>Connect to Online Scout Manager</h2>
+    <p class="muted">
+      OSMHelper helps Scout leaders with membership, quartermaster, and finance tools
+      using your OSM account. Only your access token and basic profile stay in the server session.
+    </p>
+
+    {% if authed %}
+      <p>Signed in{% if fullName %} as <strong>{{ fullName }}</strong>{% endif %}{% if groupName %} ({{ groupName }}){% endif %}.</p>
+      <div class="row">
+        <a class="btn" href="/dashboard">Go to dashboard</a>
+        <a class="btn btn-secondary" href="/logout">Logout</a>
+      </div>
+    {% else %}
+      <p>
+        <a class="btn" href="/auth">Connect with OSM</a>
+      </p>
+    {% endif %}
+  </div>
+{% endblock %}

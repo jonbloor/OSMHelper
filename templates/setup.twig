@@ -1,0 +1,28 @@
+{% extends 'layout.twig' %}
+
+{% block body %}
+  <div class="alert alert-error">
+    <strong>Configuration required.</strong> Copy <code>.env.example</code> to <code>.env</code>
+    and set the missing keys below. Do not commit secrets.
+  </div>
+
+  <div class="card">
+    <h2>Missing environment variables</h2>
+    <ul>
+      {% for key in missing %}
+        <li><code>{{ key }}</code></li>
+      {% endfor %}
+    </ul>
+
+    <p class="muted">Required keys:</p>
+    <pre>SESSION_SECRET=
+CLIENT_ID=
+CLIENT_SECRET=
+REDIRECT_URI=https://osmhelper.co.uk/callback</pre>
+
+    <p class="muted">
+      Register the OAuth app with OSM and set the redirect URI to exactly
+      <code>https://osmhelper.co.uk/callback</code> (production).
+    </p>
+  </div>
+{% endblock %}

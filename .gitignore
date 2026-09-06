@@ -1,17 +1,5 @@
-# environment
+vendor/
 .env
-.env.*
-
-# node
-node_modules/
-
-# logs
-logs
+composer.phar
 *.log
-
-# build
-dist
-build
-
-# OS
 .DS_Store

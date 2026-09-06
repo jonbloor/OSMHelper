@@ -1,0 +1,9 @@
+{% extends 'layout.twig' %}
+
+{% block body %}
+  <div class="card">
+    <h2>{{ title|default('Error') }}</h2>
+    <p>{{ message|default('Something went wrong.') }}</p>
+    <p><a class="btn btn-secondary" href="/">Back home</a></p>
+  </div>
+{% endblock %}
