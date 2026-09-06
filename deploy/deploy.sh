@@ -22,6 +22,10 @@ scp -i "$SSH_KEY" -o IdentitiesOnly=yes "$ROOT/deploy/htdocs-index.php" "${REMOT
 tar -C "$ROOT/deploy/route-stubs" -czf "$TMP/stubs.tgz" .
 scp -i "$SSH_KEY" -o IdentitiesOnly=yes "$TMP/stubs.tgz" "${REMOTE}:/home/osmhelper/tmp/osmhelper-stubs.tgz"
 "${SSH[@]}" 'tar -xzf /home/osmhelper/tmp/osmhelper-stubs.tgz -C /home/osmhelper/htdocs/osmhelper.co.uk || true; rm -f /home/osmhelper/tmp/osmhelper-stubs.tgz; rm -rf /home/osmhelper/htdocs/osmhelper.co.uk/update-cutoffs /home/osmhelper/htdocs/osmhelper.co.uk/update-sections; cd /home/osmhelper/htdocs/osmhelper.co.uk && ln -sfn /home/osmhelper/app/public/assets assets'
+# Remove auth/callback dirs so OSM redirect_uri /callback (no slash) hits index.php.
+# Directory stubs caused nginx 301 → http://…/callback/ which dropped the Secure session cookie.
+echo "==> Remove auth/callback dirs (OAuth cookie fix)"
+"${SSH[@]}" 'rm -rf /home/osmhelper/htdocs/osmhelper.co.uk/auth /home/osmhelper/htdocs/osmhelper.co.uk/callback'
 
 echo "==> .env + SESSION_SECRET"
 "${SSH[@]}" 'cd /home/osmhelper/app && if [ ! -f .env ]; then cp .env.example .env; fi'

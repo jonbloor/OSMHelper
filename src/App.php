@@ -28,6 +28,7 @@ final class App
         $this->loadEnv();
         $this->bootSession();
         self::sendSecurityHeaders();
+        self::upgradeInsecureOAuthCallback();
         $this->bootTwig();
         $router = new Router();
         $home = new HomeController();
@@ -102,12 +103,51 @@ final class App
         $secret = Config::get('SESSION_SECRET', 'dev-insecure-change-me') ?? 'dev-insecure-change-me';
         session_name('osmhelper');
         $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-            || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
-        session_set_cookie_params(['lifetime' => 86400, 'path' => '/', 'secure' => $https, 'httponly' => true, 'samesite' => 'Lax']);
+            || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+            || (isset($_SERVER['HTTP_X_FORWARDED_SSL']) && $_SERVER['HTTP_X_FORWARDED_SSL'] === 'on');
+        // Production host is always HTTPS; never emit a non-Secure session cookie there
+        // (an http:// intermediate redirect would otherwise start a second empty session).
+        $host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+        if (str_contains($host, 'osmhelper.co.uk')) {
+            $https = true;
+        }
+        session_set_cookie_params([
+            'lifetime' => 86400,
+            'path' => '/',
+            'secure' => $https,
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
         ini_set('session.use_strict_mode', '1');
         session_start();
         if (!isset($_SESSION['_init'])) $_SESSION['_init'] = hash('sha256', $secret);
     }
+
+    /**
+     * CloudPanel may 301 /callback → http://…/callback/ which drops the Secure
+     * session cookie. Bounce to HTTPS before fail-closed state check when possible.
+     */
+    private static function upgradeInsecureOAuthCallback(): void
+    {
+        $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+        if ($https) {
+            return;
+        }
+        $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+        $pathNorm = '/' . trim((string) $path, '/');
+        if ($pathNorm !== '/callback') {
+            return;
+        }
+        if (!isset($_GET['code'], $_GET['state'])) {
+            return;
+        }
+        $qs = $_SERVER['QUERY_STRING'] ?? '';
+        $target = 'https://osmhelper.co.uk/callback/' . ($qs !== '' ? ('?' . $qs) : '');
+        header('Location: ' . $target, true, 302);
+        exit;
+    }
+
     private static function sendSecurityHeaders(): void
     {
         if (headers_sent()) {

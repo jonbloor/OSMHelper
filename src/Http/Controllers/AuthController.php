@@ -24,7 +24,10 @@ final class AuthController
         }
 
         $oauth = new OsmOAuth();
-        header('Location: ' . $oauth->getAuthorizationUrl());
+        $url = $oauth->getAuthorizationUrl();
+        // Persist oauth2state before leaving for OSM (fail-closed callback needs it).
+        session_write_close();
+        header('Location: ' . $url);
         exit;
     }
 
