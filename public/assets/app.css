@@ -251,9 +251,26 @@ header.app-header h1 {
 }
 
 table.data {
-  width: 100%;
+  /* min-width 100% keeps short tables full-bleed; max-content lets wide
+     tables overflow .table-wrap (overflow-x:auto) instead of crushing cols.
+     Search was "fixing" missing cols because tr[hidden] drops rows from
+     width calc and squeezed columns suddenly got space. */
+  width: max-content;
+  min-width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
+}
+table.data th,
+table.data td {
+  /* keep columns from collapsing to 0 when neighbouring cells are long */
+  white-space: nowrap;
+}
+table.data td.notes {
+  white-space: normal;
+  min-width: 8rem;
+  max-width: 220px;
+  font-size: 0.85rem;
+  color: var(--muted);
 }
 
 table.data th,
@@ -276,17 +293,21 @@ table.data tr.subtotal td {
   background: #f0f3f5;
 }
 
-/* Settings cards: breathing room without touching field behaviour */
+/* Settings cards: breathing room without touching field behaviour.
+   Scope to settings-style stacked fields — not table-tools / bulk-move labels. */
 .card + .card { margin-top: 1.25rem; }
-.card form label {
+.card form > label,
+.card form .stack > label {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
   margin-bottom: 0.85rem;
   font-weight: 500;
 }
-.card form label select,
-.card form label input {
+.card form > label select,
+.card form > label input,
+.card form .stack > label select,
+.card form .stack > label input {
   max-width: 28rem;
 }
 
@@ -298,7 +319,6 @@ table.data tr.subtotal td {
 }
 
 
-table.data td.notes { max-width: 220px; font-size: 0.85rem; color: var(--muted); }
 input[type=number], select {
   padding: 0.35rem 0.5rem;
   border: 1px solid var(--border);

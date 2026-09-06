@@ -30,6 +30,7 @@
       <span class="muted" id="equip-selected-count">0 selected</span>
     </div>
     <p class="muted">Confirm before anything is written. Each selected item updates Location in OSM (~150ms apart). Locations are managed in <a href="/settings/">Settings</a>.</p>
+  </form>
   {% elseif equipment is not empty %}
   <p class="muted">To bulk-move kit, add named locations under <a href="/settings/">Settings → Equipment locations</a>.</p>
   {% endif %}
@@ -78,9 +79,6 @@
     </tbody>
   </table>
   </div>
-  {% if equipmentLocations is defined and equipmentLocations|length > 0 %}
-  </form>
-  {% endif %}
 </div>
 {% if equipmentLocations is defined and equipmentLocations|length > 0 %}
 <script>
