@@ -28,10 +28,11 @@ echo "==> .env + SESSION_SECRET"
 scp -i "$SSH_KEY" -o IdentitiesOnly=yes "$ROOT/deploy/ensure-session-secret.php" "${REMOTE}:/home/osmhelper/app/ensure-session-secret.php"
 "${SSH[@]}" 'cd /home/osmhelper/app && php ensure-session-secret.php && rm -f ensure-session-secret.php'
 
-echo "==> storage writable"
-"${SSH[@]}" 'mkdir -p /home/osmhelper/app/storage; chgrp -R osmhelper /home/osmhelper/app/storage; chmod 770 /home/osmhelper/app/storage; touch /home/osmhelper/app/storage/.gitkeep; if [ -f /home/osmhelper/app/storage/settings.json ]; then chgrp osmhelper /home/osmhelper/app/storage/settings.json; chmod 660 /home/osmhelper/app/storage/settings.json; fi'
 
 echo "==> Permissions"
 "${SSH[@]}" 'chgrp -R osmhelper /home/osmhelper/app; find /home/osmhelper/app -type d -exec chmod 750 {} \; ; find /home/osmhelper/app -type f -exec chmod 640 {} \; ; chmod 640 /home/osmhelper/app/.env; chgrp -R osmhelper /home/osmhelper/htdocs/osmhelper.co.uk/auth /home/osmhelper/htdocs/osmhelper.co.uk/callback /home/osmhelper/htdocs/osmhelper.co.uk/dashboard /home/osmhelper/htdocs/osmhelper.co.uk/logout /home/osmhelper/htdocs/osmhelper.co.uk/membership-dashboard /home/osmhelper/htdocs/osmhelper.co.uk/members /home/osmhelper/htdocs/osmhelper.co.uk/waiting-list /home/osmhelper/htdocs/osmhelper.co.uk/equipment /home/osmhelper/htdocs/osmhelper.co.uk/bank-transfers /home/osmhelper/htdocs/osmhelper.co.uk/settings /home/osmhelper/htdocs/osmhelper.co.uk/settings/update-tool-sections 2>/dev/null || true'
+
+echo "==> storage writable (after general perms)"
+"${SSH[@]}" 'mkdir -p /home/osmhelper/app/storage; chgrp osmhelper /home/osmhelper/app/storage; chmod 770 /home/osmhelper/app/storage; if [ -f /home/osmhelper/app/storage/settings.json ]; then chgrp osmhelper /home/osmhelper/app/storage/settings.json; chmod 660 /home/osmhelper/app/storage/settings.json; fi'
 
 echo "==> Done"
