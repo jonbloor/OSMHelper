@@ -1,4 +1,4 @@
-/* cache-bust d6nav1 */
+/* cache-bust d6nav2 */
 :root {
   --bg: #f4f6f8;
   --card: #ffffff;
@@ -811,3 +811,4 @@ td.cell-broken {
 /* Bank account list */
 table.data tbody tr.row-deleted td { color: var(--muted); text-decoration: line-through; }
 table.data tbody tr.row-transfer td { }
+
