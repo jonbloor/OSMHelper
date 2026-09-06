@@ -1,32 +1,22 @@
 {% extends 'layout.twig' %}
-
 {% block body %}
   <div class="card">
     <div class="row" style="justify-content: space-between;">
       <h2 style="margin:0;">Dashboard</h2>
-      <span class="badge">P0 OAuth OK</span>
+      <span class="badge">Signed in</span>
     </div>
-
     <dl class="meta">
-      <dt>Name</dt>
-      <dd>{{ fullName }}</dd>
-      <dt>Email</dt>
-      <dd>{{ email }}</dd>
-      <dt>Group</dt>
-      <dd>{{ groupName }}</dd>
-      {% if sectionsCount is not null %}
-        <dt>Sections</dt>
-        <dd>{{ sectionsCount }}</dd>
-      {% endif %}
+      <dt>Name</dt><dd>{{ fullName }}</dd>
+      <dt>Email</dt><dd>{{ email }}</dd>
+      <dt>Group</dt><dd>{{ groupName }}</dd>
     </dl>
-
-    <p class="muted" style="margin-top:1rem;">
-      Phase 0 smoke path: OAuth round-trip succeeded. Membership and other tools land in later phases.
-    </p>
-
-    <div class="row" style="margin-top:1rem;">
-      <a class="btn btn-secondary" href="/">Home</a>
-      <a class="btn btn-danger" href="/logout">Logout</a>
+    <div class="tool-grid">
+      <a class="btn" href="/membership-dashboard/">Group numbers</a>
+      <a class="btn" href="/members/">Members</a>
+      <a class="btn" href="/waiting-list/">Waiting list</a>
+      <a class="btn" href="/equipment/">Equipment</a>
+      <a class="btn" href="/bank-transfers/">Bank transfers</a>
+      <a class="btn btn-secondary" href="/settings/">Settings</a>
     </div>
   </div>
 {% endblock %}

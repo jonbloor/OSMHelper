@@ -3,26 +3,28 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ title|default('OSMHelper') }} — OSMHelper</title>
+  <title>{% if title %}{{ title }} · {% endif %}OSMHelper</title>
   <link rel="stylesheet" href="/assets/app.css">
 </head>
 <body>
-  <div class="wrap">
+  <div class="wrap wrap-wide">
     <header class="app-header">
       <h1><a href="/">OSMHelper</a></h1>
-      <nav class="row">
+      <nav class="row nav-links">
         {% if authed is defined and authed %}
-          <a href="/dashboard">Dashboard</a>
-          <a href="/logout">Logout</a>
+          <a href="/dashboard/">Dashboard</a>
+          <a href="/membership-dashboard/">Group numbers</a>
+          <a href="/members/">Members</a>
+          <a href="/waiting-list/">Waiting list</a>
+          <a href="/equipment/">Equipment</a>
+          <a href="/bank-transfers/">Bank</a>
+          <a href="/settings/">Settings</a>
+          <a href="/logout/">Logout</a>
         {% endif %}
       </nav>
     </header>
-
     {% block body %}{% endblock %}
-
-    <footer class="app-footer">
-      Volunteer Scouts tooling · Online Scout Manager OAuth · PHP rewrite
-    </footer>
+    <footer class="app-footer">Volunteer Scouts tooling · Online Scout Manager OAuth · PHP rewrite</footer>
   </div>
 </body>
 </html>

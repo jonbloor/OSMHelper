@@ -1,0 +1,25 @@
+{% extends 'layout.twig' %}
+{% block body %}
+<div class="card">
+  <h2>Waiting list</h2>
+  <p class="muted">Fetched {{ fetchedAt }} · scored locally (P2 will push scores to OSM)</p>
+  <div class="table-wrap">
+  <table class="data">
+    <thead><tr><th>#</th><th>Name</th><th>Age</th><th>Days</th><th>Help?</th><th>Ideal</th><th>Score</th><th>Notes</th></tr></thead>
+    <tbody>
+    {% for a in applicants %}
+      <tr>
+        <td>{{ a.rank }}</td>
+        <td>{{ a.firstName }} {{ a.lastName }}</td>
+        <td>{{ a.age }}</td><td>{{ a.timeOnList }}</td><td>{{ a.willingToHelp }}</td>
+        <td>{{ a.idealSection }}</td><td>{{ a.score }}</td>
+        <td class="notes">{{ a.leadersNotes }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="8" class="muted">No applicants.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

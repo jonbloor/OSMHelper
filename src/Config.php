@@ -11,6 +11,40 @@ final class Config
     public const OAUTH_SCOPES = 'section:member:read section:quartermaster:write section:finance:read';
 
     /** @var list<string> */
+    public const SECTION_TYPE_ORDER = [
+        'Waiting List', 'Squirrels', 'Beavers', 'Cubs', 'Scouts', 'Explorers', 'Adults / Leaders',
+    ];
+
+    /** @var array<string, string> */
+    public const FRIENDLY_SECTION_TYPES = [
+        'earlyyears' => 'Squirrels',
+        'beavers' => 'Beavers',
+        'cubs' => 'Cubs',
+        'scouts' => 'Scouts',
+        'explorers' => 'Explorers',
+        'adults' => 'Adults/Leaders',
+        'waiting' => 'Waiting List',
+        'unknown' => 'Other',
+    ];
+
+    /** @var array<string, int> */
+    public const DEFAULT_CAPACITIES = [
+        'earlyyears' => 18,
+        'beavers' => 24,
+        'cubs' => 30,
+        'scouts' => 36,
+    ];
+
+    /** @var array<string, float> */
+    public const DEFAULT_CUTOFFS = [
+        'squirrels' => 4.0,
+        'beavers' => 5.75,
+        'cubs' => 7.5,
+        'scouts' => 10.0,
+        'explorers' => 13.5,
+    ];
+
+    /** @var list<string> */
     public const REQUIRED_ENV = [
         'SESSION_SECRET',
         'CLIENT_ID',

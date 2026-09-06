@@ -23,7 +23,7 @@ final class OsmApi
         $this->http = $http ?? new Client([
             'base_uri' => rtrim(Config::osmApiBase(), '/') . '/',
             'timeout' => 30,
-            'http_errors' => true,
+            'http_errors' => false,
         ]);
     }
 
@@ -59,6 +59,56 @@ final class OsmApi
      *
      * @throws GuzzleException
      */
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function getDynamicSections(string $accessToken): array
+    {
+        $response = $this->get($accessToken, '/oauth/resource');
+        $raw = $response['sections']
+            ?? ($response['data']['sections'] ?? null)
+            ?? $response['roles']
+            ?? ($response['data']['roles'] ?? null)
+            ?? [];
+        if (!is_array($raw)) {
+            $raw = [];
+        }
+        $now = time();
+        $sections = [];
+        foreach ($raw as $sec) {
+            if (!is_array($sec)) {
+                continue;
+            }
+            $currentTermId = $sec['current_term_id'] ?? -1;
+            $terms = $sec['terms'] ?? null;
+            if (is_array($terms)) {
+                $matched = null;
+                foreach ($terms as $t) {
+                    if (!is_array($t)) {
+                        continue;
+                    }
+                    $start = isset($t['startdate']) ? strtotime((string) $t['startdate']) : false;
+                    $end = isset($t['enddate']) ? strtotime((string) $t['enddate']) : false;
+                    if ($start !== false && $end !== false && $start <= $now && $end >= $now) {
+                        $matched = $t['term_id'] ?? null;
+                        break;
+                    }
+                }
+                if ($matched !== null) {
+                    $currentTermId = $matched;
+                } elseif ($terms !== []) {
+                    $last = $terms[array_key_last($terms)];
+                    if (is_array($last) && isset($last['term_id'])) {
+                        $currentTermId = $last['term_id'];
+                    }
+                }
+            }
+            $sec['current_term_id'] = $currentTermId;
+            $sections[] = $sec;
+        }
+        return $sections;
+    }
+
     private function request(string $method, string $accessToken, string $path, array $options = []): array
     {
         $path = ltrim($path, '/');
@@ -69,12 +119,14 @@ final class OsmApi
 
         $response = $this->http->request($method, $path, $options);
         $this->captureRateLimit($response->getHeaders());
-
+        $status = $response->getStatusCode();
         $body = (string) $response->getBody();
+        if ($status >= 400) {
+            throw new \RuntimeException('OSM HTTP ' . $status . ' for /' . $path, $status);
+        }
         if ($body === '') {
             return [];
         }
-
         $decoded = json_decode($body, true);
         return is_array($decoded) ? $decoded : ['_raw' => $body];
     }

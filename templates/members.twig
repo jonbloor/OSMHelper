@@ -1,0 +1,33 @@
+{% extends 'layout.twig' %}
+{% block body %}
+<div class="card">
+  <h2>Members — {{ groupName }}</h2>
+  <p class="muted">Fetched {{ fetchedAt }}</p>
+  {% if errorMessage %}<div class="alert alert-error">{{ errorMessage }}</div>{% endif %}
+  {% if youthDuplicates %}
+    <h3>Youth in multiple sections</h3>
+    <ul>{% for m in youthDuplicates %}<li>{{ m.firstname }} {{ m.lastname }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% if ylMembers %}
+    <h3>Young Leaders checks</h3>
+    <ul>{% for m in ylMembers %}<li>{{ m.firstname }} {{ m.lastname }} — {{ m.issue }} ({{ m.sections }})</li>{% endfor %}</ul>
+  {% endif %}
+  {% if leaderMembers %}
+    <h3>Leaders checks</h3>
+    <ul>{% for m in leaderMembers %}<li>{{ m.firstname }} {{ m.lastname }} — {{ m.issue }} ({{ m.sections }})</li>{% endfor %}</ul>
+  {% endif %}
+  <h3>All members</h3>
+  <div class="table-wrap">
+  <table class="data">
+    <thead><tr><th>Section</th><th>Type</th><th>Name</th><th>Patrol</th><th>Age</th><th>DoB</th></tr></thead>
+    <tbody>
+    {% for m in members %}
+      <tr><td>{{ m.section_name }}</td><td>{{ m.section_type }}</td><td>{{ m.firstname }} {{ m.lastname }}</td><td>{{ m.patrol }}</td><td>{{ m.age }}</td><td>{{ m.dob }}</td></tr>
+    {% else %}
+      <tr><td colspan="6" class="muted">No members loaded.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends 'layout.twig' %}
+{% block body %}
+<div class="card">
+  <h2>Age cutoffs</h2>
+  <form method="post" action="/settings/update-cutoffs">
+    <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Section</th><th>Years</th><th>Months</th></tr></thead>
+      <tbody>
+      {% for key, c in displayCutoffs %}
+        <tr>
+          <td>{{ key }}</td>
+          <td><input type="number" name="{{ key }}_years" value="{{ c.years }}" min="0" max="18"></td>
+          <td><input type="number" name="{{ key }}_months" value="{{ c.months }}" min="0" max="11"></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    <button class="btn" type="submit">Save cutoffs</button>
+  </form>
+</div>
+<div class="card">
+  <h2>Section capacity &amp; visibility</h2>
+  <form method="post" action="/settings/update-sections">
+    <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Show</th><th>Section</th><th>Type</th><th>Capacity</th><th>Default</th></tr></thead>
+      <tbody>
+      {% for s in displaySections %}
+        <tr>
+          <td><input type="checkbox" name="visible_{{ s.id }}" {% if s.visible %}checked{% endif %}></td>
+          <td>{{ s.name }}</td>
+          <td>{{ s.type }}</td>
+          <td><input type="number" name="capacity_{{ s.id }}" value="{{ s.capacity }}" min="0"></td>
+          <td class="muted">{{ s.defaultCapacity }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    <button class="btn" type="submit">Save sections</button>
+  </form>
+</div>
+{% endblock %}

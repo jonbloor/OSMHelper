@@ -1,0 +1,122 @@
+<?php
+declare(strict_types=1);
+namespace App\Http\Controllers;
+use App\App;
+use App\Http\Auth;
+use App\Osm\OsmApi;
+use Throwable;
+final class WaitingListController
+{
+    private static function idealSection(float $age): string
+    {
+        if ($age < 4) return 'Too Young';
+        if ($age < 5.75) return 'Squirrels';
+        if ($age < 7.5) return 'Beavers';
+        if ($age < 10) return 'Cubs';
+        if ($age < 13.5) return 'Scouts';
+        return 'Explorers';
+    }
+
+    public function index(): void
+    {
+        $token = Auth::requireLogin();
+        $api = new OsmApi();
+        try {
+            $sections = $api->getDynamicSections($token);
+        } catch (Throwable) {
+            App::render('error.twig', Auth::baseContext(['title' => 'Waiting list', 'message' => 'Could not load sections.']));
+            return;
+        }
+        $waiting = null;
+        foreach ($sections as $sec) {
+            if (!is_array($sec)) continue;
+            $type = (string) ($sec['section_type'] ?? '');
+            $name = strtolower((string) ($sec['section_name'] ?? ''));
+            if ($type === 'waiting' || str_contains($name, 'waiting')) { $waiting = $sec; break; }
+        }
+        if ($waiting === null) {
+            App::render('error.twig', Auth::baseContext(['title' => 'Waiting list', 'message' => 'No waiting list section found.']));
+            return;
+        }
+        $waitingId = $waiting['section_id'];
+        $waitingType = $waiting['section_type'] ?? 'waiting';
+        $listRes = $api->get($token, '/ext/members/contact/', [
+            'action' => 'getListOfMembers', 'sectionid' => $waitingId, 'termid' => -1,
+            'section' => $waitingType, 'sort' => 'dob',
+        ]);
+        $listData = $listRes['items'] ?? [];
+        if (!is_array($listData)) $listData = [];
+        $applicants = [];
+        $now = time();
+        foreach ($listData as $applicant) {
+            if (!is_array($applicant)) continue;
+            try {
+                $ind = $api->get($token, '/ext/members/contact/', [
+                    'action' => 'getIndividual', 'sectionid' => $waitingId,
+                    'scoutid' => $applicant['scoutid'], 'termid' => -1, 'context' => 'members',
+                ]);
+                $d = $ind['data'] ?? $ind;
+                if (!is_array($d)) $d = [];
+                $dob = strtotime((string) ($d['dob'] ?? ''));
+                $age = $dob !== false ? ($now - $dob) / (365.25 * 24 * 60 * 60) : null;
+                $ageMonths = $dob !== false ? (int) floor(($now - $dob) / (30.4375 * 24 * 60 * 60)) : null;
+                $ageDisplay = $ageMonths !== null ? ((int) floor($ageMonths / 12)) . ' y ' . ($ageMonths % 12) . ' m' : 'Unknown';
+                // Node hard-coded customfield_123 — keep for parity; P2 makes configurable
+                $willing = $d['customfields']['customfield_123'] ?? 'N';
+                $join = strtotime((string) ($d['joined'] ?? $d['applicationdate'] ?? $d['started'] ?? ''));
+                $timeOnList = $join !== false ? (int) floor(($now - $join) / 86400) : 0;
+                $leadersNotes = $joiningComments = $placeAccepted = '';
+                try {
+                    $custom = $api->get($token, '/ext/customdata/', [
+                        'action' => 'getData', 'section_id' => $waitingId,
+                        'associated_id' => $applicant['scoutid'], 'associated_type' => 'member', 'context' => 'members',
+                    ]);
+                    $groups = $custom['data'] ?? [];
+                    if (is_array($groups)) {
+                        foreach ($groups as $group) {
+                            if (!is_array($group) || ($group['identifier'] ?? '') !== 'customisable_data') continue;
+                            foreach (($group['columns'] ?? []) as $col) {
+                                if (!is_array($col)) continue;
+                                $vn = $col['varname'] ?? '';
+                                if ($vn === 'cf_notes') $leadersNotes = (string) ($col['value'] ?? '');
+                                if ($vn === 'cf_joining_comments') $joiningComments = (string) ($col['value'] ?? '');
+                                if ($vn === 'cf_place_accepted_') $placeAccepted = (string) ($col['value'] ?? '');
+                            }
+                        }
+                    }
+                } catch (Throwable) {}
+                $ageScore = $age ?? 0.0;
+                $scoreNum = $ageScore * 3 + (($willing === 'Y') ? 20 : 0) + ($timeOnList / 30);
+                $applicants[] = [
+                    'firstName' => $applicant['firstname'] ?? '',
+                    'lastName' => $applicant['lastname'] ?? '',
+                    'age' => $ageDisplay,
+                    'timeOnList' => $timeOnList,
+                    'willingToHelp' => $willing,
+                    'leadersNotes' => $leadersNotes,
+                    'joiningComments' => $joiningComments,
+                    'placeAccepted' => $placeAccepted,
+                    'idealSection' => self::idealSection($age ?? 0),
+                    'scoreNum' => $scoreNum,
+                    'score' => number_format($scoreNum, 1),
+                    'rank' => 0,
+                ];
+            } catch (Throwable) {
+                $applicants[] = [
+                    'firstName' => $applicant['firstname'] ?? '', 'lastName' => $applicant['lastname'] ?? '',
+                    'age' => 'Unknown', 'timeOnList' => 'N/A', 'willingToHelp' => 'N/A',
+                    'leadersNotes' => '', 'joiningComments' => '', 'placeAccepted' => '',
+                    'idealSection' => 'Unknown', 'scoreNum' => -INF, 'score' => 'N/A', 'rank' => 0,
+                ];
+            }
+        }
+        usort($applicants, static fn ($a, $b) => ($b['scoreNum'] <=> $a['scoreNum']));
+        foreach ($applicants as $i => &$a) { $a['rank'] = $i + 1; }
+        unset($a);
+        App::render('waiting-list.twig', Auth::baseContext([
+            'title' => 'Waiting list',
+            'applicants' => $applicants,
+            'fetchedAt' => (new \DateTimeImmutable('now', new \DateTimeZone('Europe/London')))->format('d/m/y H:i'),
+        ]));
+    }
+}
