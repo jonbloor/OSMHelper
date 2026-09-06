@@ -1,4 +1,4 @@
-/* cache-bust d6bank1 */
+/* cache-bust d6eq3 */
 :root {
   --bg: #f4f6f8;
   --card: #ffffff;
@@ -252,26 +252,36 @@ header.app-header h1 {
 }
 
 table.data {
-  /* min-width 100% keeps short tables full-bleed; max-content lets wide
-     tables overflow .table-wrap (overflow-x:auto) instead of crushing cols.
-     Search was "fixing" missing cols because tr[hidden] drops rows from
-     width calc and squeezed columns suddenly got space. */
-  width: max-content;
-  min-width: 100%;
+  /* Full width with a sensible min so cols don't crush; wrap long cells
+     instead of nowrap+max-content (Amazon URLs made the table absurdly wide). */
+  width: 100%;
+  min-width: 52rem;
   border-collapse: collapse;
   font-size: 0.9rem;
+  table-layout: auto;
 }
-table.data th,
-table.data td {
-  /* keep columns from collapsing to 0 when neighbouring cells are long */
+table.data th {
   white-space: nowrap;
 }
-table.data td.notes {
+table.data td {
   white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  vertical-align: top;
+}
+table.data td.col-name,
+table.data td.col-location {
+  max-width: 12rem;
+}
+table.data td.col-description,
+table.data td.notes {
+  max-width: 16rem;
   min-width: 8rem;
-  max-width: 220px;
   font-size: 0.85rem;
   color: var(--muted);
+}
+table.data td.col-list {
+  max-width: 10rem;
 }
 
 table.data th,

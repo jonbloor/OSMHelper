@@ -62,13 +62,13 @@
           {% endif %}
         </td>
         {% endif %}
-        <td>{{ e.listName }}</td>
-        <td>{{ e.itemName }}</td>
+        <td class="col-list">{{ e.listName }}</td>
+        <td class="col-name">{{ e.itemName }}</td>
         <td>{{ e.quantity }}</td>
-        <td>{{ e.description }}</td>
+        <td class="col-description">{{ e.description }}</td>
         <td>{{ e.condition }}</td>
         <td class="{% if e.brokenCount is defined and e.brokenCount > 0 %}cell-broken{% endif %}">{{ e.broken }}</td>
-        <td>{{ e.location }}</td>
+        <td class="col-location">{{ e.location }}</td>
         <td>{{ e.purchaseDate }}</td>
         <td class="notes">{{ e.notes }}</td>
         <td>{{ e.renewalPrice }}</td>
