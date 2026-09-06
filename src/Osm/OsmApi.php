@@ -3,7 +3,6 @@ declare(strict_types=1);
 namespace App\Osm;
 use App\Config;
 use GuzzleHttp\Client;
-use GuzzleHttp\Exception\GuzzleException;
 /**
  * Bearer-authenticated OSM API client with rate-limit header tracking.
  */
@@ -25,12 +24,16 @@ final class OsmApi
     /** @param array<string, mixed> $query @return array<string, mixed> */
     public function get(string $accessToken, string $path, array $query = []): array
     {
-        // Match Node: query string on the path (OSM is picky with some ext endpoints)
+        // Prefer Guzzle query option (axios params parity). Also keep path clean with trailing slash.
+        $path = '/' . ltrim($path, '/');
+        $options = [];
         if ($query !== []) {
+            // Node equipment embeds query on the path string; bank uses params.
+            // Building both the same absolute query avoids ?/%3F quirks with base_uri.
             $sep = str_contains($path, '?') ? '&' : '?';
             $path .= $sep . http_build_query($query);
         }
-        return $this->request('GET', $accessToken, $path, []);
+        return $this->request('GET', $accessToken, $path, $options);
     }
 
     /** @param array<string, mixed> $form @return array<string, mixed> */
@@ -131,30 +134,52 @@ final class OsmApi
     /** @param array<string, mixed> $options @return array<string, mixed> */
     private function request(string $method, string $accessToken, string $path, array $options = []): array
     {
-        $path = ltrim($path, '/');
+        // Absolute path from site root so base_uri host is used without eating query
+        if (!preg_match('#^https?://#i', $path)) {
+            $path = ltrim($path, '/');
+        }
         $options['headers'] = array_merge($options['headers'] ?? [], [
             'Authorization' => 'Bearer ' . $accessToken,
             'Accept' => 'application/json',
+            // Node osmApi sets Content-Type on all requests
+            'Content-Type' => 'application/json',
         ]);
         $response = $this->http->request($method, $path, $options);
         $this->captureRateLimit($response->getHeaders());
         $status = $response->getStatusCode();
         $body = (string) $response->getBody();
         if ($status >= 400) {
-            throw new \RuntimeException('OSM HTTP ' . $status . ' for /' . $path, $status);
+            throw new \RuntimeException('OSM HTTP ' . $status . ' for /' . ltrim(explode('?', $path, 2)[0], '/') . (str_contains($path, '?') ? '?…' : ''), $status);
         }
+        return self::decodeBody($body);
+    }
+
+    /** @return array<string, mixed> */
+    public static function decodeBody(string $body): array
+    {
         if ($body === '') {
             return [];
         }
-        $decoded = json_decode($body, true);
-        if (!is_array($decoded)) {
-            return ['_raw' => $body];
+        $trimmed = trim($body);
+        // Some OSM endpoints historically returned JS assignments
+        if (preg_match('/^(?:var\s+\w+\s*=\s*|window\.\w+\s*=\s*)/i', $trimmed)) {
+            $trimmed = preg_replace('/^(?:var\s+\w+\s*=\s*|window\.\w+\s*=\s*)/i', '', $trimmed) ?? $trimmed;
+            $trimmed = rtrim(trim($trimmed), ';');
         }
-        if (isset($decoded['data']) && is_string($decoded['data'])) {
-            $inner = json_decode($decoded['data'], true);
-            if (is_array($inner)) {
-                $decoded['data'] = $inner;
+        $decoded = json_decode($trimmed, true);
+        if (!is_array($decoded)) {
+            return ['_raw' => substr($body, 0, 500)];
+        }
+        // Unwrap stringy JSON under data (and one nested level)
+        for ($i = 0; $i < 2; $i++) {
+            if (!isset($decoded['data']) || !is_string($decoded['data'])) {
+                break;
             }
+            $inner = json_decode($decoded['data'], true);
+            if (!is_array($inner)) {
+                break;
+            }
+            $decoded['data'] = $inner;
         }
         return $decoded;
     }

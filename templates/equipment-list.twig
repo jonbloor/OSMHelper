@@ -8,6 +8,7 @@
   {% if sectionId is defined and sectionId %}
   <p class="muted">Section id {{ sectionId }} · type {{ sectionType }} · {{ listCount|default(0) }} list(s)</p>
   {% endif %}
+  {% if parseHint %}<div class="alert alert-error">{{ parseHint }}</div>{% endif %}
   <div class="table-wrap">
   <table class="data">
     <thead><tr><th>List</th><th>Item</th><th>Description</th><th>Location</th><th>Qty</th><th>Condition</th><th>Broken</th></tr></thead>

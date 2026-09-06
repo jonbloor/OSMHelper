@@ -10,57 +10,129 @@ use App\Store\SettingsStore;
 use Throwable;
 final class EquipmentController
 {
-    /** @param array<string, mixed> $res @return list<array<string, mixed>> */
+    /**
+     * Node: listsResponse.data.data  (axios body → .data is the lists array)
+     * @param array<string, mixed> $res
+     * @return list<array<string, mixed>>
+     */
     private static function quartermasterLists(array $res): array
     {
-        // Node: listsResponse.data.data  (axios body → .data)
-        $candidates = [];
-        if (isset($res['data'])) $candidates[] = $res['data'];
-        if (isset($res['data']['items'])) $candidates[] = $res['data']['items'];
-        if (isset($res['items'])) $candidates[] = $res['items'];
-        $candidates[] = OsmLists::items($res);
+        $candidates = [
+            $res['data'] ?? null,                 // Node primary
+            $res['data']['data'] ?? null,         // double-wrapped
+            $res['data']['items'] ?? null,
+            $res['items'] ?? null,
+            $res['lists'] ?? null,
+            $res['data']['lists'] ?? null,
+        ];
         foreach ($candidates as $c) {
-            if (!is_array($c) || $c === []) continue;
-            if (!array_is_list($c)) {
-                $vals = array_values(array_filter($c, 'is_array'));
-                // skip if looks like a single wrapper object without list rows
-                if ($vals === []) continue;
-                if (!isset($vals[0]['listid']) && !isset($vals[0]['list_id']) && !isset($vals[0]['id']) && !isset($vals[0]['name'])) {
-                    continue;
-                }
-                $c = $vals;
-            }
-            $out = [];
-            foreach ($c as $row) {
-                if (is_array($row)) $out[] = $row;
-            }
-            if ($out !== []) return $out;
-        }
-        return [];
-    }
-
-    /** @param array<string, mixed> $res @return list<array<string, mixed>> */
-    private static function quartermasterItems(array $res): array
-    {
-        // Node: itemsResponse.data.data.items
-        if (isset($res['data']['items']) && is_array($res['data']['items'])) {
-            $items = $res['data']['items'];
-            if (!array_is_list($items)) $items = array_values(array_filter($items, 'is_array'));
-            return array_values(array_filter($items, 'is_array'));
-        }
-        if (isset($res['items']) && is_array($res['items'])) {
-            $items = $res['items'];
-            if (!array_is_list($items)) $items = array_values(array_filter($items, 'is_array'));
-            return array_values(array_filter($items, 'is_array'));
-        }
-        // sometimes data is already the items list
-        if (isset($res['data']) && is_array($res['data']) && array_is_list($res['data'])) {
-            $first = $res['data'][0] ?? null;
-            if (is_array($first) && (isset($first['_1']) || isset($first['rowid']))) {
-                return array_values(array_filter($res['data'], 'is_array'));
+            $rows = self::asRowList($c, ['listid', 'list_id', 'id', 'name']);
+            if ($rows !== []) {
+                return $rows;
             }
         }
         return OsmLists::items($res);
+    }
+
+    /**
+     * Node: itemsResponse.data.data.items
+     * @param array<string, mixed> $res
+     * @return list<array<string, mixed>>
+     */
+    private static function quartermasterItems(array $res): array
+    {
+        $candidates = [
+            $res['data']['items'] ?? null,        // Node primary
+            $res['data']['data']['items'] ?? null,
+            $res['items'] ?? null,
+            $res['data'] ?? null,                 // sometimes data is already the items list
+        ];
+        foreach ($candidates as $c) {
+            $rows = self::asRowList($c, ['_1', 'rowid', 'name', 'item']);
+            if ($rows !== []) {
+                return $rows;
+            }
+        }
+        return OsmLists::items($res);
+    }
+
+    /**
+     * @param mixed $c
+     * @param list<string> $hintKeys
+     * @return list<array<string, mixed>>
+     */
+    private static function asRowList(mixed $c, array $hintKeys): array
+    {
+        if (!is_array($c) || $c === []) {
+            return [];
+        }
+        if (!array_is_list($c)) {
+            // id-keyed object of rows, or a wrapper
+            if (isset($c['items']) && is_array($c['items'])) {
+                return self::asRowList($c['items'], $hintKeys);
+            }
+            if (isset($c['data']) && is_array($c['data'])) {
+                return self::asRowList($c['data'], $hintKeys);
+            }
+            $vals = array_values(array_filter($c, 'is_array'));
+            if ($vals === []) {
+                return [];
+            }
+            $c = $vals;
+        }
+        $out = [];
+        foreach ($c as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $hasHint = false;
+            foreach ($hintKeys as $k) {
+                if (array_key_exists($k, $row)) {
+                    $hasHint = true;
+                    break;
+                }
+            }
+            // accept rows with any hint, or any non-empty assoc row if list looks uniform
+            if ($hasHint || $row !== []) {
+                $out[] = $row;
+            }
+        }
+        // If nothing had hints, only keep if first row looks like a list/item record
+        if ($out !== []) {
+            $first = $out[0];
+            $ok = false;
+            foreach ($hintKeys as $k) {
+                if (array_key_exists($k, $first)) {
+                    $ok = true;
+                    break;
+                }
+            }
+            if (!$ok) {
+                return [];
+            }
+        }
+        return $out;
+    }
+
+    /** @return list<string> */
+    private static function typeVariants(string ...$types): array
+    {
+        $out = [];
+        foreach ($types as $t) {
+            $t = trim($t);
+            if ($t === '') {
+                continue;
+            }
+            if (!in_array($t, $out, true)) {
+                $out[] = $t;
+            }
+        }
+        foreach (['adults', 'group'] as $fallback) {
+            if (!in_array($fallback, $out, true)) {
+                $out[] = $fallback;
+            }
+        }
+        return $out;
     }
 
     public function index(): void
@@ -81,10 +153,14 @@ final class EquipmentController
         }
 
         $section = null;
+        $liveType = $savedType;
+        $liveName = '';
         if ($savedId !== '') {
             foreach ($sections as $s) {
                 if (is_array($s) && (string) ($s['section_id'] ?? '') === $savedId) {
                     $section = $s;
+                    $liveType = (string) ($s['section_type'] ?? $savedType);
+                    $liveName = (string) ($s['section_name'] ?? '');
                     break;
                 }
             }
@@ -117,27 +193,102 @@ final class EquipmentController
 
         $sectionId = (string) $section['section_id'];
         $sectionType = (string) ($section['section_type'] ?? '');
-        if ($sectionType === '') $sectionType = $savedType !== '' ? $savedType : 'adults';
-        $sectionName = (string) ($section['section_name'] ?? $sectionId);
+        if ($sectionType === '') {
+            $sectionType = $savedType !== '' ? $savedType : 'adults';
+        }
+        if ($liveType === '') {
+            $liveType = $sectionType;
+        }
+        $sectionName = $liveName !== '' ? $liveName : (string) ($section['section_name'] ?? $sectionId);
         $equipment = [];
         $listCount = 0;
+        $debugShape = null;
+        $usedType = $sectionType;
+
         try {
-            $listsRes = $api->get($token, '/ext/quartermaster/', [
-                'action' => 'getListOfLists',
-                'section' => $sectionType,
-                'sectionid' => $sectionId,
-            ]);
-            OsmDebug::log('equipment_lists', [
-                'sectionId' => $sectionId,
-                'sectionType' => $sectionType,
-                'top_keys' => array_keys($listsRes),
-                'body' => $listsRes,
-            ]);
-            $lists = self::quartermasterLists($listsRes);
+            $lists = [];
+            $listsRes = [];
+            $lastErr = null;
+            foreach (self::typeVariants($liveType, $sectionType, $savedType) as $tryType) {
+                try {
+                    $listsRes = $api->get($token, '/ext/quartermaster/', [
+                        'action' => 'getListOfLists',
+                        'section' => $tryType,
+                        'sectionid' => $sectionId,
+                    ]);
+                    OsmDebug::log('equipment_lists_' . $sectionId . '_' . $tryType, [
+                        'sectionId' => $sectionId,
+                        'sectionType' => $tryType,
+                        'top_keys' => array_keys($listsRes),
+                        'body' => $listsRes,
+                    ]);
+                    $lists = self::quartermasterLists($listsRes);
+                    if ($lists !== []) {
+                        $usedType = $tryType;
+                        break;
+                    }
+                    $debugShape = [
+                        'top_keys' => array_keys($listsRes),
+                        'data_type' => isset($listsRes['data']) ? gettype($listsRes['data']) : 'missing',
+                    ];
+                } catch (Throwable $e) {
+                    $lastErr = $e;
+                    OsmDebug::log('equipment_lists_error_' . $sectionId . '_' . $tryType, [
+                        'message' => $e->getMessage(),
+                        'code' => (int) $e->getCode(),
+                    ]);
+                }
+            }
+
+            // Fallback: Node-style first adults section if configured id yielded nothing
+            if ($lists === [] && $savedId !== '') {
+                foreach ($sections as $s) {
+                    if (!is_array($s) || ($s['section_type'] ?? '') !== 'adults' || empty($s['section_id'])) {
+                        continue;
+                    }
+                    $fbId = (string) $s['section_id'];
+                    if ($fbId === $sectionId) {
+                        continue;
+                    }
+                    $fbType = (string) ($s['section_type'] ?? 'adults');
+                    try {
+                        $listsRes = $api->get($token, '/ext/quartermaster/', [
+                            'action' => 'getListOfLists',
+                            'section' => $fbType,
+                            'sectionid' => $fbId,
+                        ]);
+                        OsmDebug::log('equipment_lists_fallback_' . $fbId, [
+                            'sectionId' => $fbId,
+                            'sectionType' => $fbType,
+                            'top_keys' => array_keys($listsRes),
+                            'body' => $listsRes,
+                        ]);
+                        $fbLists = self::quartermasterLists($listsRes);
+                        if ($fbLists !== []) {
+                            $lists = $fbLists;
+                            $sectionId = $fbId;
+                            $usedType = $fbType;
+                            $sectionName = (string) ($s['section_name'] ?? $fbId);
+                            $sectionType = $fbType;
+                            break;
+                        }
+                    } catch (Throwable) {
+                        continue;
+                    }
+                }
+            }
+
+            if ($lists === [] && $lastErr !== null && $listsRes === []) {
+                throw $lastErr;
+            }
+
             $listCount = count($lists);
+            $sectionType = $usedType;
             foreach ($lists as $equipList) {
                 $listId = $equipList['listid'] ?? $equipList['list_id'] ?? $equipList['id'] ?? null;
-                if ($listId === null || $listId === '') continue;
+                if ($listId === null || $listId === '') {
+                    continue;
+                }
                 $listName = (string) ($equipList['name'] ?? ('List ' . $listId));
                 $itemsRes = $api->get($token, '/ext/quartermaster/', [
                     'action' => 'getItemsInList',
@@ -145,7 +296,7 @@ final class EquipmentController
                     'sectionid' => $sectionId,
                     'listid' => $listId,
                 ]);
-                if ($listCount <= 3) {
+                if ($listCount <= 5) {
                     OsmDebug::log('equipment_items_' . $listId, [
                         'listId' => $listId,
                         'top_keys' => array_keys($itemsRes),
@@ -153,10 +304,12 @@ final class EquipmentController
                     ]);
                 }
                 foreach (self::quartermasterItems($itemsRes) as $item) {
-                    if (!is_array($item)) continue;
+                    if (!is_array($item)) {
+                        continue;
+                    }
                     $equipment[] = [
                         'listName' => $listName,
-                        'itemName' => $item['_1'] ?? '',
+                        'itemName' => $item['_1'] ?? ($item['name'] ?? ''),
                         'description' => $item['_2'] ?? '',
                         'location' => $item['_3'] ?? '',
                         'notes' => $item['_4'] ?? '',
@@ -168,13 +321,26 @@ final class EquipmentController
             }
         } catch (Throwable $e) {
             $code = (int) $e->getCode();
-            OsmDebug::log('equipment_error', ['message' => $e->getMessage(), 'code' => $code, 'sectionId' => $sectionId, 'sectionType' => $sectionType]);
+            OsmDebug::log('equipment_error', [
+                'message' => $e->getMessage(),
+                'code' => $code,
+                'sectionId' => $sectionId,
+                'sectionType' => $sectionType,
+            ]);
             $hint = $code > 0 ? " (OSM HTTP {$code})" : '';
             App::render('error.twig', Auth::baseContext([
                 'title' => 'Equipment',
                 'message' => "Could not load equipment for section {$sectionName} (id {$sectionId}, type {$sectionType}){$hint}. Check Settings → Tool sections.",
             ]));
             return;
+        }
+
+        $parseHint = null;
+        if ($equipment === [] && $listCount === 0 && is_array($debugShape)) {
+            $parseHint = 'OSM returned no quartermaster lists for this section (keys: '
+                . implode(', ', $debugShape['top_keys'] ?? [])
+                . '; data=' . ($debugShape['data_type'] ?? '?')
+                . '). Confirm the Equipment section in Settings, or that quartermaster is enabled in OSM.';
         }
 
         App::render('equipment-list.twig', Auth::baseContext([
@@ -185,6 +351,7 @@ final class EquipmentController
             'sectionType' => $sectionType,
             'listCount' => $listCount,
             'needsConfig' => $savedId === '',
+            'parseHint' => $parseHint,
         ]));
     }
 }

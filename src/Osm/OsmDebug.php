@@ -20,8 +20,14 @@ final class OsmDebug
             'at' => gmdate('c'),
             'payload' => self::summarise($payload),
         ];
-        @file_put_contents($path, json_encode($existing, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n", LOCK_EX);
-        @chmod($path, 0660);
+        $json = json_encode($existing, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
+        $ok = @file_put_contents($path, $json, LOCK_EX);
+        if ($ok === false) {
+            @error_log('OsmDebug write failed: ' . $path);
+        } else {
+            @chmod($path, 0660);
+            @chgrp('osmhelper', $path);
+        }
     }
 
     /** @param mixed $v */
