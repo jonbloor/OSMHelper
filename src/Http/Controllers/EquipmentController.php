@@ -522,7 +522,8 @@ final class EquipmentController
     /**
      * Review or commit a bulk location move.
      * Jon Network capture (2026-09-06): POST /ext/quartermaster/?action=updateListItemColumnValue
-     * with listid + itemrowidentifier + columnid=3 (Location) + data=<location name>.
+     * with listid + itemrowidentifier + columnid=3 (Location) + value=<location name>
+     * (response stores the string under data; request field is value — Jon smoke 2026-09-06).
      * Confirm UI still runs before commit; 150ms spacing between writes.
      */
     public function move(): void
@@ -646,7 +647,7 @@ final class EquipmentController
                     'listid' => $item['listId'],
                     'itemrowidentifier' => $item['rowid'],
                     'columnid' => 3,
-                    'data' => $location,
+                    'value' => $location, // request field; response may echo under data
                     'section' => $sectionType,
                     'sectionid' => $sectionId,
                 ]);
@@ -654,7 +655,12 @@ final class EquipmentController
                     || ($res['status'] ?? null) === 'true'
                     || ($res['status'] ?? null) === 1;
                 $data = is_array($res['data'] ?? null) ? $res['data'] : [];
-                $echoData = isset($data['data']) ? (string) $data['data'] : '';
+                $echoData = '';
+                if (isset($data['data']) && (is_string($data['data']) || is_numeric($data['data']))) {
+                    $echoData = (string) $data['data'];
+                } elseif (isset($data['value']) && (is_string($data['value']) || is_numeric($data['value']))) {
+                    $echoData = (string) $data['value'];
+                }
                 if ($statusTrue) {
                     $ok = true;
                     $anyOk = true;

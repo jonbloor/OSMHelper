@@ -33,7 +33,7 @@
 
     <section class="help-section" id="equipment">
       <h3>Equipment</h3>
-      <p>Quartermaster lists and items for the section you choose under Settings → Equipment. Pick the section that holds your kit (often Adults). Shows all OSM fields (name, quantity, description, condition, broken, location, purchase date, notes, renewal price). Rows with Broken &gt; 0 are highlighted. Select multiple items and move them to a location from Settings → Equipment locations. You always review the list before Confirm; OSMHelper then updates Location (column 3) via OSM’s <code>updateListItemColumnValue</code>, spaced ~150ms apart to stay rate-limit friendly. The table supports sort, search and export (CSV / Excel / PDF), same as Members, Checks and Waiting. If OSM blocks item detail for a list, the list names still show with a short note.</p>
+      <p>Quartermaster lists and items for the section you choose under Settings → Equipment. Pick the section that holds your kit (often Adults). Shows all OSM fields (name, quantity, description, condition, broken, location, purchase date, notes, renewal price). Rows with Broken &gt; 0 are highlighted. Select multiple items and move them to a location from Settings → Equipment locations. You always review the list before Confirm; OSMHelper then updates Location (column 3) via OSM’s <code>updateListItemColumnValue</code> (value=location), spaced ~150ms apart to stay rate-limit friendly. The table supports sort, search and export (CSV / Excel / PDF), same as Members, Checks and Waiting. If OSM blocks item detail for a list, the list names still show with a short note.</p>
     </section>
 
     <section class="help-section" id="bank">
