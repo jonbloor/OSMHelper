@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\App;
 use App\Http\Auth;
 use App\Osm\OsmApi;
+use App\Osm\OsmDebug;
 use App\Osm\OsmLists;
 use App\Store\SettingsStore;
 use Throwable;
@@ -12,25 +13,30 @@ final class EquipmentController
     /** @param array<string, mixed> $res @return list<array<string, mixed>> */
     private static function quartermasterLists(array $res): array
     {
-        // Node: listsResponse.data.data (array of lists)
-        $data = $res['data'] ?? null;
-        if (is_array($data)) {
-            if (array_is_list($data)) {
-                return array_values(array_filter($data, 'is_array'));
-            }
-            if (isset($data['items']) && is_array($data['items'])) {
-                $items = $data['items'];
-                if (!array_is_list($items)) {
-                    $items = array_values(array_filter($items, 'is_array'));
+        // Node: listsResponse.data.data  (axios body → .data)
+        $candidates = [];
+        if (isset($res['data'])) $candidates[] = $res['data'];
+        if (isset($res['data']['items'])) $candidates[] = $res['data']['items'];
+        if (isset($res['items'])) $candidates[] = $res['items'];
+        $candidates[] = OsmLists::items($res);
+        foreach ($candidates as $c) {
+            if (!is_array($c) || $c === []) continue;
+            if (!array_is_list($c)) {
+                $vals = array_values(array_filter($c, 'is_array'));
+                // skip if looks like a single wrapper object without list rows
+                if ($vals === []) continue;
+                if (!isset($vals[0]['listid']) && !isset($vals[0]['list_id']) && !isset($vals[0]['id']) && !isset($vals[0]['name'])) {
+                    continue;
                 }
-                return array_values(array_filter($items, 'is_array'));
+                $c = $vals;
             }
-            $vals = array_values(array_filter($data, 'is_array'));
-            if ($vals !== [] && isset($vals[0]['listid'])) {
-                return $vals;
+            $out = [];
+            foreach ($c as $row) {
+                if (is_array($row)) $out[] = $row;
             }
+            if ($out !== []) return $out;
         }
-        return OsmLists::items($res);
+        return [];
     }
 
     /** @param array<string, mixed> $res @return list<array<string, mixed>> */
@@ -39,10 +45,20 @@ final class EquipmentController
         // Node: itemsResponse.data.data.items
         if (isset($res['data']['items']) && is_array($res['data']['items'])) {
             $items = $res['data']['items'];
-            if (!array_is_list($items)) {
-                $items = array_values(array_filter($items, 'is_array'));
-            }
+            if (!array_is_list($items)) $items = array_values(array_filter($items, 'is_array'));
             return array_values(array_filter($items, 'is_array'));
+        }
+        if (isset($res['items']) && is_array($res['items'])) {
+            $items = $res['items'];
+            if (!array_is_list($items)) $items = array_values(array_filter($items, 'is_array'));
+            return array_values(array_filter($items, 'is_array'));
+        }
+        // sometimes data is already the items list
+        if (isset($res['data']) && is_array($res['data']) && array_is_list($res['data'])) {
+            $first = $res['data'][0] ?? null;
+            if (is_array($first) && (isset($first['_1']) || isset($first['rowid']))) {
+                return array_values(array_filter($res['data'], 'is_array'));
+            }
         }
         return OsmLists::items($res);
     }
@@ -56,7 +72,7 @@ final class EquipmentController
 
         try {
             $sections = $api->getDynamicSections($token);
-        } catch (Throwable $e) {
+        } catch (Throwable) {
             App::render('error.twig', Auth::baseContext([
                 'title' => 'Equipment',
                 'message' => 'Could not load sections from OSM.',
@@ -101,9 +117,7 @@ final class EquipmentController
 
         $sectionId = (string) $section['section_id'];
         $sectionType = (string) ($section['section_type'] ?? '');
-        if ($sectionType === '') {
-            $sectionType = $savedType !== '' ? $savedType : 'adults';
-        }
+        if ($sectionType === '') $sectionType = $savedType !== '' ? $savedType : 'adults';
         $sectionName = (string) ($section['section_name'] ?? $sectionId);
         $equipment = [];
         $listCount = 0;
@@ -113,11 +127,16 @@ final class EquipmentController
                 'section' => $sectionType,
                 'sectionid' => $sectionId,
             ]);
+            OsmDebug::log('equipment_lists', [
+                'sectionId' => $sectionId,
+                'sectionType' => $sectionType,
+                'top_keys' => array_keys($listsRes),
+                'body' => $listsRes,
+            ]);
             $lists = self::quartermasterLists($listsRes);
             $listCount = count($lists);
             foreach ($lists as $equipList) {
-                if (!is_array($equipList)) continue;
-                $listId = $equipList['listid'] ?? $equipList['list_id'] ?? null;
+                $listId = $equipList['listid'] ?? $equipList['list_id'] ?? $equipList['id'] ?? null;
                 if ($listId === null || $listId === '') continue;
                 $listName = (string) ($equipList['name'] ?? ('List ' . $listId));
                 $itemsRes = $api->get($token, '/ext/quartermaster/', [
@@ -126,6 +145,13 @@ final class EquipmentController
                     'sectionid' => $sectionId,
                     'listid' => $listId,
                 ]);
+                if ($listCount <= 3) {
+                    OsmDebug::log('equipment_items_' . $listId, [
+                        'listId' => $listId,
+                        'top_keys' => array_keys($itemsRes),
+                        'body' => $itemsRes,
+                    ]);
+                }
                 foreach (self::quartermasterItems($itemsRes) as $item) {
                     if (!is_array($item)) continue;
                     $equipment[] = [
@@ -142,10 +168,11 @@ final class EquipmentController
             }
         } catch (Throwable $e) {
             $code = (int) $e->getCode();
+            OsmDebug::log('equipment_error', ['message' => $e->getMessage(), 'code' => $code, 'sectionId' => $sectionId, 'sectionType' => $sectionType]);
             $hint = $code > 0 ? " (OSM HTTP {$code})" : '';
             App::render('error.twig', Auth::baseContext([
                 'title' => 'Equipment',
-                'message' => "Could not load equipment for section {$sectionName} (id {$sectionId}, type {$sectionType}){$hint}. Check Settings → Tool sections, or try another section.",
+                'message' => "Could not load equipment for section {$sectionName} (id {$sectionId}, type {$sectionType}){$hint}. Check Settings → Tool sections.",
             ]));
             return;
         }

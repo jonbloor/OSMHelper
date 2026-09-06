@@ -25,7 +25,12 @@ final class OsmApi
     /** @param array<string, mixed> $query @return array<string, mixed> */
     public function get(string $accessToken, string $path, array $query = []): array
     {
-        return $this->request('GET', $accessToken, $path, ['query' => $query]);
+        // Match Node: query string on the path (OSM is picky with some ext endpoints)
+        if ($query !== []) {
+            $sep = str_contains($path, '?') ? '&' : '?';
+            $path .= $sep . http_build_query($query);
+        }
+        return $this->request('GET', $accessToken, $path, []);
     }
 
     /** @param array<string, mixed> $form @return array<string, mixed> */
@@ -142,7 +147,16 @@ final class OsmApi
             return [];
         }
         $decoded = json_decode($body, true);
-        return is_array($decoded) ? $decoded : ['_raw' => $body];
+        if (!is_array($decoded)) {
+            return ['_raw' => $body];
+        }
+        if (isset($decoded['data']) && is_string($decoded['data'])) {
+            $inner = json_decode($decoded['data'], true);
+            if (is_array($inner)) {
+                $decoded['data'] = $inner;
+            }
+        }
+        return $decoded;
     }
 
     /** @param array<string, list<string>> $headers */

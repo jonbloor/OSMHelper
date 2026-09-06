@@ -4,9 +4,15 @@
   <h2>Members — {{ groupName }}</h2>
   <p class="muted">Fetched {{ fetchedAt }}</p>
   {% if errorMessage %}<div class="alert alert-error">{{ errorMessage }}</div>{% endif %}
+</div>
+
+<div class="card">
+  <h2>Troubleshooting</h2>
   {% if youthDuplicates %}
     <h3>Youth in multiple sections</h3>
     <ul>{% for m in youthDuplicates %}<li>{{ m.firstname }} {{ m.lastname }}</li>{% endfor %}</ul>
+  {% else %}
+    <p class="muted">No youth multi-section issues found.</p>
   {% endif %}
   {% if ylMembers %}
     <h3>Young Leaders checks</h3>
@@ -16,7 +22,11 @@
     <h3>Leaders checks</h3>
     <ul>{% for m in leaderMembers %}<li>{{ m.firstname }} {{ m.lastname }} — {{ m.issue }} ({{ m.sections }})</li>{% endfor %}</ul>
   {% endif %}
-  <h3>All members</h3>
+</div>
+
+<div class="card">
+  <h2>Members</h2>
+  <p class="muted">Youth and Young Leaders (Leaders patrol rows listed separately below).</p>
   <div class="table-wrap">
   <table class="data">
     <thead><tr><th>Section</th><th>Type</th><th>Name</th><th>Patrol</th><th>Age</th><th>DoB</th></tr></thead>
@@ -30,4 +40,20 @@
   </table>
   </div>
 </div>
+
+{% if leaderRoster %}
+<div class="card">
+  <h2>Leaders roster</h2>
+  <div class="table-wrap">
+  <table class="data">
+    <thead><tr><th>Name</th><th>Sections</th><th>Age</th><th>DoB</th></tr></thead>
+    <tbody>
+    {% for m in leaderRoster %}
+      <tr><td>{{ m.firstname }} {{ m.lastname }}</td><td>{{ m.sections }}</td><td>{{ m.age }}</td><td>{{ m.dob }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endif %}
 {% endblock %}
