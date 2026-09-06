@@ -52,6 +52,7 @@ final class App
         $router->get('/members', [$mem, 'index']);
         $router->get('/member-checks', [$mem, 'checks']);
         $router->get('/bank-transfers', [$bank, 'index']);
+        $router->get('/bank-transfers/all', [$bank, 'allTransfers']);
         $router->post('/bank-transfers/select', [$bank, 'select']);
         $router->get('/settings', [$set, 'index']);
         $router->get('/help', [$help, 'index']);

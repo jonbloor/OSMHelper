@@ -1,0 +1,47 @@
+{% extends 'layout.twig' %}
+{% block body %}
+<div class="card">
+  <h2>All transfers{% if sectionName %} — {{ sectionName }}{% endif %}</h2>
+  <p class="muted">
+    Transfer lines across {{ accountCount|default(0) }} active account(s)
+    {% if sectionId %} · section {{ sectionId }}{% endif %}
+    · fetched {{ fetchedAt }}.
+    Read-only. Use this to spot missing transfer legs when balances look wrong.
+  </p>
+  <p class="row">
+    <a class="btn btn-secondary" href="/bank-transfers/">← Bank accounts</a>
+  </p>
+  {% if errors %}
+  <div class="alert alert-error">
+    Some accounts failed to load:
+    <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+  <div class="table-wrap">
+  <table class="data" data-table-tools data-export-name="all-transfers">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Account</th>
+        <th>Reference</th>
+        <th>Amount</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for t in transfers %}
+      <tr>
+        <td>{{ t.date }}</td>
+        <td><a href="/bank-transfers/?account={{ t.accountId }}">{{ t.accountName }}</a></td>
+        <td>{{ t.reference }}</td>
+        <td>{{ t.amount }}</td>
+        <td>{{ t.description }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" class="muted">No transfer lines found across active accounts (or OSM returned none with is_transfer).</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

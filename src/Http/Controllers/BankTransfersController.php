@@ -314,6 +314,103 @@ final class BankTransfersController
         ]));
     }
 
+
+    /**
+     * All transfer lines across active accounts (read-only), date order, with account name.
+     * Helps spot missing transfer legs / balance issues.
+     */
+    public function allTransfers(): void
+    {
+        $token = Auth::requireLogin();
+        $api = new OsmApi();
+        try {
+            $sections = $api->getDynamicSections($token);
+        } catch (Throwable) {
+            App::render('error.twig', Auth::baseContext([
+                'title' => 'All transfers',
+                'message' => 'Could not load sections from OSM.',
+            ]));
+            return;
+        }
+
+        $savedId = (string) SettingsStore::get('financeSectionId', '');
+        $savedType = (string) SettingsStore::get('financeSectionType', 'adults');
+        if ($savedId === '' && is_array($_SESSION['financeSection'] ?? null)) {
+            $savedId = (string) ($_SESSION['financeSection']['sectionId'] ?? '');
+            $savedType = (string) ($_SESSION['financeSection']['sectionType'] ?? 'adults');
+        }
+        if ($savedId === '') {
+            App::render('bank-transfers-select.twig', Auth::baseContext([
+                'title' => 'All transfers',
+                'sections' => $sections,
+                'message' => 'Pick a Bank / finance section under Settings (or below) before viewing transfers.',
+            ]));
+            return;
+        }
+
+        $resolved = self::resolveSection($sections, $savedId, $savedType);
+        $sectionId = $resolved['sectionId'];
+        $sectionType = $resolved['sectionType'];
+        $sectionName = $resolved['sectionName'];
+
+        try {
+            $accounts = self::loadAccounts($api, $token, $sectionId);
+        } catch (Throwable $e) {
+            App::render('error.twig', Auth::baseContext([
+                'title' => 'All transfers',
+                'message' => 'Could not load bank accounts: ' . $e->getMessage(),
+            ]));
+            return;
+        }
+
+        $active = array_values(array_filter($accounts, static fn ($a) => empty($a['deleted'])));
+        $transfers = [];
+        $errors = [];
+        foreach ($active as $i => $account) {
+            if ($i > 0) {
+                usleep(150000);
+            }
+            try {
+                $tx = self::loadTransactions($api, $token, $account['id'], 1, true);
+                foreach ($tx['rows'] as $row) {
+                    if (empty($row['isTransfer'])) {
+                        continue;
+                    }
+                    $transfers[] = [
+                        'date' => $row['date'],
+                        'accountName' => $account['name'],
+                        'accountId' => $account['id'],
+                        'reference' => $row['reference'],
+                        'amount' => $row['amount'],
+                        'description' => $row['description'],
+                        'type' => $row['type'],
+                    ];
+                }
+            } catch (Throwable $e) {
+                $errors[] = $account['name'] . ': ' . $e->getMessage();
+                OsmDebug::log('bank_v3_all_trans_error_' . $account['id'], [
+                    'message' => $e->getMessage(),
+                    'code' => (int) $e->getCode(),
+                ]);
+            }
+        }
+
+        usort($transfers, static function ($a, $b) {
+            return strcmp($b['date'], $a['date']) ?: strcmp($a['accountName'], $b['accountName']);
+        });
+
+        App::render('bank-all-transfers.twig', Auth::baseContext([
+            'title' => 'All transfers',
+            'sectionName' => $sectionName,
+            'sectionId' => $sectionId,
+            'sectionType' => $sectionType,
+            'transfers' => $transfers,
+            'accountCount' => count($active),
+            'errors' => $errors,
+            'fetchedAt' => (new \DateTimeImmutable('now', new \DateTimeZone('Europe/London')))->format('d/m/y H:i'),
+        ]));
+    }
+
     public function select(): void
     {
         Auth::requireLogin();

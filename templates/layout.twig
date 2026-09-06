@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% if title and title != 'OSMHelper' %}{{ title }} · {% endif %}OSMHelper</title>
-  <link rel="stylesheet" href="/assets/app.css?v=d6eq4">
-  <script src="/assets/table-tools.js?v=d6eq4" defer></script>
+  <link rel="stylesheet" href="/assets/app.css?v=d6nav1">
+  <script src="/assets/table-tools.js?v=d6nav1" defer></script>
 </head>
 <body>
   <div id="page-loading" class="page-loading" hidden aria-live="polite" aria-busy="true">
@@ -17,17 +17,32 @@
       {% if authed is defined and authed %}
       <button type="button" class="nav-toggle" aria-controls="app-nav" aria-expanded="false">Menu</button>
       <nav id="app-nav" class="nav-links">
-        <a href="/dashboard/">Home</a>
-        <a href="/membership-dashboard/" title="Group numbers">Dashboard</a>
-        <a href="/members/">Members</a>
-        <a href="/member-checks/" title="Member checks">Checks</a>
-        <a href="/waiting-list/" title="Waiting list">Waiting</a>
-        <a href="/equipment/">Equipment</a>
-        <a href="/bank-transfers/" title="Bank transfers">Bank</a>
-        <a href="/settings/">Settings</a>
-        <a href="/help/">Help</a>
-        <a href="/roadmap/">Roadmap</a>
-        <a class="nav-logout" href="/logout/">Logout</a>
+        <a class="nav-item nav-home" href="/dashboard/"><span class="nav-ico" aria-hidden="true">⌂</span> Home</a>
+
+        <details class="nav-group nav-members">
+          <summary><span class="nav-ico" aria-hidden="true">👥</span> Members</summary>
+          <div class="nav-sub">
+            <a href="/membership-dashboard/">Group numbers</a>
+            <a href="/members/">Members</a>
+            <a href="/member-checks/">Checks</a>
+            <a href="/waiting-list/">Waiting</a>
+          </div>
+        </details>
+
+        <a class="nav-item nav-equipment" href="/equipment/"><span class="nav-ico" aria-hidden="true">🧰</span> Equipment</a>
+
+        <details class="nav-group nav-finance">
+          <summary><span class="nav-ico" aria-hidden="true">£</span> Finance</summary>
+          <div class="nav-sub">
+            <a href="/bank-transfers/">Bank</a>
+            <a href="/bank-transfers/all/">All transfers</a>
+          </div>
+        </details>
+
+        <a class="nav-item nav-settings" href="/settings/"><span class="nav-ico" aria-hidden="true">⚙</span> Settings</a>
+        <a class="nav-item nav-help" href="/help/"><span class="nav-ico" aria-hidden="true">?</span> Help</a>
+        <a class="nav-item nav-roadmap" href="/roadmap/"><span class="nav-ico" aria-hidden="true">↦</span> Roadmap</a>
+        <a class="nav-item nav-logout" href="/logout/">Logout</a>
       </nav>
       <script>
         (function () {
@@ -51,13 +66,34 @@
           if (mq.addEventListener) mq.addEventListener('change', sync);
           else if (mq.addListener) mq.addListener(sync);
           sync();
+          // One open dropdown at a time (click/tap, not hover)
+          nav.querySelectorAll('details.nav-group').forEach(function (d) {
+            d.addEventListener('toggle', function () {
+              if (!d.open) return;
+              nav.querySelectorAll('details.nav-group').forEach(function (o) {
+                if (o !== d) o.open = false;
+              });
+            });
+          });
+          // Mark active link + open its group
+          var path = window.location.pathname.replace(/\/+$/, '') || '/';
+          nav.querySelectorAll('a[href]').forEach(function (a) {
+            try {
+              var p = new URL(a.href, window.location.href).pathname.replace(/\/+$/, '') || '/';
+              if (p === path || (p !== '/' && path.indexOf(p) === 0)) {
+                a.setAttribute('aria-current', 'page');
+                var g = a.closest('details.nav-group');
+                if (g) g.open = true;
+              }
+            } catch (e) {}
+          });
         })();
       </script>
       {% else %}
       <nav class="nav-links nav-public">
-        <a href="/">Home</a>
-        <a href="/help/">Help</a>
-        <a href="/roadmap/">Roadmap</a>
+        <a class="nav-item nav-home" href="/"><span class="nav-ico" aria-hidden="true">⌂</span> Home</a>
+        <a class="nav-item nav-help" href="/help/"><span class="nav-ico" aria-hidden="true">?</span> Help</a>
+        <a class="nav-item nav-roadmap" href="/roadmap/"><span class="nav-ico" aria-hidden="true">↦</span> Roadmap</a>
       </nav>
       {% endif %}
     </header>
