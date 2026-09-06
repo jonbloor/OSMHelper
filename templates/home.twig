@@ -2,6 +2,7 @@
 
 {% block body %}
 {% if authed %}
+  <p class="slow-fetch-warning muted">Some tools take a moment — we fetch fresh data from OSM.</p>
   <div class="card home-signed-in">
     <h2>{% if groupName %}{{ groupName }}{% else %}Your group{% endif %}</h2>
     <p class="muted">

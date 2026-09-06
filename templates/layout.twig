@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% if title and title != 'OSMHelper' %}{{ title }} · {% endif %}OSMHelper</title>
-  <link rel="stylesheet" href="/assets/app.css?v=d6rate2">
+  <link rel="stylesheet" href="/assets/app.css?v=d6ui1">
 </head>
 <body>
   <div id="page-loading" class="page-loading" hidden aria-live="polite" aria-busy="true">
@@ -51,11 +51,8 @@
       </script>
       {% endif %}
     </header>
-    {% if authed is defined and authed %}
-    <p class="slow-fetch-warning muted">Some tools take a moment — we fetch fresh data from OSM.</p>
-    {% endif %}
     {% block body %}{% endblock %}
-    <footer class="app-footer">Volunteer Scouts tooling · Online Scout Manager OAuth</footer>
+    <footer class="app-footer"><a href="/">OSM Helper</a> - Tools to make OSM Better</footer>
   </div>
   <script>
     (function () {
