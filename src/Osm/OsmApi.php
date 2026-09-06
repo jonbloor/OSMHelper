@@ -1,21 +1,16 @@
 <?php
-
 declare(strict_types=1);
-
 namespace App\Osm;
-
 use App\Config;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
-
 /**
- * Bearer-authenticated OSM API client with rate-limit header tracking stub.
+ * Bearer-authenticated OSM API client with rate-limit header tracking.
  */
 final class OsmApi
 {
     private Client $http;
-
-    /** @var array{limit?: string, remaining?: string, reset?: string} */
+    /** @var array{limit?: int|null, remaining?: int|null, resetInSec?: int|null, lastUpdatedMs?: int} */
     private array $lastRateLimit = [];
 
     public function __construct(?Client $http = null)
@@ -27,41 +22,60 @@ final class OsmApi
         ]);
     }
 
-    /**
-     * @param array<string, mixed> $query
-     * @return array<string, mixed>
-     */
+    /** @param array<string, mixed> $query @return array<string, mixed> */
     public function get(string $accessToken, string $path, array $query = []): array
     {
         return $this->request('GET', $accessToken, $path, ['query' => $query]);
     }
 
-    /**
-     * @param array<string, mixed> $form
-     * @return array<string, mixed>
-     */
+    /** @param array<string, mixed> $form @return array<string, mixed> */
     public function post(string $accessToken, string $path, array $form = []): array
     {
         return $this->request('POST', $accessToken, $path, ['form_params' => $form]);
     }
 
     /**
-     * @return array{limit?: string, remaining?: string, reset?: string}
+     * Snapshot from this request plus session (Node getRateLimitSnapshot parity).
+     * @return array{limit: int|null, remaining: int|null, resetInSec: int|null, secondsUntilReset: int|null}|null
      */
-    public function getRateLimitSnapshot(): array
+    public function getRateLimitSnapshot(): ?array
     {
-        return $this->lastRateLimit;
+        return self::sessionSnapshot();
     }
 
     /**
-     * @param array<string, mixed> $options
-     * @return array<string, mixed>
-     *
-     * @throws GuzzleException
+     * @return array{limit: int|null, remaining: int|null, resetInSec: int|null, secondsUntilReset: int|null}|null
      */
-    /**
-     * @return list<array<string, mixed>>
-     */
+    public static function sessionSnapshot(): ?array
+    {
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            return null;
+        }
+        $st = $_SESSION['osmRateLimit'] ?? null;
+        if (!is_array($st)) {
+            return null;
+        }
+        $resetInSec = isset($st['resetInSec']) && is_numeric($st['resetInSec']) ? (int) $st['resetInSec'] : null;
+        $lastMs = isset($st['lastUpdatedMs']) && is_numeric($st['lastUpdatedMs']) ? (int) $st['lastUpdatedMs'] : null;
+        $until = null;
+        if ($resetInSec !== null && $lastMs !== null) {
+            $elapsedSec = (int) floor(((int) round(microtime(true) * 1000) - $lastMs) / 1000);
+            $until = max(0, $resetInSec - $elapsedSec);
+        }
+        $limit = isset($st['limit']) && is_numeric($st['limit']) ? (int) $st['limit'] : null;
+        $remaining = isset($st['remaining']) && is_numeric($st['remaining']) ? (int) $st['remaining'] : null;
+        if ($limit === null && $remaining === null && $resetInSec === null) {
+            return null;
+        }
+        return [
+            'limit' => $limit,
+            'remaining' => $remaining,
+            'resetInSec' => $resetInSec,
+            'secondsUntilReset' => $until,
+        ];
+    }
+
+    /** @return list<array<string, mixed>> */
     public function getDynamicSections(string $accessToken): array
     {
         $response = $this->get($accessToken, '/oauth/resource');
@@ -109,6 +123,7 @@ final class OsmApi
         return $sections;
     }
 
+    /** @param array<string, mixed> $options @return array<string, mixed> */
     private function request(string $method, string $accessToken, string $path, array $options = []): array
     {
         $path = ltrim($path, '/');
@@ -116,7 +131,6 @@ final class OsmApi
             'Authorization' => 'Bearer ' . $accessToken,
             'Accept' => 'application/json',
         ]);
-
         $response = $this->http->request($method, $path, $options);
         $this->captureRateLimit($response->getHeaders());
         $status = $response->getStatusCode();
@@ -131,11 +145,7 @@ final class OsmApi
         return is_array($decoded) ? $decoded : ['_raw' => $body];
     }
 
-    /**
-     * Stub: record common rate-limit response headers for later UX.
-     *
-     * @param array<string, list<string>> $headers
-     */
+    /** @param array<string, list<string>> $headers */
     private function captureRateLimit(array $headers): void
     {
         $pick = static function (array $headers, string ...$names): ?string {
@@ -148,15 +158,21 @@ final class OsmApi
             }
             return null;
         };
-
-        $limit = $pick($headers, 'X-RateLimit-Limit', 'X-Ratelimit-Limit');
-        $remaining = $pick($headers, 'X-RateLimit-Remaining', 'X-Ratelimit-Remaining');
-        $reset = $pick($headers, 'X-RateLimit-Reset', 'X-Ratelimit-Reset');
-
-        $this->lastRateLimit = array_filter([
-            'limit' => $limit,
-            'remaining' => $remaining,
-            'reset' => $reset,
-        ], static fn ($v) => $v !== null);
+        $limit = $pick($headers, 'X-RateLimit-Limit', 'X-Ratelimit-Limit', 'x-ratelimit-limit');
+        $remaining = $pick($headers, 'X-RateLimit-Remaining', 'X-Ratelimit-Remaining', 'x-ratelimit-remaining');
+        $reset = $pick($headers, 'X-RateLimit-Reset', 'X-Ratelimit-Reset', 'x-ratelimit-reset');
+        if ($limit === null && $remaining === null && $reset === null) {
+            return;
+        }
+        $state = [
+            'limit' => $limit !== null && is_numeric($limit) ? (int) $limit : null,
+            'remaining' => $remaining !== null && is_numeric($remaining) ? (int) $remaining : null,
+            'resetInSec' => $reset !== null && is_numeric($reset) ? (int) $reset : null,
+            'lastUpdatedMs' => (int) round(microtime(true) * 1000),
+        ];
+        $this->lastRateLimit = $state;
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            $_SESSION['osmRateLimit'] = $state;
+        }
     }
 }

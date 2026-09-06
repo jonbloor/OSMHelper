@@ -8,6 +8,19 @@
       Signed in{% if fullName %} as <strong>{{ fullName }}</strong>{% endif %}.
       Tools use your OSM account; data is fetched when you open each page.
     </p>
+    {% if rateLimit %}
+    <div class="rate-limit-info">
+      <p><strong>API Rate Limit Status:</strong></p>
+      <ul>
+        <li>Limit: {{ rateLimit.limit ?? 'Unknown' }}</li>
+        <li>Remaining: {{ rateLimit.remaining ?? 'Unknown' }}</li>
+        <li>Resets in: {{ rateResetText|default('Unknown') }}</li>
+      </ul>
+      {% if rateLimit.remaining is not null and rateLimit.remaining <= 50 %}
+        <p class="warning">⚠️ Low remaining requests – use sparingly!</p>
+      {% endif %}
+    </div>
+    {% endif %}
     <div class="row">
       <a class="btn" href="/dashboard/">Go to dashboard</a>
       <a class="btn btn-secondary" href="/logout/">Logout</a>
