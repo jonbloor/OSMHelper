@@ -8,7 +8,7 @@ final class Config
 {
     public const OSM_API_BASE = 'https://www.onlinescoutmanager.co.uk';
 
-    public const OAUTH_SCOPES = 'section:member:read section:quartermaster:write section:finance:read';
+    public const OAUTH_SCOPES = 'section:member:read section:quartermaster:write section:finance:read section:badge:read';
 
     /** @var list<string> */
     public const SECTION_TYPE_ORDER = [
