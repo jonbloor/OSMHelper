@@ -168,10 +168,14 @@ final class OsmApi
                     $errHint .= ' (Retry-After ' . $ra . 's)';
                 }
             }
-            throw new \RuntimeException(
-                'OSM HTTP ' . $status . ' for /' . ltrim(explode('?', $path, 2)[0], '/') . (str_contains($path, '?') ? '?…' : '') . $errHint,
-                $status
-            );
+            $pathHint = ltrim(explode('?', $path, 2)[0], '/');
+            $msg = 'OSM HTTP ' . $status . ' for /' . $pathHint . (str_contains($path, '?') ? '?…' : '') . $errHint;
+            // OSM actions are case-sensitive; invalid-action must fail fast (no alternate probes).
+            $blob = strtolower($msg . ' ' . $body);
+            if (str_contains($blob, 'invalid-action') || str_contains($blob, 'invalid action')) {
+                $msg = 'OSM_INVALID_ACTION: ' . $msg;
+            }
+            throw new \RuntimeException($msg, $status);
         }
         return self::decodeBody($body);
     }

@@ -469,6 +469,25 @@ final class TopAwardsController
                 'path' => $write['path'],
                 'message' => $write['message'],
             ]);
+            // Fail fast: one rejected/disabled write -> stop (no cascade).
+            if (!$write['ok']) {
+                $notesStop = 'Stopped after first write failure (fail-fast; no alternate action probes).';
+                foreach (array_slice($pending['changes'], $i + 1) as $rest) {
+                    if (!is_array($rest)) {
+                        continue;
+                    }
+                    $results[] = [
+                        'scoutid' => $rest['scoutid'] ?? '',
+                        'name' => $rest['name'] ?? '',
+                        'current' => $rest['current'] ?? '',
+                        'proposed' => $rest['proposed'] ?? '',
+                        'ok' => false,
+                        'message' => $notesStop,
+                        'path' => null,
+                    ];
+                }
+                break;
+            }
         }
 
         if (!empty($section['id'])) {
@@ -487,9 +506,8 @@ final class TopAwardsController
     }
 
     /**
-     * Attempt OSM write for one member's challenge progress string.
-     * Tries legacy challenges.php updatesingle, then /ext/badges/records/ variants.
-     * Never invents silent success.
+     * Challenge progress write - gated until Network capture.
+     * Never probes guessed action= values (OSM case-sensitive; invalid-action auto-blocks).
      *
      * @param array{id:string,name:string,type:string,termId:string} $section
      * @param array<string, mixed> $badge
@@ -504,103 +522,14 @@ final class TopAwardsController
         string $memberId,
         string $proposed
     ): array {
-        $chal = (string) ($badge['chal'] ?? $badge['shortname'] ?? $badge['osm_key'] ?? '');
-        $badgeId = (string) ($badge['badge_id'] ?? '');
-        $badgeVersion = (string) ($badge['badge_version'] ?? '0');
-        $col = $progressField !== '' ? $progressField : (string) ($badge['progress_requirement_id'] ?? 'completed');
-        $sectionId = $section['id'];
-        $sectionType = $section['type'];
-        $termId = $section['termId'];
-
-        $attempts = [];
-
-        // 1) Legacy challenges.php updatesingle
-        $attempts[] = [
-            'label' => 'challenges.php?action=updatesingle',
-            'path' => 'challenges.php?action=updatesingle',
-            'form' => [
-                'action' => 'updatesingle',
-                'id' => $memberId,
-                'col' => $col,
-                'value' => $proposed,
-                'chal' => $chal !== '' ? $chal : $badgeId,
-                'sectionid' => $sectionId,
-                'section' => $sectionType,
-                'type' => 'challenge',
-                'termid' => $termId,
-            ],
-        ];
-
-        // 2) /ext/badges/records/ action=updatesingle
-        $attempts[] = [
-            'label' => '/ext/badges/records/?action=updatesingle',
-            'path' => '/ext/badges/records/?action=updatesingle',
-            'form' => [
-                'id' => $memberId,
-                'member_id' => $memberId,
-                'col' => $col,
-                'column' => $col,
-                'requirement_id' => $col,
-                'value' => $proposed,
-                'chal' => $chal !== '' ? $chal : $badgeId,
-                'badge_id' => $badgeId,
-                'badge_version' => $badgeVersion,
-                'sectionid' => $sectionId,
-                'section_id' => $sectionId,
-                'section' => $sectionType,
-                'type' => 'challenge',
-                'type_id' => self::TYPE_CHALLENGE,
-                'term_id' => $termId,
-                'termid' => $termId,
-            ],
-        ];
-
-        // 3) /ext/badges/records/ action=update
-        $attempts[] = [
-            'label' => '/ext/badges/records/?action=update',
-            'path' => '/ext/badges/records/?action=update',
-            'form' => [
-                'member_id' => $memberId,
-                'scoutid' => $memberId,
-                'column' => $col,
-                'col' => $col,
-                'requirement_id' => $col,
-                'value' => $proposed,
-                'badge_id' => $badgeId,
-                'badge_version' => $badgeVersion,
-                'sectionid' => $sectionId,
-                'section_id' => $sectionId,
-                'section' => $sectionType,
-                'type_id' => self::TYPE_CHALLENGE,
-                'term_id' => $termId,
-            ],
-        ];
-
-        $errors = [];
-        foreach ($attempts as $attempt) {
-            try {
-                $res = $api->post($token, $attempt['path'], $attempt['form']);
-                $ok = self::responseLooksSuccessful($res);
-                if ($ok) {
-                    return [
-                        'ok' => true,
-                        'message' => 'Updated via ' . $attempt['label'],
-                        'path' => $attempt['label'],
-                    ];
-                }
-                $snippet = self::briefResponse($res);
-                $errors[] = $attempt['label'] . ' → unexpected response: ' . $snippet;
-            } catch (Throwable $e) {
-                $errors[] = $attempt['label'] . ' → ' . $e->getMessage();
-                if (self::is429($e)) {
-                    break;
-                }
-            }
-        }
+        // OSM support (2026-09-07): prior guessed badge write action names were invalid
+        // (case-sensitive) and auto-blocked Jon's account. Do NOT probe alternates.
+        // Wire only after Network capture of a real Gold edit.
+        unset($api, $token, $section, $badge, $progressField, $memberId, $proposed);
 
         return [
             'ok' => false,
-            'message' => 'All write attempts failed. ' . implode(' | ', $errors),
+            'message' => 'Badge writes disabled until a verified Network capture of editing Gold progress is pasted (no guessed action= probes).',
             'path' => null,
         ];
     }
@@ -994,6 +923,11 @@ final class TopAwardsController
                                     self::setRateBanner($rateLimitBanner, 'OSM rate limit hit during badge fan-out. Stopped further calls. Results may be partial — wait, then Refresh now.');
                                     break 2;
                                 }
+                                if (self::isInvalidAction($e)) {
+                                    $notes[] = 'OSM invalid-action on getBadgeRecords - stopped fan-out immediately (actions are case-sensitive; no alternate probes).';
+                                    $scopeHint = $e->getMessage();
+                                    break 2;
+                                }
                                 $key = 'records_err_' . $label;
                                 if (!isset($debugMeta[$key])) {
                                     $debugMeta[$key] = true;
@@ -1001,6 +935,8 @@ final class TopAwardsController
                                 }
                                 if (str_contains(strtolower($e->getMessage()), '403')) {
                                     $scopeHint = $e->getMessage();
+                                    // Fail fast on hard 403 during fan-out - do not keep probing badges.
+                                    break 2;
                                 }
                             }
                             usleep(self::RECORDS_DELAY_US);
@@ -1556,6 +1492,16 @@ final class TopAwardsController
             return true;
         }
         return str_contains($e->getMessage(), 'OSM HTTP 429');
+    }
+
+    /** OSM rejected action= (case-sensitive) - stop the flow; never try alternate guesses. */
+    private static function isInvalidAction(Throwable $e): bool
+    {
+        $m = strtolower($e->getMessage());
+
+        return str_contains($m, 'osm_invalid_action')
+            || str_contains($m, 'invalid-action')
+            || str_contains($m, 'invalid action specified');
     }
 
     private static function setRateBanner(?string &$banner, string $message): void
