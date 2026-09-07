@@ -4,7 +4,17 @@
 {% if authed %}
   <p class="slow-fetch-warning muted">Some tools take a moment — we fetch fresh data from OSM.</p>
   <div class="card home-signed-in">
-    <h2>{% if groupName %}{{ groupName }}
+    <h2>{% if groupName %}{{ groupName }}{% else %}Your group{% endif %}</h2>
+    <p class="muted">
+      Signed in{% if fullName %} as <strong>{{ fullName }}</strong>{% endif %}.
+      Tools use your OSM account; data is fetched when you open each page.
+    </p>
+    {% include '_rate_limit.twig' %}
+    <div class="row">
+      <a class="btn btn-secondary" href="/help/">Help</a>
+      <a class="btn btn-secondary" href="/logout/">Logout</a>
+    </div>
+  </div>
   {% if osmRecentErrors %}
   <div class="card">
     <details>
@@ -26,18 +36,6 @@
     </details>
   </div>
   {% endif %}
-
-{% else %}Your group{% endif %}</h2>
-    <p class="muted">
-      Signed in{% if fullName %} as <strong>{{ fullName }}</strong>{% endif %}.
-      Tools use your OSM account; data is fetched when you open each page.
-    </p>
-    {% include '_rate_limit.twig' %}
-    <div class="row">
-      <a class="btn btn-secondary" href="/help/">Help</a>
-      <a class="btn btn-secondary" href="/logout/">Logout</a>
-    </div>
-  </div>
 {% else %}
   <section class="home-hero card">
     <p class="eyebrow">Volunteer Scouts tooling</p>
