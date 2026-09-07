@@ -11,7 +11,7 @@
   {% if writesPaused|default(false) %}
   <div class="alert alert-error"><strong>Writes paused.</strong> Apply will not call OSM until writes are re-enabled.</div>
   {% else %}
-  <div class="alert">Review each current → proposed change. Nothing is written until you click <strong>Write to OSM</strong>.</div>
+  <div class="alert">About to write <strong>{{ changes|length }}</strong> member(s). Review each current → proposed change. Nothing is written until you click <strong>Write to OSM</strong>.</div>
   {% endif %}
   {% if notes %}
   <details><summary class="muted">Notes</summary><ul>{% for n in notes %}<li>{{ n }}</li>{% endfor %}</ul></details>

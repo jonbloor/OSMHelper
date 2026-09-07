@@ -324,9 +324,37 @@ final class TopAwardsController
             } else {
                 $calc = self::calculate($api, $token, $sectionMeta, $threshold, $debugMeta, $notes, $scopeHint, $rateLimitBanner);
             }
+            $one = isset($_POST['scoutid_one']) ? trim((string) $_POST['scoutid_one']) : '';
+            $selectedRaw = $_POST['scoutids'] ?? [];
+            if (!is_array($selectedRaw)) {
+                $selectedRaw = [];
+            }
+            $selected = [];
+            foreach ($selectedRaw as $sid) {
+                $sid = trim((string) $sid);
+                if ($sid !== '') {
+                    $selected[$sid] = true;
+                }
+            }
+            if ($one !== '') {
+                $selected = [$one => true];
+            }
+            if ($selected === []) {
+                $_SESSION['topAwardsFlash'] = [
+                    'type' => 'error',
+                    'message' => 'Select at least one member (tick the Write checkbox), or click Write this one on a single row.',
+                ];
+                header('Location: /top-awards/');
+                exit;
+            }
+
             $changes = [];
             foreach ($calc['rows'] as $r) {
                 if (empty($r['will_update'])) {
+                    continue;
+                }
+                $sid = (string) ($r['scoutid'] ?? '');
+                if ($sid === '' || !isset($selected[$sid])) {
                     continue;
                 }
                 $changes[] = [
@@ -347,7 +375,7 @@ final class TopAwardsController
             if ($changes === []) {
                 $_SESSION['topAwardsFlash'] = [
                     'type' => 'info',
-                    'message' => 'No progress strings need updating (current already matches proposed, or no youth rows).',
+                    'message' => 'None of the selected members need an update (or they were not in the will-update set). Tick a row marked → update, or Write this one.',
                 ];
                 header('Location: /top-awards/');
                 exit;

@@ -88,14 +88,20 @@
 <div class="card export-nudge" role="region" aria-label="Export before write">
   <h3>Save a copy before writing</h3>
   <p>Export this table first (CSV, Excel or PDF). OSMHelper will not write until you confirm you have a backup.</p>
+  <p class="muted">To update <strong>one</strong> member: tick <em>I have saved a copy</em>, then either tick that row and <strong>Review selected…</strong>, or click <strong>Write this one</strong> on the row.</p>
 </div>
 
 {# Card 3 — Results #}
 <div class="card">
+  {% if challengeBadge and not writesPaused|default(false) %}
+  <form id="ta-write" method="post" action="/top-awards/review/" class="top-awards-review">
+    {% include '_csrf.twig' %}
+  {% endif %}
   <div class="table-wrap">
   <table class="data" data-table-tools data-export-name="top-awards">
     <thead>
       <tr>
+        {% if challengeBadge %}<th data-sort="none">Write</th>{% endif %}
         <th data-sort="text">Name</th>
         <th data-sort="text">Section</th>
         <th data-sort="text">Patrol</th>
@@ -111,6 +117,21 @@
     <tbody>
     {% for r in rows %}
       <tr {% if r.will_update %}class="status-warn"{% endif %}>
+        {% if challengeBadge %}
+        <td>
+          {% if r.will_update and not writesPaused|default(false) %}
+          <label class="row" style="gap:0.35rem;align-items:center;margin:0">
+            <input type="checkbox" name="scoutids[]" value="{{ r.scoutid }}" form="ta-write">
+            <span class="muted">Select</span>
+          </label>
+          <button class="btn btn-secondary" type="submit" name="scoutid_one" value="{{ r.scoutid }}" form="ta-write" style="margin-top:0.35rem;font-size:0.85rem">Write this one</button>
+          {% elseif r.will_update %}
+          <span class="muted">—</span>
+          {% else %}
+          <span class="muted">OK</span>
+          {% endif %}
+        </td>
+        {% endif %}
         <td>{{ r.name }}</td>
         <td>{{ r.section_name|default(section.name|default('')) }}</td>
         <td>{{ r.patrol }}</td>
@@ -128,25 +149,27 @@
   </div>
 
   {% if challengeBadge %}
-  <form method="post" action="/top-awards/review/" class="top-awards-review" style="margin-top:1.25rem">
-    {% include '_csrf.twig' %}
+  <div style="margin-top:1.25rem">
     <div class="export-nudge" style="margin-bottom:0.75rem">
       <label class="row" style="align-items:flex-start;gap:0.5rem">
-        <input type="checkbox" name="saved_copy" value="1" required>
+        <input type="checkbox" name="saved_copy" value="1" required {% if not writesPaused|default(false) %}form="ta-write"{% endif %}>
         <span><strong>I have saved a copy of this table.</strong></span>
       </label>
     </div>
-    <p class="muted">{{ changesCount }} member(s) would change. Others already match.</p>
+    <p class="muted">{{ changesCount }} member(s) would change. Tick rows to write (none selected by default), or use <strong>Write this one</strong> on a single row.</p>
     {% if writesPaused|default(false) %}
     <p class="alert">Review / Apply is paused (no OSM writes). You can still export the table above.</p>
-    <button class="btn" type="submit" disabled>Review updates… (paused)</button>
+    <button class="btn" type="button" disabled>Review selected… (paused)</button>
     {% else %}
-    <button class="btn" type="submit" {% if changesCount == 0 %}disabled{% endif %}>Review updates…</button>
+    <button class="btn" type="submit" form="ta-write" {% if changesCount == 0 %}disabled{% endif %}>Review selected…</button>
     {% if changesCount == 0 %}
     <p class="muted">No changes to write for this section.</p>
     {% endif %}
     {% endif %}
+  </div>
+  {% if not writesPaused|default(false) %}
   </form>
+  {% endif %}
   {% else %}
   <p class="alert alert-error" style="margin-top:1rem">No matching challenge badge found for this section — cannot prepare writes. See notes above.</p>
   {% endif %}
