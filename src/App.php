@@ -143,7 +143,7 @@ final class App
             return;
         }
         $qs = $_SERVER['QUERY_STRING'] ?? '';
-        $target = 'https://osmhelper.co.uk/callback/' . ($qs !== '' ? ('?' . $qs) : '');
+        $target = 'https://osmhelper.co.uk/callback' . ($qs !== '' ? ('?' . $qs) : '');
         header('Location: ' . $target, true, 302);
         exit;
     }

@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\App;
 use App\Config;
+use App\Http\OAuthState;
 use App\Osm\OsmApi;
 use App\Osm\OsmOAuth;
 use Throwable;
@@ -25,9 +26,29 @@ final class AuthController
 
         $oauth = new OsmOAuth();
         $url = $oauth->getAuthorizationUrl();
-        // Persist oauth2state before leaving for OSM (fail-closed callback needs it).
+        $state = $oauth->getState();
+        if (!is_string($state) || $state === '') {
+            $state = (string) ($_SESSION['oauth2state'] ?? '');
+        }
+        OAuthState::persist($state);
+        // Flush session so oauth2state is on disk before the browser leaves.
         session_write_close();
-        header('Location: ' . $url);
+
+        // 200 interstitial (not cross-site 302): Set-Cookie must land before OSM.
+        header('Content-Type: text/html; charset=UTF-8');
+        header('Cache-Control: no-store, no-cache, must-revalidate');
+        $esc = htmlspecialchars($url, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $js = json_encode($url, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+        echo '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">';
+        echo '<meta name="viewport" content="width=device-width, initial-scale=1">';
+        echo '<meta http-equiv="refresh" content="0;url=' . $esc . '">';
+        echo '<title>Connecting to OSM…</title>';
+        echo '<style>body{font-family:system-ui,sans-serif;max-width:32rem;margin:3rem auto;padding:0 1rem;line-height:1.5}</style>';
+        echo '</head><body>';
+        echo '<p>Connecting to Online Scout Manager…</p>';
+        echo '<p><a href="' . $esc . '">Continue</a> if you are not redirected.</p>';
+        echo '<script>location.replace(' . $js . ');</script>';
+        echo '</body></html>';
         exit;
     }
 
@@ -53,14 +74,13 @@ final class AuthController
         }
 
         $state = isset($_GET['state']) ? (string) $_GET['state'] : '';
-        $expected = $_SESSION['oauth2state'] ?? null;
-        unset($_SESSION['oauth2state']);
-        // Fail closed: require prior oauth2state and matching ?state=
-        if (!is_string($expected) || $expected === '' || $state === '' || !hash_equals($expected, $state)) {
+        $reason = OAuthState::consume($state);
+        if ($reason !== 'ok') {
+            error_log('OAuth state rejected: ' . $reason);
             http_response_code(400);
             App::render('error.twig', [
                 'title' => 'Bad request',
-                'message' => 'Invalid OAuth state. Please try connecting again.',
+                'message' => OAuthState::userMessage($reason),
             ]);
             return;
         }
@@ -92,9 +112,6 @@ final class AuthController
             }
             $_SESSION['groupName'] = $groupName;
 
-            // Only keep the four session fields long-term; drop ephemeral count helper after dashboard reads it
-            // (_sections_count is P0 display only, not PII)
-
             header('Location: /');
             exit;
         } catch (Throwable $e) {
@@ -118,6 +135,13 @@ final class AuthController
             $params = session_get_cookie_params();
             setcookie(session_name(), '', time() - 42000, $params['path'], $params['domain'], (bool) $params['secure'], (bool) $params['httponly']);
         }
+        setcookie(OAuthState::COOKIE, '', [
+            'expires' => time() - 42000,
+            'path' => '/',
+            'secure' => true,
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
         session_destroy();
         header('Location: /');
         exit;
