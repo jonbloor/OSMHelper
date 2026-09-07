@@ -584,6 +584,23 @@ input[type=number], select {
   color: var(--accent);
 }
 body.is-loading { cursor: progress; }
+/* While Loading… is shown: block nav + main actions; Logout stays clickable */
+body.is-loading #app-nav a:not(.nav-logout),
+body.is-loading #app-nav summary,
+body.is-loading .nav-toggle,
+body.is-loading a.btn,
+body.is-loading button.btn,
+body.is-loading button[type="submit"],
+body.is-loading input[type="submit"] {
+  pointer-events: none;
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+body.is-loading a.nav-logout {
+  pointer-events: auto;
+  opacity: 1;
+  cursor: pointer;
+}
 
 .loading-spinner {
   display: inline-block;

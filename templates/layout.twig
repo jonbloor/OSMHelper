@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% if title and title != 'OSMHelper' %}{{ title }} · {% endif %}OSMHelper</title>
-  <link rel="stylesheet" href="/assets/app.css?v=d6badge2">
-  <script src="/assets/table-tools.js?v=d6badge2" defer></script>
+  <link rel="stylesheet" href="/assets/app.css?v=d6load1">
+  <script src="/assets/table-tools.js?v=d6load1" defer></script>
 </head>
 <body>
   <div id="page-loading" class="page-loading" hidden aria-live="polite" aria-busy="true">
@@ -109,13 +109,34 @@
     (function () {
       var el = document.getElementById('page-loading');
       if (!el) return;
-      function show() { el.hidden = false; document.body.classList.add('is-loading'); }
+      function isLogoutLink(a) {
+        return !!(a && (a.classList.contains('nav-logout') || (a.getAttribute('href') || '').indexOf('/logout') === 0));
+      }
+      function lockUi() {
+        el.hidden = false;
+        document.body.classList.add('is-loading');
+        document.querySelectorAll('#app-nav a:not(.nav-logout), #app-nav summary, .nav-toggle, a.btn, button.btn, button[type="submit"], input[type="submit"]').forEach(function (n) {
+          n.setAttribute('aria-disabled', 'true');
+          if (n.tagName === 'BUTTON' || n.tagName === 'INPUT') {
+            n.disabled = true;
+          }
+        });
+      }
       document.addEventListener('click', function (e) {
+        var a = e.target.closest && e.target.closest('a[href]');
+        if (document.body.classList.contains('is-loading')) {
+          if (isLogoutLink(a)) return;
+          if (a || (e.target.closest && e.target.closest('button, input[type="submit"], summary'))) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+          return;
+        }
         if (e.defaultPrevented) return;
         if (e.button !== 0) return;
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-        var a = e.target.closest && e.target.closest('a[href]');
         if (!a) return;
+        if (isLogoutLink(a)) return;
         var href = a.getAttribute('href') || '';
         if (!href || href.charAt(0) === '#' || href.indexOf('mailto:') === 0 || href.indexOf('javascript:') === 0) return;
         if (a.target === '_blank' || a.hasAttribute('download')) return;
@@ -124,9 +145,16 @@
           if (url.origin !== window.location.origin) return;
           if (url.pathname === window.location.pathname && url.search === window.location.search && url.hash) return;
         } catch (err) { return; }
-        show();
+        lockUi();
       }, true);
-      document.addEventListener('submit', function () { show(); }, true);
+      document.addEventListener('submit', function (e) {
+        if (document.body.classList.contains('is-loading')) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        lockUi();
+      }, true);
     })();
   </script>
 </body>
