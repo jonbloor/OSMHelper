@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\App;
 use App\Config;
 use App\Http\Auth;
+use App\Osm\OsmErrorLog;
 final class HomeController
 {
     public function index(): void
@@ -22,9 +23,11 @@ final class HomeController
             'authed' => $authed,
             'fullName' => $_SESSION['fullName'] ?? null,
             'groupName' => $_SESSION['groupName'] ?? null,
+            'osmRecentErrors' => [],
         ];
         if ($authed) {
             $ctx = array_merge($ctx, Auth::ensureRateLimit());
+            $ctx['osmRecentErrors'] = OsmErrorLog::recent(8);
         }
         App::render('home.twig', $ctx);
     }

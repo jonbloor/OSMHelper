@@ -4,7 +4,30 @@
 {% if authed %}
   <p class="slow-fetch-warning muted">Some tools take a moment — we fetch fresh data from OSM.</p>
   <div class="card home-signed-in">
-    <h2>{% if groupName %}{{ groupName }}{% else %}Your group{% endif %}</h2>
+    <h2>{% if groupName %}{{ groupName }}
+  {% if osmRecentErrors %}
+  <div class="card">
+    <details>
+      <summary class="muted">Recent OSM API errors ({{ osmRecentErrors|length }})</summary>
+      <p class="muted">Redacted log for diagnosis (invalid-action, 403, 429, transport). Full file: <code>storage/osm-errors.jsonl</code> on the server.</p>
+      <ul class="muted" style="font-size:0.9rem">
+      {% for e in osmRecentErrors|reverse %}
+        <li><code>{{ e.at|default('—') }}</code>
+          · {{ e.kind|default('http') }}
+          · {{ e.method|default('') }} {{ e.endpoint|default('') }}
+          {% if e.action %} · action={{ e.action }}{% endif %}
+          {% if e.http_status %} · HTTP {{ e.http_status }}{% endif %}
+          {% if e.osm_message %} — {{ e.osm_message }}{% endif %}
+          {% if e.section_id %} · section {{ e.section_id }}{% endif %}
+          {% if e.badge_id %} · badge {{ e.badge_id }}{% endif %}
+        </li>
+      {% endfor %}
+      </ul>
+    </details>
+  </div>
+  {% endif %}
+
+{% else %}Your group{% endif %}</h2>
     <p class="muted">
       Signed in{% if fullName %} as <strong>{{ fullName }}</strong>{% endif %}.
       Tools use your OSM account; data is fetched when you open each page.

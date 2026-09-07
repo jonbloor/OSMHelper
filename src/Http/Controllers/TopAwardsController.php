@@ -8,6 +8,7 @@ use App\Http\Auth;
 use App\Http\Csrf;
 use App\Osm\OsmApi;
 use App\Osm\OsmDebug;
+use App\Osm\OsmErrorLog;
 use App\Osm\OsmLists;
 use App\Store\SettingsStore;
 use Throwable;
@@ -577,6 +578,19 @@ final class TopAwardsController
             ];
         }
 
+        OsmErrorLog::log([
+            'method' => 'POST',
+            'endpoint' => $pathLabel,
+            'action' => 'updateSingleRecord',
+            'http_status' => null,
+            'osm_code' => null,
+            'osm_message' => 'unexpected response',
+            'kind' => 'write',
+            'section_id' => $sectionId,
+            'badge_id' => $badgeId,
+            'scoutid' => $memberId,
+            'detail' => self::briefResponse($res),
+        ]);
         return [
             'ok' => false,
             'message' => 'updateSingleRecord unexpected response: ' . self::briefResponse($res),

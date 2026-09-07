@@ -148,18 +148,42 @@ final class OsmApi
             $headers['Content-Type'] = 'application/json';
         }
         $options['headers'] = array_merge($options['headers'] ?? [], $headers);
-        $response = $this->http->request($method, $path, $options);
+        $ctx = self::requestContext($path, $options);
+        try {
+            $response = $this->http->request($method, $path, $options);
+        } catch (\Throwable $e) {
+            OsmErrorLog::log([
+                'method' => $method,
+                'endpoint' => $path,
+                'action' => $ctx['action'],
+                'http_status' => null,
+                'osm_code' => null,
+                'osm_message' => $e->getMessage(),
+                'kind' => 'transport',
+                'section_id' => $ctx['section_id'],
+                'badge_id' => $ctx['badge_id'],
+                'scoutid' => $ctx['scoutid'],
+                'detail' => null,
+            ]);
+            throw new \RuntimeException('OSM transport error for /' . ltrim(explode('?', $path, 2)[0], '/') . ' — ' . $e->getMessage(), 0, $e);
+        }
         $this->captureRateLimit($response->getHeaders());
         $status = $response->getStatusCode();
         $body = (string) $response->getBody();
         if ($status >= 400) {
             $errHint = '';
+            $osmMsg = null;
+            $osmCode = null;
             $decodedErr = json_decode($body, true);
             if (is_array($decodedErr)) {
-                $msg = $decodedErr['error']['message'] ?? ($decodedErr['error'] ?? null);
+                $msgPart = $decodedErr['error']['message'] ?? ($decodedErr['error'] ?? null);
                 $code = is_array($decodedErr['error'] ?? null) ? ($decodedErr['error']['code'] ?? null) : null;
-                if (is_string($msg) && $msg !== '') {
-                    $errHint = ' — ' . $msg . ($code ? " [{$code}]" : '');
+                if (is_string($msgPart) && $msgPart !== '') {
+                    $osmMsg = $msgPart;
+                    $errHint = ' — ' . $msgPart . ($code ? " [{$code}]" : '');
+                }
+                if (is_string($code) || is_int($code)) {
+                    $osmCode = (string) $code;
                 }
             }
             if ($status === 429) {
@@ -172,12 +196,63 @@ final class OsmApi
             $msg = 'OSM HTTP ' . $status . ' for /' . $pathHint . (str_contains($path, '?') ? '?…' : '') . $errHint;
             // OSM actions are case-sensitive; invalid-action must fail fast (no alternate probes).
             $blob = strtolower($msg . ' ' . $body);
+            $kind = 'http';
             if (str_contains($blob, 'invalid-action') || str_contains($blob, 'invalid action')) {
                 $msg = 'OSM_INVALID_ACTION: ' . $msg;
+                $kind = 'invalid-action';
+            } elseif ($status === 429) {
+                $kind = '429';
+            } elseif ($status === 403) {
+                $kind = '403';
             }
+            OsmErrorLog::log([
+                'method' => $method,
+                'endpoint' => $path,
+                'action' => $ctx['action'],
+                'http_status' => $status,
+                'osm_code' => $osmCode,
+                'osm_message' => $osmMsg,
+                'kind' => $kind,
+                'section_id' => $ctx['section_id'],
+                'badge_id' => $ctx['badge_id'],
+                'scoutid' => $ctx['scoutid'],
+                'detail' => null,
+            ]);
             throw new \RuntimeException($msg, $status);
         }
         return self::decodeBody($body);
+    }
+
+    /**
+     * Pull safe request context for error logs (no bodies / tokens).
+     * @param array<string, mixed> $options
+     * @return array{action:?string,section_id:?string,badge_id:?string,scoutid:?string}
+     */
+    private static function requestContext(string $path, array $options): array
+    {
+        $params = [];
+        $qPos = strpos($path, '?');
+        if ($qPos !== false) {
+            parse_str(substr($path, $qPos + 1), $params);
+        }
+        $form = $options['form_params'] ?? null;
+        if (is_array($form)) {
+            $params = array_merge($params, $form);
+        }
+        $pick = static function (array $params, string ...$keys): ?string {
+            foreach ($keys as $k) {
+                if (isset($params[$k]) && $params[$k] !== '' && $params[$k] !== null) {
+                    return (string) $params[$k];
+                }
+            }
+            return null;
+        };
+        return [
+            'action' => $pick($params, 'action'),
+            'section_id' => $pick($params, 'section_id', 'sectionid'),
+            'badge_id' => $pick($params, 'badge_id', 'badgeid'),
+            'scoutid' => $pick($params, 'scoutid', 'member_id', 'id'),
+        ];
     }
 
     /** @return array<string, mixed> */
