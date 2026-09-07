@@ -23,10 +23,19 @@ final class TopAwardsController
     private const TYPE_STAGED = 3;
 
     /** Cache successful calcs so refresh does not re-hammer OSM. */
-    private const CACHE_TTL_SEC = 720; // 12 minutes
+    private const CACHE_TTL_SEC = 7200; // 2 hours
+
+    /** Serve stale cache this long when quota is low / refresh would hurt. */
+    private const STALE_CACHE_SEC = 21600; // 6 hours
 
     /** Remaining requests at/below which we refuse further badge fan-out. */
-    private const RATE_LOW_REMAINING = 25;
+    private const RATE_LOW_REMAINING = 40;
+
+    /**
+     * Apply writes paused until Jon pastes an OSM Network capture of editing a
+     * challenge progress cell AND OSM quota has recovered. Do not invent paths.
+     */
+    private const APPLY_WRITES_ENABLED = false;
 
     /** usleep between getBadgeRecords when fan-out is unavoidable. */
     private const RECORDS_DELAY_US = 250000;
@@ -131,13 +140,27 @@ final class TopAwardsController
             }
 
             $forceRefresh = isset($_GET['refresh']) && (string) $_GET['refresh'] === '1';
-            $cached = $forceRefresh ? null : self::readCache($sectionId);
+            $rateLow = $api->isRateLow(self::RATE_LOW_REMAINING);
+            $cached = null;
+            if ($forceRefresh && $rateLow) {
+                $cached = self::readCache($sectionId, true);
+                $rateLimitBanner = 'Refresh skipped — OSM quota is low (see remaining on Home). Wait until it recovers before Refresh; Top awards will keep using cache to avoid locking you out of OSM.';
+            } elseif (!$forceRefresh) {
+                $cached = self::readCache($sectionId, false);
+            }
+            // forceRefresh with healthy quota → $cached stays null (live calc)
+
             if (is_array($cached)) {
                 $rows = $cached['rows'] ?? [];
                 $challengeBadge = $cached['challengeBadge'] ?? null;
                 $debugMeta = array_merge($debugMeta, is_array($cached['debugMeta'] ?? null) ? $cached['debugMeta'] : []);
                 $notes = is_array($cached['notes'] ?? null) ? $cached['notes'] : [];
-                $rateLimitBanner = is_string($cached['rateLimitBanner'] ?? null) ? $cached['rateLimitBanner'] : null;
+                if ($rateLimitBanner === null && is_string($cached['rateLimitBanner'] ?? null)) {
+                    $rateLimitBanner = $cached['rateLimitBanner'];
+                }
+                if (!empty($cached['_stale']) && $rateLimitBanner === null) {
+                    $rateLimitBanner = 'Showing older cached results while OSM quota recovers. Prefer waiting over Refresh.';
+                }
                 $fromCache = true;
                 $cacheAt = $cached['at'] ?? null;
             } else {
@@ -163,7 +186,17 @@ final class TopAwardsController
                 $scopeHint = $error;
             }
             if (self::is429($e)) {
-                $rateLimitBanner = 'OSM rate limit hit (HTTP 429). Wait a minute, then use Refresh now. Further badge calls were stopped to avoid a wall of errors.';
+                $stale = isset($sectionId) ? self::readCache($sectionId, true) : null;
+                if (is_array($stale)) {
+                    $rows = $stale['rows'] ?? [];
+                    $challengeBadge = $stale['challengeBadge'] ?? null;
+                    $debugMeta = array_merge($debugMeta, is_array($stale['debugMeta'] ?? null) ? $stale['debugMeta'] : []);
+                    $notes = is_array($stale['notes'] ?? null) ? $stale['notes'] : [];
+                    $fromCache = true;
+                    $cacheAt = $stale['at'] ?? null;
+                    $error = null;
+                }
+                $rateLimitBanner = 'OSM rate limit hit (HTTP 429). Wait for your OSM quota to recover (check remaining on Home) before using Top awards Refresh or other heavy tools. Cached results are shown when available.';
             }
         }
 
@@ -210,6 +243,8 @@ final class TopAwardsController
             'flash' => is_array($flash) ? $flash : null,
             'fromCache' => $fromCache,
             'cacheAt' => $cacheAt,
+            'cacheTtlMinutes' => (int) (self::CACHE_TTL_SEC / 60),
+            'writesPaused' => !self::APPLY_WRITES_ENABLED,
         ]));
     }
 
@@ -228,9 +263,9 @@ final class TopAwardsController
                 'topAwardsSectionId' => $sectionId,
                 'topAwardsSectionType' => $sectionType,
             ]);
-            self::clearCache($sectionId);
+            // Do not clearCache / force refresh — use per-section cache (2h) to spare OSM quota.
         }
-        header('Location: /top-awards/?refresh=1');
+        header('Location: /top-awards/');
         exit;
     }
 
@@ -328,6 +363,7 @@ final class TopAwardsController
             ];
 
             App::render('top-awards-confirm.twig', Auth::baseContext([
+                'writesPaused' => !self::APPLY_WRITES_ENABLED,
                 'title' => 'Confirm Top awards write',
                 'section' => $sectionMeta,
                 'threshold' => $threshold,
@@ -349,8 +385,20 @@ final class TopAwardsController
 
     public function apply(): void
     {
-        $token = Auth::requireLogin();
+        Auth::requireLogin();
         Csrf::requireValid();
+
+        if (!self::APPLY_WRITES_ENABLED) {
+            unset($_SESSION['topAwardsPending']);
+            $_SESSION['topAwardsFlash'] = [
+                'type' => 'error',
+                'message' => 'Writing to OSM is paused. OSM rejected previous write attempts (403 / invalid-action), and Apply storms can burn quota. Paste a Network capture of editing one challenge progress cell in OSM (URL + method + payload) via Bungle once your OSM login works again — we will wire that exact call only. Until then, use Calculate + export only.',
+            ];
+            header('Location: /top-awards/');
+            exit;
+        }
+
+        $token = Auth::requireLogin();
 
         $pending = $_SESSION['topAwardsPending'] ?? null;
         unset($_SESSION['topAwardsPending']);
@@ -1592,7 +1640,7 @@ final class TopAwardsController
     }
 
     /** @return array<string, mixed>|null */
-    private static function readCache(string $sectionId): ?array
+    private static function readCache(string $sectionId, bool $allowStale = false): ?array
     {
         $path = self::cachePath($sectionId);
         if (!is_readable($path)) {
@@ -1604,8 +1652,15 @@ final class TopAwardsController
             return null;
         }
         $ts = strtotime((string) $data['at']);
-        if ($ts === false || (time() - $ts) > self::CACHE_TTL_SEC) {
+        if ($ts === false) {
             return null;
+        }
+        $age = time() - $ts;
+        if ($age > self::CACHE_TTL_SEC) {
+            if (!$allowStale || $age > self::STALE_CACHE_SEC) {
+                return null;
+            }
+            $data['_stale'] = true;
         }
         return $data;
     }

@@ -8,7 +8,11 @@
     · field <code>{{ progressField|default('completed') }}</code>
   </p>
   {% endif %}
+  {% if writesPaused|default(true) %}
+  <div class="alert alert-error"><strong>Writes paused.</strong> Do not Apply until OSM quota recovers and a Network capture of editing a challenge progress cell is pasted via Bungle. No new write URL will be invented.</div>
+  {% else %}
   <div class="alert">Review each current → proposed change. Nothing is written until you click <strong>Write to OSM</strong>.</div>
+  {% endif %}
   {% if notes %}
   <details><summary class="muted">Notes</summary><ul>{% for n in notes %}<li>{{ n }}</li>{% endfor %}</ul></details>
   {% endif %}
@@ -38,7 +42,11 @@
   </div>
   <form method="post" action="/top-awards/apply/" class="row" style="margin-top:1rem">
     {% include '_csrf.twig' %}
+    {% if writesPaused|default(true) %}
+    <button class="btn" type="submit" disabled>Write to OSM (paused)</button>
+    {% else %}
     <button class="btn" type="submit">Write to OSM</button>
+    {% endif %}
     <a class="btn btn-secondary" href="/top-awards/">Cancel</a>
   </form>
 </div>
