@@ -50,17 +50,34 @@ final class TopAwardsController
     ];
 
     /**
-     * Scouts Chief Scout's Gold — known badge + "Six badges" requirement.
-     * Other sections still use name-match discovery; wire hardcoded ids later the same way.
+     * Known Chief Scout awards (hardcoded where Network-proven).
+     * Beavers Bronze / Cubs Silver: discover via getAvailableBadges until ids captured.
      *
-     * @var array{badge_id:string,badge_version:string,name:string,progress_requirement_id:string,type_id:int}
+     * @var array<string, array{badge_id:string,badge_version:string,name:string,progress_requirement_id:string,type_id:int}>
      */
-    private const SCOUTS_GOLD = [
-        'badge_id' => '1539',
-        'badge_version' => '0',
-        'name' => "Chief Scout's Gold",
-        'progress_requirement_id' => '114339',
-        'type_id' => self::TYPE_CHALLENGE,
+    private const AWARDS_BY_TYPE = [
+        'scouts' => [
+            'badge_id' => '1539',
+            'badge_version' => '0',
+            'name' => "Chief Scout's Gold",
+            'progress_requirement_id' => '114339',
+            'type_id' => self::TYPE_CHALLENGE,
+        ],
+        // Placeholders filled by discovery; ids empty until known.
+        'beavers' => [
+            'badge_id' => '',
+            'badge_version' => '0',
+            'name' => "Chief Scout's Bronze",
+            'progress_requirement_id' => '',
+            'type_id' => self::TYPE_CHALLENGE,
+        ],
+        'cubs' => [
+            'badge_id' => '',
+            'badge_version' => '0',
+            'name' => "Chief Scout's Silver",
+            'progress_requirement_id' => '',
+            'type_id' => self::TYPE_CHALLENGE,
+        ],
     ];
 
     /** Youth section types eligible for Top-awards (skip adults/waiting). */
@@ -279,7 +296,7 @@ final class TopAwardsController
         if (!$savedCopy) {
             $_SESSION['topAwardsFlash'] = [
                 'type' => 'error',
-                'message' => 'Tick “I have saved a copy of this table” before reviewing updates.',
+                'message' => 'Tick “I have saved a copy” first.',
             ];
             header('Location: /top-awards/');
             exit;
@@ -342,7 +359,7 @@ final class TopAwardsController
             if ($selected === []) {
                 $_SESSION['topAwardsFlash'] = [
                     'type' => 'error',
-                    'message' => 'Select at least one member (tick the Write checkbox), or click Write this one on a single row.',
+                    'message' => 'No members selected. Tick a row or use Write this one.',
                 ];
                 header('Location: /top-awards/');
                 exit;
@@ -362,7 +379,7 @@ final class TopAwardsController
                     'name' => $r['name'],
                     'patrol' => $r['patrol'],
                     'current' => (string) ($r['current_completed'] ?? ''),
-                    'proposed' => (string) $r['proposed'],
+                    'proposed' => self::withProgressDate((string) $r['proposed']),
                     'total' => $r['total'],
                 ];
             }
@@ -375,7 +392,7 @@ final class TopAwardsController
             if ($changes === []) {
                 $_SESSION['topAwardsFlash'] = [
                     'type' => 'info',
-                    'message' => 'None of the selected members need an update (or they were not in the will-update set). Tick a row marked → update, or Write this one.',
+                    'message' => 'Selected members already match (or none need update).',
                 ];
                 header('Location: /top-awards/');
                 exit;
@@ -434,7 +451,7 @@ final class TopAwardsController
         if (!is_array($pending) || empty($pending['changes']) || empty($pending['section']) || empty($pending['challengeBadge'])) {
             $_SESSION['topAwardsFlash'] = [
                 'type' => 'error',
-                'message' => 'Nothing to apply — open Top awards, export a copy, then Review updates again.',
+                'message' => 'Nothing to apply — recalculate and review again.',
             ];
             header('Location: /top-awards/');
             exit;
@@ -445,7 +462,7 @@ final class TopAwardsController
         if ($at < time() - 1800) {
             $_SESSION['topAwardsFlash'] = [
                 'type' => 'error',
-                'message' => 'Confirm session expired. Recalculate and review again before writing.',
+                'message' => 'Confirm expired — recalculate and review again.',
             ];
             header('Location: /top-awards/');
             exit;
@@ -500,7 +517,7 @@ final class TopAwardsController
             ]);
             // Fail fast: one rejected/disabled write -> stop (no cascade).
             if (!$write['ok']) {
-                $notesStop = 'Stopped after first write failure (fail-fast; no alternate action probes).';
+                $notesStop = 'Stopped (fail-fast after first failure).';
                 foreach (array_slice($pending['changes'], $i + 1) as $rest) {
                     if (!is_array($rest)) {
                         continue;
@@ -523,6 +540,16 @@ final class TopAwardsController
             self::clearCache((string) $section['id']);
         }
 
+        $okCount = 0;
+        $failCount = 0;
+        foreach ($results as $r) {
+            if (!empty($r['ok'])) {
+                $okCount++;
+            } else {
+                $failCount++;
+            }
+        }
+
         App::render('top-awards-result.twig', Auth::baseContext([
             'title' => 'Top awards write result',
             'section' => $section,
@@ -530,6 +557,8 @@ final class TopAwardsController
             'challengeBadge' => $badge,
             'results' => $results,
             'wrote' => $anyOk,
+            'okCount' => $okCount,
+            'failCount' => $failCount,
             'writePathUsed' => $writePathUsed,
         ]));
     }
@@ -571,6 +600,7 @@ final class TopAwardsController
             ];
         }
 
+        $proposed = self::withProgressDate($proposed);
         $batch = json_encode([$reqId => $proposed], JSON_UNESCAPED_SLASHES);
         if (!is_string($batch)) {
             return [
@@ -601,7 +631,7 @@ final class TopAwardsController
         if (self::responseLooksSuccessful($res)) {
             return [
                 'ok' => true,
-                'message' => 'Updated via updateSingleRecord',
+                'message' => 'OK',
                 'path' => $pathLabel,
             ];
         }
@@ -1048,36 +1078,38 @@ final class TopAwardsController
             }
         }
 
-        // Challenge badge — Scouts: hardcoded badge_id 1539 + requirement 114339 (skip getAvailableBadges).
-        // Beavers/Cubs/Explorers: name-match discovery for now; wire hardcoded ids later the same way.
+        // Challenge badge — hardcoded when known (Scouts Gold); else discover Chief Scout Bronze/Silver/etc.
         $challengeBadge = null;
         $currentByMember = [];
         $progressField = 'completed';
+        $known = self::AWARDS_BY_TYPE[$sectionType] ?? null;
 
         if (!$rateLimited) {
             try {
-                if ($sectionType === 'scouts') {
+                if (is_array($known) && ($known['badge_id'] ?? '') !== '') {
                     $challengeBadge = [
-                        'badge_id' => self::SCOUTS_GOLD['badge_id'],
-                        'badge_version' => self::SCOUTS_GOLD['badge_version'],
-                        'name' => self::SCOUTS_GOLD['name'],
+                        'badge_id' => $known['badge_id'],
+                        'badge_version' => $known['badge_version'],
+                        'name' => $known['name'],
                         'chal' => '',
                         'shortname' => '',
                         'osm_key' => '',
-                        'progress_requirement_id' => self::SCOUTS_GOLD['progress_requirement_id'],
+                        'progress_requirement_id' => $known['progress_requirement_id'],
                     ];
-                    $progressField = self::SCOUTS_GOLD['progress_requirement_id'];
+                    $progressField = $known['progress_requirement_id'];
                     $debugMeta['progressField'] = $progressField;
-                    $debugMeta['writeHypothesis'] = 'Scouts Gold: write column/requirement 114339 (Six badges), not completed';
-                    $debugMeta['mode'] = (($debugMeta['mode'] ?? '') !== '' ? ($debugMeta['mode'] . '+') : '') . 'scouts_hardcoded_1539';
+                    $debugMeta['writeHypothesis'] = $known['name'] . ': updateSingleRecord requirement '
+                        . $known['progress_requirement_id'];
+                    $debugMeta['mode'] = (($debugMeta['mode'] ?? '') !== '' ? ($debugMeta['mode'] . '+') : '')
+                        . $sectionType . '_hardcoded_' . $known['badge_id'];
 
                     $recs = self::apiGet($api, $token, '/ext/badges/records/', [
                         'action' => 'getBadgeRecords',
                         'term_id' => $termId,
                         'section' => $sectionType,
-                        'badge_id' => self::SCOUTS_GOLD['badge_id'],
+                        'badge_id' => $known['badge_id'],
                         'section_id' => $sectionId,
-                        'badge_version' => self::SCOUTS_GOLD['badge_version'],
+                        'badge_version' => $known['badge_version'],
                         'payload' => 1,
                         'type_id' => self::TYPE_CHALLENGE,
                     ], $debugMeta, $notes, $rateLimited, $rateLimitBanner);
@@ -1139,6 +1171,11 @@ final class TopAwardsController
                                 ]);
                                 $progressField = self::detectProgressField($recs);
                                 $debugMeta['progressField'] = $progressField;
+                                $challengeBadge['progress_requirement_id'] = $progressField;
+                                $debugMeta['writeHypothesis'] = ($pick['name'] ?? 'challenge')
+                                    . ': updateSingleRecord requirement ' . $progressField;
+                                $debugMeta['mode'] = (($debugMeta['mode'] ?? '') !== '' ? ($debugMeta['mode'] . '+') : '')
+                                    . $sectionType . '_discovered_' . ($pick['badge_id'] ?? '');
                                 foreach (self::badgeRecordMembers($recs) as $row) {
                                     if (!is_array($row)) {
                                         continue;
@@ -1271,12 +1308,13 @@ final class TopAwardsController
                 continue;
             }
             $match = false;
-            if ($sectionType === 'beavers' && preg_match('/bronze/i', $name)) {
-                $match = true;
-            } elseif ($sectionType === 'cubs' && preg_match('/silver/i', $name)) {
-                $match = true;
-            } elseif ($sectionType === 'scouts' && preg_match('/gold/i', $name)) {
-                $match = true;
+            if ($sectionType === 'beavers') {
+                // Prefer Chief Scout's Bronze; allow other bronze challenge names as fallback.
+                $match = (bool) preg_match('/bronze/i', $name);
+            } elseif ($sectionType === 'cubs') {
+                $match = (bool) preg_match('/silver/i', $name);
+            } elseif ($sectionType === 'scouts') {
+                $match = (bool) preg_match('/gold/i', $name);
             } elseif ($sectionType === 'explorers') {
                 if (preg_match('/platinum|diamond/i', $name) || preg_match('/chief/i', $name)) {
                     $match = true;
@@ -1317,23 +1355,31 @@ final class TopAwardsController
 
         if (count($candidates) > 1) {
             // Prefer name containing "Chief Scout"
-            usort($candidates, static function ($a, $b) {
-                $sa = preg_match('/chief\s*scout/i', $a['name']) ? 0 : 1;
-                $sb = preg_match('/chief\s*scout/i', $b['name']) ? 0 : 1;
-                if ($sa !== $sb) {
-                    return $sa <=> $sb;
-                }
-                // explorers: platinum before diamond before other chief
-                $rank = static function (string $n): int {
-                    if (preg_match('/platinum/i', $n)) {
-                        return 0;
+            usort($candidates, static function ($a, $b) use ($sectionType) {
+                $score = static function (string $n) use ($sectionType): int {
+                    $s = 10;
+                    if (preg_match('/chief\s*scout/i', $n)) {
+                        $s -= 5;
                     }
-                    if (preg_match('/diamond/i', $n)) {
-                        return 1;
+                    if ($sectionType === 'beavers' && preg_match('/bronze/i', $n)) {
+                        $s -= 2;
                     }
-                    return 2;
+                    if ($sectionType === 'cubs' && preg_match('/silver/i', $n)) {
+                        $s -= 2;
+                    }
+                    if ($sectionType === 'scouts' && preg_match('/gold/i', $n)) {
+                        $s -= 2;
+                    }
+                    if ($sectionType === 'explorers') {
+                        if (preg_match('/platinum/i', $n)) {
+                            $s -= 3;
+                        } elseif (preg_match('/diamond/i', $n)) {
+                            $s -= 2;
+                        }
+                    }
+                    return $s;
                 };
-                return $rank($a['name']) <=> $rank($b['name']);
+                return $score($a['name']) <=> $score($b['name']);
             });
             $picked = $candidates[0];
             $notes[] = 'Ambiguous challenge badge match; using "' . $picked['name'] . '" from: '
@@ -1524,13 +1570,36 @@ final class TopAwardsController
         return $awardsByMember === [];
     }
 
+    /** UK short date for progress strings, Europe/London (e.g. 07-Sep-26). */
+    private static function progressDateUk(): string
+    {
+        return (new \DateTimeImmutable('now', new \DateTimeZone('Europe/London')))->format('d-M-y');
+    }
+
+    /**
+     * Strip a trailing UK progress date if present, then append today's date.
+     * Write-time + proposed column must match: "x n/T d-M-y" or "n/T d-M-y".
+     */
+    private static function withProgressDate(string $progress): string
+    {
+        $core = trim($progress);
+        $core = preg_replace('/\s+\d{1,2}-[A-Za-z]{3}-\d{2}\s*$/', '', $core) ?? $core;
+        $core = trim($core);
+        if ($core === '') {
+            return self::progressDateUk();
+        }
+        return $core . ' ' . self::progressDateUk();
+    }
+
     private static function goldString(int $count, int $threshold): string
     {
         $n = $count;
         if ($n >= $threshold) {
-            return $n . '/' . $threshold;
+            $core = $n . '/' . $threshold;
+        } else {
+            $core = 'x ' . $n . '/' . $threshold;
         }
-        return 'x ' . $n . '/' . $threshold;
+        return self::withProgressDate($core);
     }
 
     private static function isYoungLeaderPatrol(string $patrol): bool

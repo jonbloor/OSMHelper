@@ -6,12 +6,9 @@
   <p class="muted">{{ section.name }} ({{ section.type }}){% if challengeBadge %} · {{ challengeBadge.name }}{% endif %} · {{ awardLabel|default('Gold') }}</p>
   {% endif %}
   {% if wrote %}
-  <div class="alert">At least one update was accepted by OSM. Check Failed rows below. Write path: <code>{{ writePathUsed|default('—') }}</code></div>
+  <div class="alert">{{ okCount|default(0) }} updated{% if failCount|default(0) > 0 %}; {{ failCount }} failed{% endif %}.</div>
   {% else %}
-  <div class="alert alert-error">
-    <p><strong>No members were updated.</strong> Check row status below (and osm-debug). Writes use only <code>updateSingleRecord</code> — on invalid-action/403 we stop immediately with no alternate probes.</p>
-    <p class="muted">If OSM quota is low, wait for remaining on Home to recover before retrying.</p>
-  </div>
+  <div class="alert alert-error">Nothing updated. See Failed rows below.</div>
   {% endif %}
   <div class="table-wrap">
   <table class="data">
@@ -29,7 +26,7 @@
         <td>{{ r.name }}</td>
         <td><code>{{ r.current|default('—') }}</code></td>
         <td><code>{{ r.proposed }}</code></td>
-        <td>{% if r.ok %}Updated{% else %}Failed{% endif %}{% if r.message %} — {{ r.message }}{% endif %}</td>
+        <td>{% if r.ok %}OK{% else %}Failed{% endif %}{% if r.message and r.message != 'OK' %} — {{ r.message }}{% endif %}</td>
       </tr>
     {% endfor %}
     </tbody>
