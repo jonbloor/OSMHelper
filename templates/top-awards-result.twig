@@ -9,9 +9,8 @@
   <div class="alert">At least one update was accepted by OSM. Check Failed rows below. Write path: <code>{{ writePathUsed|default('—') }}</code></div>
   {% else %}
   <div class="alert alert-error">
-    <p><strong>No members were updated.</strong> OSM rejected every write attempt we know about (often HTTP 403 / invalid-action).</p>
-    <p>We are <strong>not guessing another write URL</strong>. To finish this, open OSM, edit one challenge progress cell (e.g. Chief Scout’s Gold “Six badges”), and capture the Network request (URL + method + form/JSON payload). Paste that to Bungle — we will wire Apply to that exact call only.</p>
-    <p class="muted">Row status below (and osm-debug) shows what was tried. Export/copy your records before any future write.</p>
+    <p><strong>No members were updated.</strong> Check row status below (and osm-debug). Writes use only <code>updateSingleRecord</code> — on invalid-action/403 we stop immediately with no alternate probes.</p>
+    <p class="muted">If OSM quota is low, wait for remaining on Home to recover before retrying.</p>
   </div>
   {% endif %}
   <div class="table-wrap">

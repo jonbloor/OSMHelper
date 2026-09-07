@@ -32,10 +32,10 @@ final class TopAwardsController
     private const RATE_LOW_REMAINING = 40;
 
     /**
-     * Apply writes paused until Jon pastes an OSM Network capture of editing a
-     * challenge progress cell AND OSM quota has recovered. Do not invent paths.
+     * Apply writes: enabled after Jon Network capture of updateSingleRecord (2026-09-07).
+     * Only that action is used — never alternate guessed action names.
      */
-    private const APPLY_WRITES_ENABLED = false;
+    private const APPLY_WRITES_ENABLED = true;
 
     /** usleep between getBadgeRecords when fan-out is unavoidable. */
     private const RECORDS_DELAY_US = 250000;
@@ -506,8 +506,10 @@ final class TopAwardsController
     }
 
     /**
-     * Challenge progress write - gated until Network capture.
-     * Never probes guessed action= values (OSM case-sensitive; invalid-action auto-blocks).
+     * Challenge progress write — Jon Network capture (2026-09-07) only:
+     * POST /ext/badges/records/?action=updateSingleRecord
+     * Fields: scoutid, badge_id, badge_version, batch (JSON req→value), section_id, payload.
+     * Case-sensitive action name. Never try alternate actions.
      *
      * @param array{id:string,name:string,type:string,termId:string} $section
      * @param array<string, mixed> $badge
@@ -522,15 +524,63 @@ final class TopAwardsController
         string $memberId,
         string $proposed
     ): array {
-        // OSM support (2026-09-07): prior guessed badge write action names were invalid
-        // (case-sensitive) and auto-blocked Jon's account. Do NOT probe alternates.
-        // Wire only after Network capture of a real Gold edit.
-        unset($api, $token, $section, $badge, $progressField, $memberId, $proposed);
+        $pathLabel = '/ext/badges/records/?action=updateSingleRecord';
+        $badgeId = (string) ($badge['badge_id'] ?? '');
+        $badgeVersion = (string) ($badge['badge_version'] ?? '0');
+        $sectionId = (string) ($section['id'] ?? '');
+        // Jon capture: batch keys are requirement ids (e.g. 114339), not "completed".
+        $fromBadge = (string) ($badge['progress_requirement_id'] ?? '');
+        $reqId = $fromBadge !== '' ? $fromBadge : $progressField;
+        if ($reqId === '' || $reqId === 'completed') {
+            $reqId = $fromBadge !== '' ? $fromBadge : '';
+        }
+        if ($memberId === '' || $badgeId === '' || $sectionId === '' || $reqId === '') {
+            return [
+                'ok' => false,
+                'message' => 'Missing scoutid, badge_id, section_id or requirement id for updateSingleRecord.',
+                'path' => null,
+            ];
+        }
+
+        $batch = json_encode([$reqId => $proposed], JSON_UNESCAPED_SLASHES);
+        if (!is_string($batch)) {
+            return [
+                'ok' => false,
+                'message' => 'Could not encode batch JSON.',
+                'path' => null,
+            ];
+        }
+
+        try {
+            $res = $api->post($token, $pathLabel, [
+                'scoutid' => $memberId,
+                'badge_id' => $badgeId,
+                'badge_version' => $badgeVersion,
+                'batch' => $batch,
+                'section_id' => $sectionId,
+                'payload' => 'true',
+            ]);
+        } catch (\Throwable $e) {
+            // Fail fast — caller stops the Apply loop; do not try another action.
+            return [
+                'ok' => false,
+                'message' => $e->getMessage(),
+                'path' => null,
+            ];
+        }
+
+        if (self::responseLooksSuccessful($res)) {
+            return [
+                'ok' => true,
+                'message' => 'Updated via updateSingleRecord',
+                'path' => $pathLabel,
+            ];
+        }
 
         return [
             'ok' => false,
-            'message' => 'Badge writes disabled until a verified Network capture of editing Gold progress is pasted (no guessed action= probes).',
-            'path' => null,
+            'message' => 'updateSingleRecord unexpected response: ' . self::briefResponse($res),
+            'path' => $pathLabel,
         ];
     }
 

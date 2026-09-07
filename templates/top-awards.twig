@@ -9,8 +9,8 @@
   <h2>Top awards</h2>
   <p>See how close each member is to their section’s top award. We count activity and staged badges earned since they joined this section, then suggest progress for the Chief Scout’s / top award.</p>
   <p class="muted">Adults and waiting-list sections are not included. Calculate uses a <strong>2-hour cache</strong> to spare your OSM quota — wait for remaining requests on Home to recover before Refresh if you were rate-limited.</p>
-  {% if writesPaused|default(true) %}
-  <div class="alert alert-error">Writing to OSM is <strong>paused</strong> until we have a Network capture of editing a challenge progress cell in OSM, and your OSM login is unlocked again. Export is fine; Apply will not call OSM.</div>
+  {% if writesPaused|default(false) %}
+  <div class="alert alert-error">Writing to OSM is temporarily <strong>paused</strong>. Export is fine; Apply will not call OSM.</div>
   {% endif %}
   <details>
     <summary class="muted">How the count works</summary>
@@ -137,8 +137,8 @@
       </label>
     </div>
     <p class="muted">{{ changesCount }} member(s) would change. Others already match.</p>
-    {% if writesPaused|default(true) %}
-    <p class="alert">Review / Apply is paused (no OSM writes) until Network capture + OSM unlock. You can still export the table above.</p>
+    {% if writesPaused|default(false) %}
+    <p class="alert">Review / Apply is paused (no OSM writes). You can still export the table above.</p>
     <button class="btn" type="submit" disabled>Review updates… (paused)</button>
     {% else %}
     <button class="btn" type="submit" {% if changesCount == 0 %}disabled{% endif %}>Review updates…</button>
