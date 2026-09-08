@@ -917,3 +917,24 @@ table.data tbody tr.row-no-section td {
   max-width: 28rem;
 }
 .top-awards-summary p { margin: 0.25rem 0; }
+
+/* Site-wide OSM rate-limit banners */
+.rate-limit-banner {
+  margin: 0.75rem 0 0;
+}
+.rate-limit-banner.rate-limit-nearing {
+  background: #fff8e6;
+  border: 1px solid #e6c35c;
+  color: #5c4a00;
+}
+.rate-limit-info--nearing {
+  border-left-color: #e6c35c;
+  background: #fffdf5;
+}
+.rate-limit-info--critical {
+  border-left-color: var(--danger);
+  background: #fff5f5;
+}
+.rate-limit-info .warning-nearing {
+  color: #8a6d00;
+}

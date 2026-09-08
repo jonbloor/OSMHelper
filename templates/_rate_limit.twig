@@ -1,14 +1,16 @@
 {% if authed is defined and authed %}
-<div class="rate-limit-info">
+<div class="rate-limit-info{% if rateLimitCritical|default(false) %} rate-limit-info--critical{% elseif rateLimitNearing|default(false) %} rate-limit-info--nearing{% endif %}">
   <p><strong>Your OSM API allowance</strong></p>
-  <p class="muted">This is <strong>per user</strong> (your OSM account), not a measure of how busy Online Scout Manager is overall. OSM caps how many API requests your login can make in a short window. Opening tools like Members, Checks, Dashboard, Waiting, Equipment or Bank uses that allowance.</p>
+  <p class="muted">This is <strong>per user</strong> (your OSM account), not a measure of how busy Online Scout Manager is overall. OSM caps how many API requests your login can make in a short window. Opening tools like Members, Checks, Dashboard, Waiting, Equipment, Bank or Top awards uses that allowance.</p>
   <ul>
     <li>Limit: {{ rateLimit.limit ?? 'Unknown' }}</li>
     <li>Remaining: {{ rateLimit.remaining ?? 'Unknown' }}</li>
     <li>Resets in: {{ rateResetText|default('Unknown') }}</li>
   </ul>
-  {% if rateLimit.remaining is not null and rateLimit.remaining <= 50 %}
-    <p class="warning">⚠️ Low remaining requests – use sparingly!</p>
+  {% if rateLimitCritical|default(false) %}
+    <p class="warning">Critical — {{ rateLimit.remaining }} remaining. Pause heavy tools until the window resets.</p>
+  {% elseif rateLimitNearing|default(false) %}
+    <p class="warning warning-nearing">Nearing the limit — {{ rateLimit.remaining }} remaining. Use sparingly; prefer cached Top awards over Refresh.</p>
   {% endif %}
 </div>
 {% endif %}

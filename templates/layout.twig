@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% if title and title != 'OSMHelper' %}{{ title }} · {% endif %}OSMHelper</title>
-  <link rel="stylesheet" href="/assets/app.css?v=d6load1">
-  <script src="/assets/table-tools.js?v=d6load1" defer></script>
+  <link rel="stylesheet" href="/assets/app.css?v=d6rate1">
+  <script src="/assets/table-tools.js?v=d6rate1" defer></script>
 </head>
 <body>
   <div id="page-loading" class="page-loading" hidden aria-live="polite" aria-busy="true">
@@ -102,6 +102,13 @@
       </nav>
       {% endif %}
     </header>
+    {% if authed is defined and authed and rateLimit is defined %}
+      {% if rateLimitCritical|default(false) %}
+      <div class="alert alert-error rate-limit-banner" role="status">OSM API allowance critical: <strong>{{ rateLimit.remaining }}</strong> remaining{% if rateLimit.limit %} of {{ rateLimit.limit }}{% endif %}. Avoid heavy pages until it resets ({{ rateResetText|default('soon') }}).</div>
+      {% elseif rateLimitNearing|default(false) %}
+      <div class="alert rate-limit-banner rate-limit-nearing" role="status">Nearing OSM rate limit: <strong>{{ rateLimit.remaining }}</strong> remaining{% if rateLimit.limit %} of {{ rateLimit.limit }}{% endif %} (resets {{ rateResetText|default('soon') }}). Prefer cache over Refresh on Top awards and other heavy tools.</div>
+      {% endif %}
+    {% endif %}
     {% block body %}{% endblock %}
     <footer class="app-footer"><a href="/">OSM Helper</a> - Tools to make OSM Better</footer>
   </div>

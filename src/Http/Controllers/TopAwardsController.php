@@ -51,7 +51,7 @@ final class TopAwardsController
 
     /**
      * Known Chief Scout awards (hardcoded where Network-proven).
-     * Beavers Bronze / Cubs Silver: discover via getAvailableBadges until ids captured.
+     * Beavers Bronze 1529 hardcoded; Cubs Silver still discovery until badge_id known.
      *
      * @var array<string, array{badge_id:string,badge_version:string,name:string,progress_requirement_id:string,type_id:int}>
      */
@@ -63,14 +63,15 @@ final class TopAwardsController
             'progress_requirement_id' => '114339',
             'type_id' => self::TYPE_CHALLENGE,
         ],
-        // Placeholders filled by discovery; ids empty until known.
+        // Beavers Bronze: badge_id confirmed by Jon (2026-09-08). Progress req locked from getBadgeRecords when empty.
         'beavers' => [
-            'badge_id' => '',
+            'badge_id' => '1529',
             'badge_version' => '0',
             'name' => "Chief Scout's Bronze",
             'progress_requirement_id' => '',
             'type_id' => self::TYPE_CHALLENGE,
         ],
+        // Cubs Silver: discovery until Jon pastes badge_id.
         'cubs' => [
             'badge_id' => '',
             'badge_version' => '0',
@@ -1096,10 +1097,7 @@ final class TopAwardsController
                         'osm_key' => '',
                         'progress_requirement_id' => $known['progress_requirement_id'],
                     ];
-                    $progressField = $known['progress_requirement_id'];
-                    $debugMeta['progressField'] = $progressField;
-                    $debugMeta['writeHypothesis'] = $known['name'] . ': updateSingleRecord requirement '
-                        . $known['progress_requirement_id'];
+                    $progressField = (string) ($known['progress_requirement_id'] ?? '');
                     $debugMeta['mode'] = (($debugMeta['mode'] ?? '') !== '' ? ($debugMeta['mode'] . '+') : '')
                         . $sectionType . '_hardcoded_' . $known['badge_id'];
 
@@ -1121,6 +1119,16 @@ final class TopAwardsController
                             'data_keys' => isset($recs['data']) && is_array($recs['data']) ? array_keys($recs['data']) : null,
                             'sample_member' => self::badgeRecordMembers($recs)[0] ?? null,
                         ]);
+                        // Lock progress requirement from live records when not yet known (Bronze).
+                        if ($progressField === '') {
+                            $progressField = self::detectProgressField($recs);
+                            $notes[] = $known['name'] . ': locked progress_requirement_id=' . $progressField
+                                . ' from getBadgeRecords';
+                        }
+                        $challengeBadge['progress_requirement_id'] = $progressField;
+                        $debugMeta['progressField'] = $progressField;
+                        $debugMeta['writeHypothesis'] = $known['name'] . ': updateSingleRecord requirement '
+                            . $progressField;
                         foreach (self::badgeRecordMembers($recs) as $row) {
                             if (!is_array($row)) {
                                 continue;
@@ -1398,7 +1406,7 @@ final class TopAwardsController
         if (is_array($sample) && isset($sample['column_data']) && is_array($sample['column_data'])) {
             foreach ($sample['column_data'] as $k => $v) {
                 $sv = is_scalar($v) ? trim((string) $v) : '';
-                if ($sv !== '' && preg_match('/^x?\s*\d+\s*\/\s*\d+$/i', $sv)) {
+                if ($sv !== '' && preg_match('/^x?\s*\d+\s*\/\s*\d+(?:\s+\d{1,2}-[A-Za-z]{3}-\d{2})?$/i', $sv)) {
                     return (string) $k;
                 }
             }
@@ -1433,7 +1441,7 @@ final class TopAwardsController
                 continue;
             }
             $sv = is_scalar($v) ? trim((string) $v) : '';
-            if ($sv !== '' && preg_match('/^x?\s*\d+\s*\/\s*\d+$/i', $sv)) {
+            if ($sv !== '' && preg_match('/^x?\s*\d+\s*\/\s*\d+(?:\s+\d{1,2}-[A-Za-z]{3}-\d{2})?$/i', $sv)) {
                 return $k;
             }
         }

@@ -70,6 +70,20 @@ final class Auth
             $mins = (int) ceil(((int) $secs) / 60);
             $text = $mins . ' minute' . ($mins === 1 ? '' : 's');
         }
-        return ['rateLimit' => $rate, 'rateResetText' => $text];
+        $remaining = isset($rate['remaining']) && is_numeric($rate['remaining']) ? (int) $rate['remaining'] : null;
+        $limit = isset($rate['limit']) && is_numeric($rate['limit']) ? (int) $rate['limit'] : null;
+        // Critical matches Top awards / fan-out stop (~40). Nearing warns earlier.
+        $critical = $remaining !== null && $remaining <= 40;
+        $nearByAbs = $remaining !== null && $remaining <= 100;
+        $nearByPct = $remaining !== null && $limit !== null && $limit > 0
+            && $remaining <= (int) max(1, ceil($limit * 0.25));
+        $nearing = !$critical && ($nearByAbs || $nearByPct);
+
+        return [
+            'rateLimit' => $rate,
+            'rateResetText' => $text,
+            'rateLimitCritical' => $critical,
+            'rateLimitNearing' => $nearing,
+        ];
     }
 }
