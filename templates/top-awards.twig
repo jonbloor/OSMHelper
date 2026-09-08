@@ -21,6 +21,11 @@
 {# Card 2 — Choose a section #}
 <div class="card">
   <h3>Choose a section</h3>
+  {% if rateLimitCritical|default(false) %}
+  <div class="alert alert-error" style="margin-top:0.75rem">OSM API allowance critical ({{ rateLimit.remaining }} remaining). Do not Calculate or Refresh until it recovers — you can be locked out of OSM.</div>
+  {% elseif rateLimitNearing|default(false) %}
+  <div class="alert rate-limit-nearing" style="margin-top:0.75rem">Nearing OSM rate limit ({{ rateLimit.remaining }} remaining{% if rateLimit.limit %} of {{ rateLimit.limit }}{% endif %}). Prefer cached results; avoid Calculate/Refresh unless you need fresh data.</div>
+  {% endif %}
   {% if sectionOptions is empty %}
   <p class="alert alert-error">No Beavers, Cubs, Scouts or Explorers sections found on this login. Check your OSM role, or open Help.</p>
   {% else %}

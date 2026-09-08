@@ -1264,7 +1264,7 @@ final class TopAwardsController
             $current = (string) ($currentByMember[$sid] ?? '');
             $willUpdate = $challengeBadge !== null
                 && !$missingStart
-                && self::normalizeProgress($current) !== self::normalizeProgress($proposed);
+                && self::progressCore($current) !== self::progressCore($proposed);
 
             $rows[] = [
                 'scoutid' => $sid,
@@ -1481,6 +1481,17 @@ final class TopAwardsController
         $s = strtolower(trim($s));
         $s = preg_replace('/\s+/', ' ', $s) ?? $s;
         return $s;
+    }
+
+    /**
+     * Progress core for will_update: strip trailing UK date so same n/T does not re-offer daily.
+     * Display/write still use dated strings via withProgressDate.
+     */
+    private static function progressCore(string $s): string
+    {
+        $s = trim($s);
+        $s = preg_replace('/\s+\d{1,2}-[A-Za-z]{3}-\d{2}\s*$/', '', $s) ?? $s;
+        return self::normalizeProgress($s);
     }
 
     /**
