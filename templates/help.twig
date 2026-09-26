@@ -32,8 +32,70 @@
     </section>
 
     <section class="help-section" id="waiting">
-      <h3>Waiting</h3>
-      <p>Pulls your OSM waiting list, scores ages against the cutoffs in Settings, and suggests ideal sections. Sort, search and export the table. An empty list can be normal if everyone has moved elsewhere (for example Scoutworks).</p>
+      <h3>Waiting list</h3>
+      <p>This page reads your group’s waiting list from OSM (<strong>Members → Waiting</strong>). If your group has more than one waiting list, choose one from the <strong>Waiting list</strong> menu at the top and select <strong>Show</strong>.</p>
+      <p>Each applicant gets a score, and OSMHelper suggests which section they should join based on their age. The suggested section uses the age cut-offs in <strong>Settings</strong>, so check those match your group.</p>
+      <p>The columns are:</p>
+      <ul>
+        <li><strong>#</strong>: position by score, highest first.</li>
+        <li><strong>Rank</strong>: your leaders’ own order, if you have set up Rank &amp; notes.</li>
+        <li><strong>Age</strong> and <strong>Days waiting</strong> (days on the list).</li>
+        <li><strong>Willing to help</strong>: shown once you have chosen a Willing to help field (see below).</li>
+        <li><strong>Suggested section</strong>: based on age and your cut-offs.</li>
+        <li><strong>Score</strong>: hover over or tap a score to see how it was worked out. See <a href="#waiting-score">How the score works</a>.</li>
+        <li><strong>Leaders’ notes</strong>: the Leaders’ Notes field from OSM. If you have set up Rank &amp; notes, your chosen notes field (for example “HNotes”) has its own column too.</li>
+      </ul>
+      <p>Select a column heading to sort and use Search to filter. CSV, Excel and PDF exports include every applicant, even if you have searched. An empty list can be normal, for example if everyone has moved into a section.</p>
+    </section>
+
+    <section class="help-section" id="waiting-rank">
+      <h3>Rank and notes</h3>
+      <p>Rank and notes let your leaders agree the order in which applicants are offered a place, and keep notes about each one. You can also record whether each family is willing to help. The values are saved in OSM, on each applicant’s record, not on OSMHelper.</p>
+      <p><strong>Setting up (once per waiting list)</strong></p>
+      <ol>
+        <li>In OSM, open the waiting list’s section settings, go to Customisable data, and add two text fields, for example “Rank” and “Notes”. If you want to use Willing to help, add a third text field for it too.</li>
+        <li>In OSMHelper, go to <strong>Waiting list</strong> and choose <strong>Set up rank &amp; notes</strong> (later, <strong>Fields</strong>). Pick which OSM field holds the rank and which holds the notes, optionally pick the Willing to help field, then select <strong>Save fields</strong>.</li>
+      </ol>
+      <p>This choice is shared with everyone in your OSM group who uses OSMHelper. If your group has several waiting lists, set each one up separately.</p>
+      <p><strong>Ranking</strong></p>
+      <ul>
+        <li>Rank 1 means first to be offered a place. Leave a rank blank if you haven’t decided yet.</li>
+        <li>Two applicants can share a rank, and gaps (for example 1, 2, 5) are fine. Shared ranks are shown in score order.</li>
+        <li><strong>Suggest ranks 1, 2, 3…</strong> fills in new ranks in the current order. It doesn’t save anything; you still need to review and save. <strong>Undo suggestion</strong> puts the boxes back.</li>
+      </ul>
+      <p><strong>Notes</strong></p>
+      <ul>
+        <li>The note box starts empty. The notes already in OSM are shown next to it and are never removed.</li>
+        <li>When you save, your note is added at the top as <code>dd/mm/yy hh:mm - your name - "your note"</code> (UK time), with the earlier notes kept underneath.</li>
+        <li>Leave the box empty to leave the notes alone. If the notes would grow past 2,000 characters, we don’t save that note and ask you to tidy the notes in OSM first, rather than cutting off old notes.</li>
+      </ul>
+      <p><strong>Willing to help</strong></p>
+      <ul>
+        <li>If you have chosen a Willing to help field, each applicant has a choice of <strong>Keep</strong> (leave what is in OSM, shown next to it), <strong>Yes</strong>, <strong>No</strong> or <strong>Blank</strong>. We write “Yes”, “No” or nothing to OSM.</li>
+        <li>It counts as yes when the field says Y, Yes, True or 1, or starts with the word “y”, “yes”, “yeah” or “yep” (for example “yes please” or “Y.”). A value with a slash, such as “Y/N” or “Yes/No”, counts as no, and so does anything else or blank.</li>
+      </ul>
+      <p><strong>Saving</strong></p>
+      <ol>
+        <li>Before you change anything, use CSV or Excel to download a copy. It includes every applicant and both the values in OSM and anything you have typed.</li>
+        <li>Select <strong>Review changes</strong>. OSMHelper reads the latest values from OSM again and shows only the values that will change: what is in OSM now, and the new value. For notes, the new value is the whole notes field with your note on top.</li>
+        <li>If another leader has changed a value in OSM since you opened the page, that row is unticked so you don’t overwrite their change. Tick it only if you want your value to replace theirs.</li>
+        <li>Tick the box to confirm you have downloaded a copy, then select <strong>Save to OSM</strong>.</li>
+      </ol>
+      <p>Changes are saved one at a time. If one fails, saving stops there. Anything already saved stays saved, and nothing after it is tried. We then read OSM again to check each saved value really stuck, and send it once more if it didn’t. The results page shows, for every value, whether it was sent, what OSM replied and what OSM now holds.</p>
+      <p>To save, OSMHelper needs your permission to update member records in OSM. The first time you save, or if OSM refuses a save, <a href="/logout/">sign out</a> and sign in again, and allow it when OSM asks. Loading the ranking page uses your OSM allowance in the same way as the Waiting list page, and we won’t load or save while your allowance is low.</p>
+    </section>
+
+    <section class="help-section" id="waiting-score">
+      <h3>How the score works</h3>
+      <p>The score gives a quick, consistent starting point. A higher score means a stronger claim to a place. It is worked out as:</p>
+      <ul>
+        <li>age in years (including part-years, so 8 years 6 months counts as 8.5) × 3, plus</li>
+        <li>months on the waiting list (days on the list ÷ 30), plus</li>
+        <li>20 if Willing to help is yes. This only counts once a Willing to help field is chosen in <strong>Fields</strong>; until then it adds nothing.</li>
+      </ul>
+      <p>The score is shown to one decimal place. Hover over or tap a score to see the working, for example “Age 8.5 × 3 = 25.5 + 10.0 months + willing 20 = 55.5”. On the ranking page, changing Willing to help shows the effect on the score straight away (marked *) before you save. If OSM has no date of birth for an applicant, their age shows as Unknown and counts as 0. If OSMHelper can’t read an applicant’s details from OSM at all, the score shows N/A and they appear at the bottom.</p>
+      <p><strong>Example (made-up numbers):</strong> an applicant aged 8 years 6 months, on the list for 300 days, who is willing to help: 8.5 × 3 = 25.5, plus 300 ÷ 30 = 10.0, plus 20 = <strong>55.5</strong>.</p>
+      <p>The score is worked out in OSMHelper each time the page loads and is never saved to OSM. <strong>#</strong> is the applicant’s position by score. <strong>Rank</strong> is your leaders’ own decision and can differ from the score order, for example to keep siblings together.</p>
     </section>
 
     <section class="help-section" id="top-awards">
@@ -67,7 +129,7 @@
 
     <section class="help-section" id="tables">
       <h3>Tables (sort, search, export)</h3>
-      <p>On <strong>Members</strong>, <strong>Checks</strong>, <strong>Waiting</strong>, <strong>Equipment</strong>, <strong>Top awards</strong> and <strong>Nights away</strong>, click a column header to sort, use Search to filter rows, and export the visible rows as <strong>CSV</strong>, <strong>Excel</strong> (.xls), or <strong>PDF</strong> (opens the print dialog — choose Save as PDF). Data tables use gentle alternating row colours for readability.</p>
+      <p>On <strong>Members</strong>, <strong>Checks</strong>, <strong>Waiting</strong>, <strong>Equipment</strong>, <strong>Top awards</strong> and <strong>Nights away</strong>, click a column header to sort, use Search to filter rows, and export (most pages export the rows you can see; the Waiting list and ranking pages export every row) as <strong>CSV</strong>, <strong>Excel</strong> (.xls), or <strong>PDF</strong> (opens the print dialog — choose Save as PDF). Data tables use gentle alternating row colours for readability.</p>
     </section>
 
     <section class="help-section" id="roadmap">

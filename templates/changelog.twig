@@ -1,0 +1,27 @@
+{% extends 'layout.twig' %}
+
+{% block body %}
+  <div class="card roadmap-page">
+    <h2>Changelog</h2>
+    <p class="lede">What’s new in OSMHelper, newest first. See the <a href="/roadmap/">Roadmap</a> for what’s coming next.</p>
+
+    <section class="help-section" id="2026-09-26">
+      <h3>26 Sep 2026: Waiting list ranking</h3>
+      <ul>
+        <li><strong>Rank &amp; notes:</strong> leaders can give each applicant a rank (1 = first to be offered a place) and add notes, then review exactly what will change before saving to OSM. Values live in your own OSM custom fields; OSMHelper only remembers which fields to use, shared across your group.</li>
+        <li><strong>Dated notes:</strong> a new note is added at the top of the existing notes as <code>dd/mm/yy hh:mm - your name - "note"</code> (UK time), so earlier notes are kept.</li>
+        <li><strong>Willing to help:</strong> optionally choose an OSM field for it on the Fields page. It can be set to Yes, No or blank from the ranking page and adds 20 to the score when it’s yes.</li>
+        <li><strong>More than one waiting list:</strong> pick a list at the top of each page; each list is set up separately.</li>
+        <li><strong>Score explained:</strong> the Waiting list and ranking pages now say how the score works, and hovering over or tapping a score shows the breakdown. The score stays in OSMHelper and is never saved to OSM.</li>
+        <li><strong>Safer saving:</strong> changes are re-read from OSM before saving, saved one at a time (stopping at the first problem), then checked in OSM; the results page shows what was sent and what OSM now holds.</li>
+        <li><strong>Exports:</strong> CSV, Excel and PDF from the Waiting list and ranking pages include every row (even when searching) and the values you’ve typed.</li>
+        <li><strong>Menus:</strong> the Members, Badges and Finance menus now close when you click elsewhere, press Escape or choose an item.</li>
+      </ul>
+    </section>
+
+    <section class="help-section" id="requests">
+      <h3>Feature requests</h3>
+      <p>Got an idea? Email <a href="mailto:jon@osmhelper.co.uk">jon@osmhelper.co.uk</a>.</p>
+    </section>
+  </div>
+{% endblock %}

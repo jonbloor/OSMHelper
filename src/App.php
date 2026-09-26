@@ -8,6 +8,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EquipmentController;
 use App\Http\Controllers\HelpController;
 use App\Http\Controllers\RoadmapController;
+use App\Http\Controllers\ChangelogController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MembersController;
 use App\Http\Controllers\MembershipDashboardController;
@@ -44,6 +45,7 @@ final class App
         $set = new SettingsController();
         $help = new HelpController();
         $roadmap = new RoadmapController();
+        $changelog = new ChangelogController();
         $topAwards = new TopAwardsController();
         $nightsAway = new NightsAwayController();
 
@@ -56,6 +58,11 @@ final class App
         $router->get('/equipment', [$eq, 'index']);
         $router->post('/equipment/move', [$eq, 'move']);
         $router->get('/waiting-list', [$wl, 'index']);
+        $router->get('/waiting-list/fields', [$wl, 'fields']);
+        $router->post('/waiting-list/fields', [$wl, 'saveFields']);
+        $router->get('/waiting-list/rank', [$wl, 'rank']);
+        $router->post('/waiting-list/review', [$wl, 'review']);
+        $router->post('/waiting-list/apply', [$wl, 'apply']);
         $router->get('/members', [$mem, 'index']);
         $router->get('/member-checks', [$mem, 'checks']);
         $router->get('/nights-away', [$nightsAway, 'index']);
@@ -66,6 +73,7 @@ final class App
         $router->get('/settings', [$set, 'index']);
         $router->get('/help', [$help, 'index']);
         $router->get('/roadmap', [$roadmap, 'index']);
+        $router->get('/changelog', [$changelog, 'index']);
         $router->get('/top-awards', [$topAwards, 'index']);
         $router->post('/top-awards/select', [$topAwards, 'select']);
         $router->post('/top-awards/review', [$topAwards, 'review']);
@@ -142,6 +150,11 @@ final class App
         $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
         $pathNorm = '/' . trim((string) $path, '/');
         if ($pathNorm !== '/callback') {
+            return;
+        }
+        // Local development (php -S on localhost) keeps its own http:// callback.
+        $host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+        if (preg_match('/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/', $host)) {
             return;
         }
         if (!isset($_GET['code'], $_GET['state'])) {

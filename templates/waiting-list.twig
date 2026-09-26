@@ -2,21 +2,41 @@
 {% block body %}
 <div class="card">
   <h2>Waiting list</h2>
-  <p class="muted">Fetched {{ fetchedAt }} · scored locally (P2 will push scores to OSM)</p>
+  {% set pickerAction = '/waiting-list/' %}
+  {% include '_waiting_picker.twig' %}
+  <p class="muted">{{ waitingSectionName }} · Fetched {{ fetchedAt }} · # = order by score (highest first).{% if fieldMap %} Rank = your leaders’ order, saved in OSM.{% endif %}</p>
+  <p class="muted score-note"><strong>How the score works:</strong> age in years (including part-years) × 3, plus months on the list (days ÷ 30), plus 20 if Willing to help is yes. A higher score means a stronger claim to a place. {% if fieldMap %}Rank is your leaders’ decision and can differ from the score order. {% endif %}The score is worked out here in OSMHelper and is never saved to OSM.
+    {% if fieldMap and fieldMap.willing_column_id %}Willing to help comes from the OSM field “{{ fieldMap.willing_label }}”.{% else %}Willing to help only counts once a Willing to help field is chosen in <a href="/waiting-list/fields/?section={{ waitingList.id }}">Fields</a>.{% endif %}
+    Hover over or tap a score to see how it was worked out. <a href="/help/#waiting-score">More about the score</a>.</p>
+  <p class="row">
+    {% if fieldMap %}
+      <a class="btn btn-sm" href="/waiting-list/rank/?section={{ waitingList.id }}">Rank &amp; notes</a>
+      <a class="btn btn-secondary btn-sm" href="/waiting-list/fields/?section={{ waitingList.id }}">Fields</a>
+    {% else %}
+      <a class="btn btn-secondary btn-sm" href="/waiting-list/fields/?section={{ waitingList.id }}">Set up rank &amp; notes</a>
+    {% endif %}
+  </p>
+  {% if mapError %}<p class="alert alert-error">{{ mapError }}</p>{% endif %}
+  {% if listError %}<p class="alert alert-error">{{ listError }}</p>{% endif %}
   <div class="table-wrap">
-  <table class="data" data-table-tools data-export-name="waiting-list">
-    <thead><tr><th>#</th><th>Name</th><th>Age</th><th>Days</th><th>Help?</th><th>Ideal</th><th>Score</th><th>Notes</th></tr></thead>
+  {% set showWilling = fieldMap and fieldMap.willing_column_id %}
+  {% set cols = 7 + (fieldMap ? 2 : 0) + (showWilling ? 1 : 0) %}
+  <table class="data" data-table-tools data-export-rows="all" data-export-name="waiting-list">
+    <thead><tr><th>#</th>{% if fieldMap %}<th>Rank</th>{% endif %}<th>Name</th><th>Age</th><th>Days waiting</th>{% if showWilling %}<th>Willing to help</th>{% endif %}<th>Suggested section</th><th>Score {% include '_score_help.twig' %}</th><th>Leaders’ notes</th>{% if fieldMap %}<th>{{ fieldMap.notes_label ?: 'Notes' }}</th>{% endif %}</tr></thead>
     <tbody>
     {% for a in applicants %}
       <tr>
         <td>{{ a.rank }}</td>
+        {% if fieldMap %}<td>{{ a.osmRank }}</td>{% endif %}
         <td>{{ a.firstName }} {{ a.lastName }}</td>
-        <td>{{ a.age }}</td><td>{{ a.timeOnList }}</td><td>{{ a.willingToHelp }}</td>
-        <td>{{ a.idealSection }}</td><td>{{ a.score }}</td>
+        <td>{{ a.age }}</td><td>{{ a.timeOnList }}</td>
+        {% if showWilling %}<td>{{ a.willingToHelp }}{% if a.willingRaw and a.willingRaw != a.willingToHelp %} <span class="muted">(“{{ a.willingRaw }}”)</span>{% endif %}</td>{% endif %}
+        <td>{{ a.idealSection }}</td>{% include '_score_cell.twig' %}
         <td class="notes">{{ a.leadersNotes }}</td>
+        {% if fieldMap %}<td class="notes" style="white-space:pre-line">{{ a.mappedNotes }}</td>{% endif %}
       </tr>
     {% else %}
-      <tr><td colspan="8" class="muted">No applicants.</td></tr>
+      {% if not listError %}<tr><td colspan="{{ cols }}" class="muted">Nobody is on this waiting list in OSM at the moment. If you expected applicants, check you’ve chosen the right list above.</td></tr>{% endif %}
     {% endfor %}
     </tbody>
   </table>

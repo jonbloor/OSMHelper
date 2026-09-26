@@ -1,0 +1,6 @@
+{# Score cell with a hover (title) and tap (details) breakdown. Expects `a` (applicant row) and optional extraClass.
+   The score is worked out in OSMHelper only and is never written to OSM. #}
+<td class="score-cell {{ extraClass|default('') }}" data-sort="{{ a.score == 'N/A' ? '-1' : a.score }}" title="{{ a.scoreBreakdown }}"
+    {% if a.baseScore is defined and a.score != 'N/A' %}data-base-score="{{ a.baseScore }}" data-age="{{ a.ageYears is null ? '' : a.ageYears }}" data-days="{{ a.timeOnList }}"{% endif %}>
+  <details class="score-bd"><summary><span class="score-val">{{ a.score }}</span></summary><span class="score-bd-text no-export">{{ a.scoreBreakdown }}</span></details>
+</td>

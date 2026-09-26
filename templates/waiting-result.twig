@@ -1,0 +1,38 @@
+{% extends 'layout.twig' %}
+{% block body %}
+<div class="card">
+  <h2>Save results</h2>
+  {% if okCount > 0 and failCount == 0 %}
+    <div class="alert">{{ okCount }} change(s) saved to OSM.</div>
+  {% elseif okCount > 0 %}
+    <div class="alert alert-error">{{ okCount }} change(s) saved to OSM. {{ failCount }} not saved{% if stopped %} because we stopped at the first problem{% endif %}. Go back to the ranking page to check the current values and try the rest again.</div>
+  {% else %}
+    <div class="alert alert-error">Nothing was saved{% if stopped %} because we stopped at the first problem{% endif %}. Go back to the ranking page to check the current values and try again.</div>
+  {% endif %}
+  <div class="table-wrap">
+  <table class="data">
+    <thead><tr><th>Name</th><th>Field</th><th>Was</th><th>New value</th><th>Result</th></tr></thead>
+    <tbody>
+    {% for r in results %}
+      <tr>
+        <td>{{ r.name }} <span class="muted">({{ r.scoutid }})</span></td>
+        <td>{{ r.fieldLabel }}</td>
+        <td class="notes">{{ r.from }}</td>
+        <td class="notes">{{ r.to }}</td>
+        <td><strong>{% if r.ok %}Saved{% elseif r.sent %}Not saved{% else %}Not sent{% endif %}</strong> {{ r.message }}
+          {% if r.sent %}<div class="muted" style="font-size:.9em">Column {{ r.columnId }}
+            {%- if r.returned is not null %} · OSM replied with value: “{{ r.returned }}”{% endif %}
+            {%- if r.osmAfter is not null %} · In OSM after saving: “{{ r.osmAfter }}”{% endif %}</div>{% endif %}
+          {% if r.raw %}<details><summary class="muted">Technical details</summary><pre style="white-space:pre-wrap;max-width:40rem">{{ r.raw }}</pre></details>{% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="row" style="margin-top:1rem">
+    <a class="btn" href="/waiting-list/rank/?section={{ sectionId }}">Back to ranking</a>
+    <a class="btn btn-secondary" href="/waiting-list/?section={{ sectionId }}">Waiting list</a>
+  </p>
+</div>
+{% endblock %}

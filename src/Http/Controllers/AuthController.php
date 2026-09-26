@@ -102,6 +102,37 @@ final class AuthController
             $_SESSION['email'] = (string) ($data['email'] ?? 'Unknown Email');
             $_SESSION['fullName'] = (string) ($data['full_name'] ?? 'Unknown User');
 
+            // Waiting-list rank saves: remember who signed in and which scopes this login asked for / got.
+            // All optional — login must not depend on OSM returning these fields.
+            $userId = $data['user_id'] ?? $data['userid'] ?? $data['id'] ?? null;
+            if (is_scalar($userId) && (string) $userId !== '') {
+                $_SESSION['osmUserId'] = (string) $userId;
+            } else {
+                unset($_SESSION['osmUserId']);
+            }
+            $_SESSION['requestedScopes'] = Config::OAUTH_SCOPES;
+            $granted = null;
+            try {
+                $tokenValues = $token->getValues();
+                if (isset($tokenValues['scope']) && is_string($tokenValues['scope']) && $tokenValues['scope'] !== '') {
+                    $granted = $tokenValues['scope'];
+                }
+            } catch (Throwable) {
+            }
+            if ($granted === null && isset($data['scopes'])) {
+                if (is_array($data['scopes'])) {
+                    $granted = implode(' ', array_map('strval', array_filter($data['scopes'], 'is_scalar')));
+                } elseif (is_string($data['scopes'])) {
+                    $granted = $data['scopes'];
+                }
+            }
+            if ($granted !== null && $granted !== '') {
+                $_SESSION['grantedScopes'] = $granted;
+            } else {
+                unset($_SESSION['grantedScopes']);
+            }
+            unset($_SESSION['memberWriteDenied']);
+
             $sections = $data['sections'] ?? [];
             $groupName = 'OSM Helper';
             if (is_array($sections) && isset($sections[0]) && is_array($sections[0])) {

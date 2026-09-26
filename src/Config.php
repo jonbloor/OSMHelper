@@ -14,8 +14,10 @@ final class Config
      * badge:* scope, so read+write showed twice. Same pattern as quartermaster:write
      * (no separate :read); write covers Top awards reads, Nights away records, and progress writes.
      * Re-login after changing scopes.
+     * Member: section:member:write (replaces :read) so Waiting list rank/notes can be saved
+     * to OSM custom fields; sessions from before this change stay read-only until re-login.
      */
-    public const OAUTH_SCOPES = 'section:member:read section:quartermaster:write section:finance:read section:badge:write';
+    public const OAUTH_SCOPES = 'section:member:write section:quartermaster:write section:finance:read section:badge:write';
 
     /** @var list<string> */
     public const SECTION_TYPE_ORDER = [

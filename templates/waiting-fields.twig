@@ -1,0 +1,70 @@
+{% extends 'layout.twig' %}
+{% block body %}
+{% if flash %}
+<div class="alert {% if flash.type == 'error' %}alert-error{% endif %}">{{ flash.message }}</div>
+{% endif %}
+<div class="card">
+  <h2>Waiting list fields</h2>
+  {% set pickerAction = '/waiting-list/fields/' %}
+  {% include '_waiting_picker.twig' %}
+  <p>Choose which of <strong>{{ waitingList.name }}</strong>’s OSM custom fields hold each applicant’s <strong>rank</strong> and <strong>notes</strong>, and optionally whether they are <strong>willing to help</strong>. The values are saved in those OSM fields, not on this server.</p>
+  <p class="muted">This choice is shared with everyone in your OSM group who uses OSMHelper, for this waiting list only. Create the fields first in OSM (section settings → Customisable data), for example “Rank”, “Notes” and “Willing to help”. Plain text fields work best.</p>
+  {% if fieldMap %}
+  <p class="muted">Currently: Rank uses “{{ fieldMap.rank_label }}”, Notes uses “{{ fieldMap.notes_label }}”{% if fieldMap.willing_column_id %}, Willing to help uses “{{ fieldMap.willing_label }}”{% else %}, Willing to help is not used{% endif %}.{% if updatedAtUk %} Last changed by {{ fieldMap.updated_by|default('someone') }} on {{ updatedAtUk }}.{% endif %}</p>
+  {% endif %}
+  {% if mapError %}<p class="alert alert-error">{{ mapError }}</p>{% endif %}
+  {% if columnsError %}
+    <p class="alert alert-error">{{ columnsError }}</p>
+  {% else %}
+  <form method="post" action="/waiting-list/fields/" class="stack">
+    {% include '_csrf.twig' %}
+    <input type="hidden" name="section" value="{{ waitingList.id }}">
+    {% for kind in ['rank', 'notes'] %}
+    {% set sel = kind == 'rank' ? rankSelected : notesSelected %}
+    <label>{{ kind == 'rank' ? 'Rank field' : 'Notes field' }}
+      <select name="{{ kind }}_column_id" required>
+        <option value="">Choose a custom field…</option>
+        {% for c in columns %}
+          <option value="{{ c.column_id }}" {% if sel == c.column_id %}selected{% endif %} {% if c.read_only %}disabled{% endif %}>
+            {{ c.label|default('(no label)') }}{% if c.orig_label and c.orig_label != c.label %} [originally “{{ c.orig_label }}”]{% endif %} · {{ c.varname }} · column {{ c.column_id }}{% if c.type %} · {{ c.type }}{% endif %}{% if c.read_only %} · read-only{% endif %}
+          </option>
+        {% endfor %}
+      </select>
+    </label>
+    {% endfor %}
+    <label>Willing to help field (optional)
+      <select name="willing_column_id">
+        <option value="">Not used</option>
+        {% for c in columns %}
+          <option value="{{ c.column_id }}" {% if willingSelected == c.column_id %}selected{% endif %} {% if c.read_only %}disabled{% endif %}>
+            {{ c.label|default('(no label)') }}{% if c.orig_label and c.orig_label != c.label %} [originally “{{ c.orig_label }}”]{% endif %} · {{ c.varname }} · column {{ c.column_id }}{% if c.type %} · {{ c.type }}{% endif %}{% if c.read_only %} · read-only{% endif %}
+          </option>
+        {% endfor %}
+      </select>
+    </label>
+    <p class="muted">Willing to help counts as yes when it says Y, Yes, True or 1, or starts with the word “y”, “yes”, “yeah” or “yep” (for example “yes please” or “Y.”). A value with a slash, such as “Y/N” or “Yes/No”, counts as no, and so does anything else or blank. It adds 20 to the score. When you save from the ranking page we write “Yes”, “No” or blank.</p>
+    {% if suggested and (rankSelected or notesSelected) %}
+    <p class="muted">We pre-selected fields whose label, original label or name mentions rank, notes or willing/help. Check them before saving.</p>
+    {% endif %}
+    <div class="row">
+      <button class="btn" type="submit">Save fields</button>
+      <a class="btn btn-secondary" href="/waiting-list/?section={{ waitingList.id }}">Back to waiting list</a>
+    </div>
+  </form>
+  <details style="margin-top:1rem">
+    <summary class="muted">All custom fields on this list ({{ columns|length }})</summary>
+    <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Label</th><th>Original label</th><th>Name</th><th>Column id</th><th>Type</th></tr></thead>
+      <tbody>
+      {% for c in columns %}
+        <tr><td>{{ c.label }}</td><td>{{ c.orig_label }}</td><td><code>{{ c.varname }}</code></td><td>{{ c.column_id }}</td><td>{{ c.type }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    <p class="muted">Custom-data group {{ fieldGroupId }}.</p>
+  </details>
+  {% endif %}
+</div>
+{% endblock %}

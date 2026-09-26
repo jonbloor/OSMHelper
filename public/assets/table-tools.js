@@ -5,6 +5,51 @@
     return (el && (el.textContent || '') || '').replace(/\s+/g, ' ').trim();
   }
 
+  // Text of a cell/header without helper bits marked .no-export (info icons, score breakdowns).
+  function plainText(el) {
+    if (!el || !el.querySelector || !el.querySelector('.no-export')) return textOf(el);
+    var c = el.cloneNode(true);
+    Array.prototype.forEach.call(c.querySelectorAll('.no-export'), function (n) { n.remove(); });
+    return textOf(c);
+  }
+
+  // Export value of a cell: data-export if given; else the value of any form controls in it
+  // (text input, textarea, select → chosen option text); else its text.
+  function cellValue(td) {
+    if (!td || !td.querySelectorAll) return '';
+    if (td.hasAttribute('data-export')) return td.getAttribute('data-export');
+    var controls = Array.prototype.filter.call(td.querySelectorAll('input, select, textarea'), function (c) {
+      // Selection checkboxes (other pages) are not data, so they keep exporting as before.
+      return ['hidden', 'submit', 'button', 'checkbox', 'radio'].indexOf(c.type) === -1;
+    });
+    if (!controls.length) return plainText(td);
+    var vals = controls.map(function (c) {
+      if (c.tagName === 'SELECT') {
+        var o = c.options[c.selectedIndex];
+        return o ? (o.getAttribute('data-export') !== null ? o.getAttribute('data-export') : textOf(o)) : '';
+      }
+      return String(c.value || '').replace(/\s+/g, ' ').trim();
+    });
+    var extra = plainText(td); // e.g. existing text shown next to a control
+    var out = vals.join(' ').trim();
+    return out === '' ? extra : out;
+  }
+
+  function sortValue(td) {
+    if (!td) return '';
+    if (td.hasAttribute && td.hasAttribute('data-sort')) return td.getAttribute('data-sort');
+    return plainText(td);
+  }
+
+  // Rows to export: all data rows when the table has data-export-rows="all", else visible rows.
+  function exportRows(table) {
+    var body = table.tBodies[0] || table;
+    if (table.getAttribute('data-export-rows') === 'all') {
+      return Array.prototype.slice.call(body.querySelectorAll('tr'));
+    }
+    return visibleRows(body);
+  }
+
   function visibleRows(tbody) {
     return Array.prototype.filter.call(tbody.querySelectorAll('tr'), function (tr) {
       return !tr.hidden && tr.offsetParent !== null;
@@ -18,12 +63,12 @@
 
   function headers(table) {
     return Array.prototype.map.call(table.querySelectorAll('thead th'), function (th) {
-      return textOf(th).replace(/\s*[▲▼↕]\s*$/, '') || 'Column';
+      return plainText(th).replace(/\s*[▲▼↕]\s*$/, '') || 'Column';
     });
   }
 
   function rowCells(tr) {
-    return Array.prototype.map.call(tr.children, function (td) { return textOf(td); });
+    return Array.prototype.map.call(tr.children, function (td) { return cellValue(td); });
   }
 
   function downloadBlob(filename, mime, content) {
@@ -48,7 +93,7 @@
   function exportCsv(table, name) {
     var cols = headers(table);
     var lines = [cols.map(csvEscape).join(',')];
-    visibleRows(table.tBodies[0] || table).forEach(function (tr) {
+    exportRows(table).forEach(function (tr) {
       if (tr.querySelector('td[colspan]')) return;
       lines.push(rowCells(tr).map(csvEscape).join(','));
     });
@@ -61,7 +106,7 @@
     var rowsXml = '<Row>' + cols.map(function (c) {
       return '<Cell><Data ss:Type="String">' + xmlEsc(c) + '</Data></Cell>';
     }).join('') + '</Row>';
-    visibleRows(table.tBodies[0] || table).forEach(function (tr) {
+    exportRows(table).forEach(function (tr) {
       if (tr.querySelector('td[colspan]')) return;
       rowsXml += '<Row>' + rowCells(tr).map(function (c) {
         var n = parseFloat(c);
@@ -107,7 +152,7 @@
     });
     var visibleNights = 0;
     var rowCount = 0;
-    visibleRows(table.tBodies[0] || table).forEach(function (tr) {
+    exportRows(table).forEach(function (tr) {
       if (tr.querySelector('td[colspan]')) return;
       var cells = rowCells(tr);
       rowCount++;
@@ -124,7 +169,7 @@
       html += '<tfoot><tr>';
       cols.forEach(function (c, i) {
         if (i === 0) {
-          html += '<td>Total (rows shown)</td>';
+          html += '<td>' + (table.getAttribute('data-export-rows') === 'all' ? 'Total' : 'Total (rows shown)') + '</td>';
         } else if (i === nightsCol) {
           html += '<td>' + visibleNights + '</td>';
         } else {
@@ -149,8 +194,8 @@
     var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
     var dataRows = rows.filter(function (tr) { return !tr.querySelector('td[colspan]'); });
     dataRows.sort(function (a, b) {
-      var av = textOf(a.children[colIndex] || {});
-      var bv = textOf(b.children[colIndex] || {});
+      var av = sortValue(a.children[colIndex]);
+      var bv = sortValue(b.children[colIndex]);
       var an = parseFloat(av.replace(/,/g, ''));
       var bn = parseFloat(bv.replace(/,/g, ''));
       var bothNum = av !== '' && bv !== '' && !isNaN(an) && !isNaN(bn);
@@ -170,12 +215,14 @@
     var name = table.getAttribute('data-export-name') || table.id || 'table';
     var toolbar = document.createElement('div');
     toolbar.className = 'table-tools';
+    var allRows = table.getAttribute('data-export-rows') === 'all';
     toolbar.innerHTML =
       '<label class="table-search">Search <input type="search" placeholder="Filter rows…" data-table-search></label>' +
       '<span class="table-export">' +
       '<button type="button" class="btn btn-secondary btn-sm" data-export="csv">CSV</button> ' +
       '<button type="button" class="btn btn-secondary btn-sm" data-export="xls">Excel</button> ' +
       '<button type="button" class="btn btn-secondary btn-sm" data-export="pdf">PDF</button>' +
+      (allRows ? ' <span class="muted table-export-note">Exports every row, even when searching.</span>' : '') +
       '</span>';
 
     var wrap = table.closest('.table-wrap') || table.parentNode;
@@ -210,7 +257,9 @@
       th.classList.add('sortable');
       th.setAttribute('tabindex', '0');
       th.setAttribute('title', 'Sort by this column');
-      th.addEventListener('click', function () {
+      th.addEventListener('click', function (e) {
+        // Links / toggles inside a header (e.g. "How the score works") must not sort.
+        if (e && e.target && e.target.closest && e.target.closest('a, button, summary, details, input, select')) return;
         var dir = th.dataset.sortDir === 'asc' ? 'desc' : 'asc';
         Array.prototype.forEach.call(table.querySelectorAll('thead th'), function (h) {
           h.dataset.sortDir = '';
@@ -221,6 +270,7 @@
         sortTable(table, idx, dir);
       });
       th.addEventListener('keydown', function (e) {
+        if (e.target !== th) return;
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); th.click(); }
       });
     });

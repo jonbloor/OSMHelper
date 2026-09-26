@@ -50,6 +50,7 @@
         <a class="nav-item nav-settings" href="/settings/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg> Settings</a>
         <a class="nav-item nav-help" href="/help/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg> Help</a>
         <a class="nav-item nav-roadmap" href="/roadmap/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg> Roadmap</a>
+        <a class="nav-item nav-changelog" href="/changelog/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg> Changelog</a>
         <a class="nav-item nav-logout" href="/logout/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg> Logout</a>
       </nav>
       <script>
@@ -74,14 +75,49 @@
           if (mq.addEventListener) mq.addEventListener('change', sync);
           else if (mq.addListener) mq.addListener(sync);
           sync();
-          nav.querySelectorAll('details.nav-group').forEach(function (d) {
+          // Dropdown groups (<details>): only one open at a time; close on outside click/tap,
+          // Escape, choosing an item, closing the mobile menu, and when the page is restored from
+          // the back/forward cache. The group holding the current page is highlighted, not opened,
+          // so a menu never "sticks" open over the page on load.
+          var groups = Array.prototype.slice.call(nav.querySelectorAll('details.nav-group'));
+          function syncAria(d) {
+            var s = d.querySelector('summary');
+            if (s) s.setAttribute('aria-expanded', d.open ? 'true' : 'false');
+          }
+          function closeAll(except) {
+            groups.forEach(function (o) { if (o !== except && o.open) o.open = false; });
+          }
+          groups.forEach(function (d) {
+            syncAria(d);
             d.addEventListener('toggle', function () {
-              if (!d.open) return;
-              nav.querySelectorAll('details.nav-group').forEach(function (o) {
-                if (o !== d) o.open = false;
-              });
+              syncAria(d);
+              if (d.open) closeAll(d);
+            });
+            d.querySelectorAll('.nav-sub a').forEach(function (a) {
+              a.addEventListener('click', function () { d.open = false; });
             });
           });
+          document.addEventListener('click', function (e) {
+            var inGroup = e.target && e.target.closest && e.target.closest('details.nav-group');
+            closeAll(inGroup || null);
+          });
+          document.addEventListener('keydown', function (e) {
+            if (e.key !== 'Escape' && e.key !== 'Esc') return;
+            var open = groups.filter(function (d) { return d.open; })[0];
+            if (!open) return;
+            open.open = false;
+            var s = open.querySelector('summary');
+            if (s) s.focus();
+          });
+          nav.addEventListener('focusout', function (e) {
+            groups.forEach(function (d) {
+              if (d.open && e.relatedTarget && !d.contains(e.relatedTarget)) d.open = false;
+            });
+          });
+          btn.addEventListener('click', function () {
+            if (!nav.classList.contains('is-open')) closeAll(null);
+          });
+          window.addEventListener('pageshow', function () { closeAll(null); });
           var path = window.location.pathname.replace(/\/+$/, '') || '/';
           nav.querySelectorAll('a[href]').forEach(function (a) {
             try {
@@ -89,7 +125,7 @@
               if (p === path || (p !== '/' && path.indexOf(p) === 0)) {
                 a.setAttribute('aria-current', 'page');
                 var g = a.closest('details.nav-group');
-                if (g) g.open = true;
+                if (g) g.classList.add('has-current');
               }
             } catch (e) {}
           });
@@ -100,6 +136,7 @@
         <a class="nav-item nav-home" href="/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 10v10h14V10"/></svg> Home</a>
         <a class="nav-item nav-help" href="/help/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg> Help</a>
         <a class="nav-item nav-roadmap" href="/roadmap/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg> Roadmap</a>
+        <a class="nav-item nav-changelog" href="/changelog/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg> Changelog</a>
       </nav>
       {% endif %}
     </header>
@@ -111,7 +148,7 @@
       {% endif %}
     {% endif %}
     {% block body %}{% endblock %}
-    <footer class="app-footer"><a href="/">OSM Helper</a> - Tools to make OSM Better</footer>
+    <footer class="app-footer"><a href="/">OSM Helper</a> - Tools to make OSM Better · <a href="/roadmap/">Roadmap</a> · <a href="/changelog/">Changelog</a></footer>
   </div>
   <script>
     (function () {

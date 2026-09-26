@@ -1,0 +1,16 @@
+{# Waiting list picker (GET ?section=). Expects waitingLists, waitingList, usedNameFallback, pickerAction. #}
+{% if usedNameFallback|default(false) %}
+<div class="alert">OSM did not mark any section as a waiting list, so we matched sections with “waiting” in the name. Check this is the right section.</div>
+{% endif %}
+{% if waitingLists|default([])|length > 1 %}
+<form method="get" action="{{ pickerAction }}" class="row waiting-picker">
+  <label>Waiting list
+    <select name="section">
+      {% for l in waitingLists %}
+        <option value="{{ l.id }}" {% if waitingList and waitingList.id == l.id %}selected{% endif %}>{{ l.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <button class="btn btn-secondary btn-sm" type="submit">Show</button>
+</form>
+{% endif %}

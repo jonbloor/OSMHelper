@@ -1,0 +1,50 @@
+{% extends 'layout.twig' %}
+{% block body %}
+<div class="card">
+  <h2>Review rank and notes changes</h2>
+  <p class="muted">{{ waitingList.name }} ({{ waitingList.id }}) · values below were re-read from OSM just now.</p>
+  {% include '_waiting_access.twig' %}
+  {% if errors %}
+    <div class="alert alert-error"><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+    <p>Use your browser’s Back button to fix these; your typing is kept.</p>
+  {% elseif rows is empty %}
+    <div class="alert">Nothing to save{% if noopCount %}: {{ noopCount }} change(s) already match OSM{% endif %}.</div>
+  {% else %}
+    {% set memberIds = [] %}{% for r in rows %}{% if r.scoutid not in memberIds %}{% set memberIds = memberIds|merge([r.scoutid]) %}{% endif %}{% endfor %}
+    <p><strong>You’re about to change {{ rows|length }} value{{ rows|length == 1 ? '' : 's' }} for {{ memberIds|length }} applicant{{ memberIds|length == 1 ? '' : 's' }} in OSM.</strong> Only ticked rows are saved.</p>
+    {% if noopCount %}<p class="muted">{{ noopCount }} change(s) already match OSM and are left out.</p>{% endif %}
+    {% if testMember %}<p class="alert">Test mode: this server only writes to member {{ testMember }}.</p>{% endif %}
+    <p class="muted">For notes, “New value” is the whole notes field after saving: your new note on top, earlier notes kept below.</p>
+    {% if rows|filter(r => r.changedInOsm)|length %}<p class="alert">Someone else changed the rows marked <strong>Changed in OSM</strong> after you opened the ranking page, so we’ve unticked them. Tick one only if you want your value to replace theirs.</p>{% endif %}
+    <form method="post" action="/waiting-list/apply/">
+      {% include '_csrf.twig' %}
+      <input type="hidden" name="section" value="{{ waitingList.id }}">
+      <div class="table-wrap">
+      <table class="data" data-table-tools data-export-name="waiting-list-changes">
+        <thead><tr><th>Save?</th><th>Name</th><th>Field</th><th>In OSM now</th><th>New value</th><th>Flag</th></tr></thead>
+        <tbody>
+        {% for r in rows %}
+          <tr>
+            <td class="save-cell"><label class="save-hit"><input type="checkbox" name="include[]" value="{{ r.idx }}" {% if not r.changedInOsm and not r.missing %}checked{% endif %} {% if r.missing %}disabled{% endif %} aria-label="Save {{ r.fieldLabel }} for {{ r.name }}"></label></td>
+            <td>{{ r.name }}</td>
+            <td>{{ r.fieldLabel }}</td>
+            <td class="notes" style="white-space:pre-line">{{ r.current }}</td>
+            <td class="notes" style="white-space:pre-line"><strong>{{ r.new }}</strong>{% if r.new == '' %}<span class="muted">(clear)</span>{% endif %}</td>
+            <td>{% if r.missing %}{{ r.note }}{% elseif r.changedInOsm %}Changed in OSM (you loaded “{{ r.orig }}”){% endif %}
+              {%- if r.scoreEffect is not null and r.scoreEffect != 0 %}{% if r.missing or r.changedInOsm %}<br>{% endif %}Score {{ r.scoreEffect > 0 ? 'goes up by ' ~ r.scoreEffect : 'goes down by ' ~ (0 - r.scoreEffect) }}.{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+      <p style="margin-top:1rem">Download this table first (CSV or Excel above). The <strong>In OSM now</strong> column is your copy of the old values.</p>
+      <label><input type="checkbox" name="saved_copy" value="1" required> I have downloaded a copy of the current values.</label>
+      <div class="row" style="margin-top:1rem">
+        <button class="btn" type="submit" {% if not writesEnabled or not access.canSave %}disabled{% endif %}>Save to OSM</button>
+        <a class="btn btn-secondary" href="/waiting-list/rank/?section={{ waitingList.id }}">Cancel</a>
+      </div>
+      <p class="muted">Changes are saved one at a time. If one fails, we stop there. Anything already saved stays saved, and nothing after it is tried. We then check each saved value in OSM. The next page lists exactly what was saved.</p>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,5621 @@
+{
+  "_meta": {
+    "description": "FICTIONAL seed data for OSMHelper waiting list rank/notes feature. All children, parents, emails (example.com) and phone numbers (Ofcom drama range 01632 960xxx) are invented. No real group data.",
+    "generated_for_date": "2026-09-26",
+    "shape_notes": "Mirrors what WaitingListController / MembershipDashboardController / OsmApi consume: oauth_resource.data.sections[] (section_id, section_name, section_type='waiting', group_name, terms); per list: getListOfMembers.items[] (scoutid, firstname, lastname, dob, joined), getIndividual[scoutid].data (dob, joined, firstname, lastname, customfields.customfield_123), customdata_getData[scoutid].data[] groups with identifier 'customisable_data' and columns[] (column_id, varname, label, type, value). Response envelopes are best-effort approximations of OSM; keys the code reads are exact.",
+    "field_refs": {
+      "rank": "f_1",
+      "notes": "f_2",
+      "note": "Varnames f_1/f_2 are example refs; column_id differs per waiting list (990001: rank 101, notes 102; 990002: rank 211, notes 212) to exercise per-list mapping. Decoy fields (f_3, f_4, f_5, cf_notes) are present to test the settings picker."
+    },
+    "rank_ties": "990001 has ties at rank 3 and 8; 990002 has a tie at rank 4. Blank ranks are empty strings.",
+    "record_count": 40
+  },
+  "oauth_resource": {
+    "status": true,
+    "data": {
+      "user_id": 900001,
+      "full_name": "Test Leader (fictional)",
+      "email": "test.leader@example.com",
+      "sections": [
+        {
+          "section_id": "990001",
+          "section_name": "Fictional 1st Nowhere – Beavers & Cubs waiting list",
+          "section_type": "waiting",
+          "group_id": "990000",
+          "group_name": "Fictional 1st Nowhere Scout Group",
+          "permissions": {
+            "member": 20,
+            "badge": 10
+          },
+          "terms": [
+            {
+              "term_id": "-1",
+              "name": "Waiting list",
+              "startdate": "2000-01-01",
+              "enddate": "2099-12-31"
+            }
+          ]
+        },
+        {
+          "section_id": "990002",
+          "section_name": "Fictional 1st Nowhere – Scouts & Explorers waiting list",
+          "section_type": "waiting",
+          "group_id": "990000",
+          "group_name": "Fictional 1st Nowhere Scout Group",
+          "permissions": {
+            "member": 20,
+            "badge": 10
+          },
+          "terms": [
+            {
+              "term_id": "-1",
+              "name": "Waiting list",
+              "startdate": "2000-01-01",
+              "enddate": "2099-12-31"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "waiting_lists": [
+    {
+      "section_id": "990001",
+      "section_name": "Fictional 1st Nowhere – Beavers & Cubs waiting list",
+      "section_type": "waiting",
+      "custom_fields_available": [
+        {
+          "group_id": 5,
+          "column_id": 101,
+          "varname": "f_1",
+          "label": "Waiting list rank",
+          "type": "text"
+        },
+        {
+          "group_id": 5,
+          "column_id": 102,
+          "varname": "f_2",
+          "label": "Waiting list notes",
+          "type": "textarea"
+        },
+        {
+          "group_id": 5,
+          "column_id": 103,
+          "varname": "f_3",
+          "label": "Sibling already in group",
+          "type": "checkbox"
+        },
+        {
+          "group_id": 5,
+          "column_id": 104,
+          "varname": "f_4",
+          "label": "Preferred meeting night",
+          "type": "select"
+        },
+        {
+          "group_id": 5,
+          "column_id": 90,
+          "varname": "cf_notes",
+          "label": "Leaders notes (legacy)",
+          "type": "textarea"
+        }
+      ],
+      "suggested_mapping": {
+        "rank": {
+          "group_id": 5,
+          "column_id": 101,
+          "varname": "f_1"
+        },
+        "notes": {
+          "group_id": 5,
+          "column_id": 102,
+          "varname": "f_2"
+        }
+      },
+      "getListOfMembers": {
+        "identifier": "scoutid",
+        "items": [
+          {
+            "scoutid": "7000001",
+            "firstname": "Alfie",
+            "lastname": "Example",
+            "dob": "2023-05-04",
+            "joined": "2026-04-20",
+            "sectionid": "990001",
+            "age": "3 / 4"
+          },
+          {
+            "scoutid": "7000002",
+            "firstname": "Bea",
+            "lastname": "Fixture",
+            "dob": "2022-11-02",
+            "joined": "2024-06-01",
+            "sectionid": "990001",
+            "age": "3 / 10"
+          },
+          {
+            "scoutid": "7000003",
+            "firstname": "Cody",
+            "lastname": "Placeholder",
+            "dob": "2022-08-21",
+            "joined": "2024-10-10",
+            "sectionid": "990001",
+            "age": "4 / 1"
+          },
+          {
+            "scoutid": "7000004",
+            "firstname": "Daisy",
+            "lastname": "Testwell",
+            "dob": "2022-05-03",
+            "joined": "2022-11-24",
+            "sectionid": "990001",
+            "age": "4 / 4"
+          },
+          {
+            "scoutid": "7000005",
+            "firstname": "Ezra",
+            "lastname": "Sampleton",
+            "dob": "2021-12-08",
+            "joined": "2026-04-03",
+            "sectionid": "990001",
+            "age": "4 / 9"
+          },
+          {
+            "scoutid": "7000006",
+            "firstname": "Fern",
+            "lastname": "Dummyford",
+            "dob": "2021-07-15",
+            "joined": "2024-09-29",
+            "sectionid": "990001",
+            "age": "5 / 2"
+          },
+          {
+            "scoutid": "7000007",
+            "firstname": "Gus",
+            "lastname": "Mockridge",
+            "dob": "2021-02-19",
+            "joined": "2026-07-12",
+            "sectionid": "990001",
+            "age": "5 / 7"
+          },
+          {
+            "scoutid": "7000008",
+            "firstname": "Hattie",
+            "lastname": "Fakely",
+            "dob": "2020-11-02",
+            "joined": "2025-10-05",
+            "sectionid": "990001",
+            "age": "5 / 10"
+          },
+          {
+            "scoutid": "7000009",
+            "firstname": "Iggy",
+            "lastname": "Seedling",
+            "dob": "2020-08-20",
+            "joined": "2022-12-19",
+            "sectionid": "990001",
+            "age": "6 / 1"
+          },
+          {
+            "scoutid": "7000010",
+            "firstname": "Juno",
+            "lastname": "Stubbs-Test",
+            "dob": "2020-05-03",
+            "joined": "2026-07-15",
+            "sectionid": "990001",
+            "age": "6 / 4"
+          },
+          {
+            "scoutid": "7000011",
+            "firstname": "Kit",
+            "lastname": "Notreal",
+            "dob": "2019-12-09",
+            "joined": "2022-05-21",
+            "sectionid": "990001",
+            "age": "6 / 9"
+          },
+          {
+            "scoutid": "7000012",
+            "firstname": "Luna",
+            "lastname": "Pretendy",
+            "dob": "2019-08-21",
+            "joined": "2025-03-29",
+            "sectionid": "990001",
+            "age": "7 / 1"
+          },
+          {
+            "scoutid": "7000013",
+            "firstname": "Milo",
+            "lastname": "Example",
+            "dob": "2019-05-04",
+            "joined": "2024-02-10",
+            "sectionid": "990001",
+            "age": "7 / 4"
+          },
+          {
+            "scoutid": "7000014",
+            "firstname": "Nell",
+            "lastname": "Fixture",
+            "dob": "2019-01-14",
+            "joined": "2025-04-07",
+            "sectionid": "990001",
+            "age": "7 / 8"
+          },
+          {
+            "scoutid": "7000015",
+            "firstname": "Otto",
+            "lastname": "Placeholder",
+            "dob": "2018-09-26",
+            "joined": "2026-09-14",
+            "sectionid": "990001",
+            "age": "8 / 0"
+          },
+          {
+            "scoutid": "7000016",
+            "firstname": "Poppy",
+            "lastname": "Testwell",
+            "dob": "2018-03-28",
+            "joined": "2026-06-07",
+            "sectionid": "990001",
+            "age": "8 / 6"
+          },
+          {
+            "scoutid": "7000017",
+            "firstname": "Quinn",
+            "lastname": "Sampleton",
+            "dob": "2017-08-21",
+            "joined": "2023-10-03",
+            "sectionid": "990001",
+            "age": "9 / 1"
+          },
+          {
+            "scoutid": "7000018",
+            "firstname": "Rosie",
+            "lastname": "Dummyford",
+            "dob": "2017-02-19",
+            "joined": "2022-06-15",
+            "sectionid": "990001",
+            "age": "9 / 7"
+          },
+          {
+            "scoutid": "7000019",
+            "firstname": "Sid",
+            "lastname": "Mockridge",
+            "dob": "2016-07-15",
+            "joined": "2026-01-24",
+            "sectionid": "990001",
+            "age": "10 / 2"
+          },
+          {
+            "scoutid": "7000020",
+            "firstname": "Tilly",
+            "lastname": "Fakely",
+            "dob": "2015-11-02",
+            "joined": "2024-05-05",
+            "sectionid": "990001",
+            "age": "10 / 10"
+          },
+          {
+            "scoutid": "7000021",
+            "firstname": "Umar",
+            "lastname": "Seedling",
+            "dob": "2015-03-28",
+            "joined": "2023-06-16",
+            "sectionid": "990001",
+            "age": "11 / 6"
+          },
+          {
+            "scoutid": "7000022",
+            "firstname": "Vida",
+            "lastname": "Stubbs-Test",
+            "dob": "2014-06-09",
+            "joined": "2025-07-04",
+            "sectionid": "990001",
+            "age": "12 / 3"
+          }
+        ]
+      },
+      "getIndividual": {
+        "7000001": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000001",
+            "firstname": "Alfie",
+            "lastname": "Example",
+            "dob": "2023-05-04",
+            "joined": "2026-04-20",
+            "started": "2026-04-20",
+            "sectionid": "990001",
+            "customfields": {
+              "customfield_123": "Y"
+            }
+          }
+        },
+        "7000002": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000002",
+            "firstname": "Bea",
+            "lastname": "Fixture",
+            "dob": "2022-11-02",
+            "joined": "2024-06-01",
+            "started": "2024-06-01",
+            "sectionid": "990001",
+            "customfields": {
+              "customfield_123": "Y"
+            }
+          }
+        },
+        "7000003": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000003",
+            "firstname": "Cody",
+            "lastname": "Placeholder",
+            "dob": "2022-08-21",
+            "joined": "2024-10-10",
+            "started": "2024-10-10",
+            "sectionid": "990001",
+            "customfields": {
+              "customfield_123": "Y"
+            }
+          }
+        },
+        "7000004": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000004",
+            "firstname": "Daisy",
+            "lastname": "Testwell",
+            "dob": "2022-05-03",
+            "joined": "2022-11-24",
+            "started": "2022-11-24",
+            "sectionid": "990001",
+            "customfields": {
+              "customfield_123": "N"
+            }
+          }
+        },
+        "7000005": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000005",
+            "firstname": "Ezra",
+            "lastname": "Sampleton",
+            "dob": "2021-12-08",
+            "joined": "2026-04-03",
+            "started": "2026-04-03",
+            "sectionid": "990001",
+            "customfields": {
+              "customfield_123": "Y"
+            }
+          }
+        },
+        "7000006": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000006",
+            "firstname": "Fern",
+            "lastname": "Dummyford",
+            "dob": "2021-07-15",
+            "joined": "2024-09-29",
+            "started": "2024-09-29",
+            "sectionid": "990001",
+            "customfields": {
+              "customfield_123": "Y"
+            }
+          }
+        },
+        "7000007": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000007",
+            "firstname": "Gus",
+            "lastname": "Mockridge",
+            "dob": "2021-02-19",
+            "joined": "2026-07-12",
+            "started": "2026-07-12",
+            "sectionid": "990001",
+            "customfields": {
+              "customfield_123": "Y"
+            }
+          }
+        },
+        "7000008": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000008",
+            "firstname": "Hattie",
+            "lastname": "Fakely",
+            "dob": "2020-11-02",
+            "joined": "2025-10-05",
+            "started": "2025-10-05",
+            "sectionid": "990001",
+            "customfields": {
+              "customfield_123": "N"
+            }
+          }
+        },
+        "7000009": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000009",
+            "firstname": "Iggy",
+            "lastname": "Seedling",
+            "dob": "2020-08-20",
+            "joined": "2022-12-19",
+            "started": "2022-12-19",
+            "sectionid": "990001",
+            "customfields": {
+              "customfield_123": "Y"
+            }
+          }
+        },
+        "7000010": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000010",
+            "firstname": "Juno",
+            "lastname": "Stubbs-Test",
+            "dob": "2020-05-03",
+            "joined": "2026-07-15",
+            "started": "2026-07-15",
+            "sectionid": "990001",
+            "customfields": {
+              "customfield_123": "Y"
+            }
+          }
+        },
+        "7000011": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000011",
+            "firstname": "Kit",
+            "lastname": "Notreal",
+            "dob": "2019-12-09",
+            "joined": "2022-05-21",
+            "started": "2022-05-21",
+            "sectionid": "990001",
+            "customfields": {
+              "customfield_123": "N"
+            }
+          }
+        },
+        "7000012": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000012",
+            "firstname": "Luna",
+            "lastname": "Pretendy",
+            "dob": "2019-08-21",
+            "joined": "2025-03-29",
+            "started": "2025-03-29",
+            "sectionid": "990001",
+            "customfields": {
+              "customfield_123": "N"
+            }
+          }
+        },
+        "7000013": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000013",
+            "firstname": "Milo",
+            "lastname": "Example",
+            "dob": "2019-05-04",
+            "joined": "2024-02-10",
+            "started": "2024-02-10",
+            "sectionid": "990001",
+            "customfields": {
+              "customfield_123": "Y"
+            }
+          }
+        },
+        "7000014": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000014",
+            "firstname": "Nell",
+            "lastname": "Fixture",
+            "dob": "2019-01-14",
+            "joined": "2025-04-07",
+            "started": "2025-04-07",
+            "sectionid": "990001",
+            "customfields": {
+              "customfield_123": "N"
+            }
+          }
+        },
+        "7000015": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000015",
+            "firstname": "Otto",
+            "lastname": "Placeholder",
+            "dob": "2018-09-26",
+            "joined": "2026-09-14",
+            "started": "2026-09-14",
+            "sectionid": "990001",
+            "customfields": {
+              "customfield_123": "N"
+            }
+          }
+        },
+        "7000016": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000016",
+            "firstname": "Poppy",
+            "lastname": "Testwell",
+            "dob": "2018-03-28",
+            "joined": "2026-06-07",
+            "started": "2026-06-07",
+            "sectionid": "990001",
+            "customfields": {
+              "customfield_123": "N"
+            }
+          }
+        },
+        "7000017": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000017",
+            "firstname": "Quinn",
+            "lastname": "Sampleton",
+            "dob": "2017-08-21",
+            "joined": "2023-10-03",
+            "started": "2023-10-03",
+            "sectionid": "990001",
+            "customfields": {
+              "customfield_123": "N"
+            }
+          }
+        },
+        "7000018": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000018",
+            "firstname": "Rosie",
+            "lastname": "Dummyford",
+            "dob": "2017-02-19",
+            "joined": "2022-06-15",
+            "started": "2022-06-15",
+            "sectionid": "990001",
+            "customfields": {
+              "customfield_123": "Y"
+            }
+          }
+        },
+        "7000019": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000019",
+            "firstname": "Sid",
+            "lastname": "Mockridge",
+            "dob": "2016-07-15",
+            "joined": "2026-01-24",
+            "started": "2026-01-24",
+            "sectionid": "990001",
+            "customfields": {
+              "customfield_123": "Y"
+            }
+          }
+        },
+        "7000020": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000020",
+            "firstname": "Tilly",
+            "lastname": "Fakely",
+            "dob": "2015-11-02",
+            "joined": "2024-05-05",
+            "started": "2024-05-05",
+            "sectionid": "990001",
+            "customfields": {
+              "customfield_123": "Y"
+            }
+          }
+        },
+        "7000021": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000021",
+            "firstname": "Umar",
+            "lastname": "Seedling",
+            "dob": "2015-03-28",
+            "joined": "2023-06-16",
+            "started": "2023-06-16",
+            "sectionid": "990001",
+            "customfields": {
+              "customfield_123": "N"
+            }
+          }
+        },
+        "7000022": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000022",
+            "firstname": "Vida",
+            "lastname": "Stubbs-Test",
+            "dob": "2014-06-09",
+            "joined": "2025-07-04",
+            "started": "2025-07-04",
+            "sectionid": "990001",
+            "customfields": {
+              "customfield_123": "N"
+            }
+          }
+        }
+      },
+      "customdata_getData": {
+        "7000001": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Casey"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Example"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "casey.example@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960100"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 101,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "1",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 102,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "Sibling in Cubs – priority per group policy",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 103,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "yes",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 104,
+                  "type": "select",
+                  "varname": "f_4",
+                  "label": "Preferred meeting night",
+                  "value": "Tuesday",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 90,
+                  "type": "textarea",
+                  "varname": "cf_notes",
+                  "label": "Leaders notes (legacy)",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Beavers & Cubs waiting list"
+          }
+        },
+        "7000002": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Chris"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Fixture"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "chris.fixture@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960107"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 101,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "2",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 102,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "Keen on camping",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 103,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "yes",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 104,
+                  "type": "select",
+                  "varname": "f_4",
+                  "label": "Preferred meeting night",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 90,
+                  "type": "textarea",
+                  "varname": "cf_notes",
+                  "label": "Leaders notes (legacy)",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Beavers & Cubs waiting list"
+          }
+        },
+        "7000003": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Robin"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Placeholder"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "robin.placeholder@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960114"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 101,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "3",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 102,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "Can only do Thursday evenings",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "Keen on camping",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 103,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "yes",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 104,
+                  "type": "select",
+                  "varname": "f_4",
+                  "label": "Preferred meeting night",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 90,
+                  "type": "textarea",
+                  "varname": "cf_notes",
+                  "label": "Leaders notes (legacy)",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Beavers & Cubs waiting list"
+          }
+        },
+        "7000004": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Alex"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Testwell"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "alex.testwell@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960121"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 101,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "3",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 102,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "Young carer – discuss with GSL",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 103,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 104,
+                  "type": "select",
+                  "varname": "f_4",
+                  "label": "Preferred meeting night",
+                  "value": "Thursday",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 90,
+                  "type": "textarea",
+                  "varname": "cf_notes",
+                  "label": "Leaders notes (legacy)",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Beavers & Cubs waiting list"
+          }
+        },
+        "7000005": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Taylor"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Sampleton"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "taylor.sampleton@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960128"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 101,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "4",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 102,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "Previously in another group's Beavers",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 103,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "yes",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 104,
+                  "type": "select",
+                  "varname": "f_4",
+                  "label": "Preferred meeting night",
+                  "value": "Thursday",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 90,
+                  "type": "textarea",
+                  "varname": "cf_notes",
+                  "label": "Leaders notes (legacy)",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Beavers & Cubs waiting list"
+          }
+        },
+        "7000006": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Taylor"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Dummyford"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "taylor.dummyford@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960135"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 101,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 102,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 103,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "yes",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 104,
+                  "type": "select",
+                  "varname": "f_4",
+                  "label": "Preferred meeting night",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 90,
+                  "type": "textarea",
+                  "varname": "cf_notes",
+                  "label": "Leaders notes (legacy)",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Beavers & Cubs waiting list"
+          }
+        },
+        "7000007": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Morgan"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Mockridge"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "morgan.mockridge@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960142"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 101,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "5",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 102,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "Previously in another group's Beavers",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "Friend already attends",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 103,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 104,
+                  "type": "select",
+                  "varname": "f_4",
+                  "label": "Preferred meeting night",
+                  "value": "Thursday",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 90,
+                  "type": "textarea",
+                  "varname": "cf_notes",
+                  "label": "Leaders notes (legacy)",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Beavers & Cubs waiting list"
+          }
+        },
+        "7000008": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Pat"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Fakely"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "pat.fakely@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960149"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 101,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "6",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 102,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "Moved into area recently",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "Keen on camping",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 103,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "yes",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 104,
+                  "type": "select",
+                  "varname": "f_4",
+                  "label": "Preferred meeting night",
+                  "value": "Tuesday",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 90,
+                  "type": "textarea",
+                  "varname": "cf_notes",
+                  "label": "Leaders notes (legacy)",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Beavers & Cubs waiting list"
+          }
+        },
+        "7000009": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Sam"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Seedling"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "sam.seedling@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960156"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 101,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 102,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "Keen on camping",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 103,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 104,
+                  "type": "select",
+                  "varname": "f_4",
+                  "label": "Preferred meeting night",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 90,
+                  "type": "textarea",
+                  "varname": "cf_notes",
+                  "label": "Leaders notes (legacy)",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Beavers & Cubs waiting list"
+          }
+        },
+        "7000010": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Casey"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Stubbs-Test"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "casey.stubbstest@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960163"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 101,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "7",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 102,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "Can only do Thursday evenings",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "Friend already attends",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 103,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "yes",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 104,
+                  "type": "select",
+                  "varname": "f_4",
+                  "label": "Preferred meeting night",
+                  "value": "Thursday",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 90,
+                  "type": "textarea",
+                  "varname": "cf_notes",
+                  "label": "Leaders notes (legacy)",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Beavers & Cubs waiting list"
+          }
+        },
+        "7000011": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Taylor"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Notreal"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "taylor.notreal@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960170"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 101,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "8",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 102,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "Keen on camping",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 103,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "yes",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 104,
+                  "type": "select",
+                  "varname": "f_4",
+                  "label": "Preferred meeting night",
+                  "value": "Thursday",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 90,
+                  "type": "textarea",
+                  "varname": "cf_notes",
+                  "label": "Leaders notes (legacy)",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Beavers & Cubs waiting list"
+          }
+        },
+        "7000012": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Pat"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Pretendy"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "pat.pretendy@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960177"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 101,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "8",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 102,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "Declined place once (holiday), still keen",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "Keen on camping",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 103,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 104,
+                  "type": "select",
+                  "varname": "f_4",
+                  "label": "Preferred meeting night",
+                  "value": "Thursday",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 90,
+                  "type": "textarea",
+                  "varname": "cf_notes",
+                  "label": "Leaders notes (legacy)",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Beavers & Cubs waiting list"
+          }
+        },
+        "7000013": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Jamie"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Example"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "jamie.example@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960184"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 101,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 102,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 103,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 104,
+                  "type": "select",
+                  "varname": "f_4",
+                  "label": "Preferred meeting night",
+                  "value": "Tuesday",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 90,
+                  "type": "textarea",
+                  "varname": "cf_notes",
+                  "label": "Leaders notes (legacy)",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Beavers & Cubs waiting list"
+          }
+        },
+        "7000014": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Chris"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Fixture"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "chris.fixture@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960191"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 101,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "9",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 102,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "Declined place once (holiday), still keen",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 103,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 104,
+                  "type": "select",
+                  "varname": "f_4",
+                  "label": "Preferred meeting night",
+                  "value": "Tuesday",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 90,
+                  "type": "textarea",
+                  "varname": "cf_notes",
+                  "label": "Leaders notes (legacy)",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Beavers & Cubs waiting list"
+          }
+        },
+        "7000015": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Pat"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Placeholder"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "pat.placeholder@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960198"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 101,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "10",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 102,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "Parent offered to help on Tuesdays",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 103,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 104,
+                  "type": "select",
+                  "varname": "f_4",
+                  "label": "Preferred meeting night",
+                  "value": "Tuesday",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 90,
+                  "type": "textarea",
+                  "varname": "cf_notes",
+                  "label": "Leaders notes (legacy)",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Beavers & Cubs waiting list"
+          }
+        },
+        "7000016": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Morgan"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Testwell"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "morgan.testwell@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960205"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 101,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 102,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "Keen on camping",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 103,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "yes",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 104,
+                  "type": "select",
+                  "varname": "f_4",
+                  "label": "Preferred meeting night",
+                  "value": "Thursday",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 90,
+                  "type": "textarea",
+                  "varname": "cf_notes",
+                  "label": "Leaders notes (legacy)",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Beavers & Cubs waiting list"
+          }
+        },
+        "7000017": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Sam"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Sampleton"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "sam.sampleton@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960212"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 101,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "11",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 102,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "Moved into area recently",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "Friend already attends",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 103,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "yes",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 104,
+                  "type": "select",
+                  "varname": "f_4",
+                  "label": "Preferred meeting night",
+                  "value": "Tuesday",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 90,
+                  "type": "textarea",
+                  "varname": "cf_notes",
+                  "label": "Leaders notes (legacy)",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Beavers & Cubs waiting list"
+          }
+        },
+        "7000018": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Morgan"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Dummyford"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "morgan.dummyford@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960219"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 101,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 102,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "Friend already attends",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 103,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 104,
+                  "type": "select",
+                  "varname": "f_4",
+                  "label": "Preferred meeting night",
+                  "value": "Thursday",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 90,
+                  "type": "textarea",
+                  "varname": "cf_notes",
+                  "label": "Leaders notes (legacy)",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Beavers & Cubs waiting list"
+          }
+        },
+        "7000019": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Robin"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Mockridge"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "robin.mockridge@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960226"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 101,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "12",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 102,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "Asked to be contacted after half term",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "Keen on camping",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 103,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "yes",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 104,
+                  "type": "select",
+                  "varname": "f_4",
+                  "label": "Preferred meeting night",
+                  "value": "Thursday",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 90,
+                  "type": "textarea",
+                  "varname": "cf_notes",
+                  "label": "Leaders notes (legacy)",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Beavers & Cubs waiting list"
+          }
+        },
+        "7000020": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Alex"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Fakely"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "alex.fakely@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960233"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 101,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 102,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "Keen on camping",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 103,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "yes",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 104,
+                  "type": "select",
+                  "varname": "f_4",
+                  "label": "Preferred meeting night",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 90,
+                  "type": "textarea",
+                  "varname": "cf_notes",
+                  "label": "Leaders notes (legacy)",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Beavers & Cubs waiting list"
+          }
+        },
+        "7000021": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Pat"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Seedling"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "pat.seedling@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960240"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 101,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "13",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 102,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "Declined place once (holiday), still keen",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "Keen on camping",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 103,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "yes",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 104,
+                  "type": "select",
+                  "varname": "f_4",
+                  "label": "Preferred meeting night",
+                  "value": "Thursday",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 90,
+                  "type": "textarea",
+                  "varname": "cf_notes",
+                  "label": "Leaders notes (legacy)",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Beavers & Cubs waiting list"
+          }
+        },
+        "7000022": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Jamie"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Stubbs-Test"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "jamie.stubbstest@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960247"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 101,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 102,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 103,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "yes",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 104,
+                  "type": "select",
+                  "varname": "f_4",
+                  "label": "Preferred meeting night",
+                  "value": "Thursday",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 90,
+                  "type": "textarea",
+                  "varname": "cf_notes",
+                  "label": "Leaders notes (legacy)",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Beavers & Cubs waiting list"
+          }
+        }
+      }
+    },
+    {
+      "section_id": "990002",
+      "section_name": "Fictional 1st Nowhere – Scouts & Explorers waiting list",
+      "section_type": "waiting",
+      "custom_fields_available": [
+        {
+          "group_id": 5,
+          "column_id": 211,
+          "varname": "f_1",
+          "label": "Waiting list rank",
+          "type": "text"
+        },
+        {
+          "group_id": 5,
+          "column_id": 212,
+          "varname": "f_2",
+          "label": "Waiting list notes",
+          "type": "textarea"
+        },
+        {
+          "group_id": 5,
+          "column_id": 213,
+          "varname": "f_5",
+          "label": "Old priority (do not use)",
+          "type": "text"
+        },
+        {
+          "group_id": 5,
+          "column_id": 214,
+          "varname": "f_3",
+          "label": "Sibling already in group",
+          "type": "checkbox"
+        }
+      ],
+      "suggested_mapping": {
+        "rank": {
+          "group_id": 5,
+          "column_id": 211,
+          "varname": "f_1"
+        },
+        "notes": {
+          "group_id": 5,
+          "column_id": 212,
+          "varname": "f_2"
+        }
+      },
+      "getListOfMembers": {
+        "identifier": "scoutid",
+        "items": [
+          {
+            "scoutid": "7000023",
+            "firstname": "Wren",
+            "lastname": "Notreal",
+            "dob": "2013-09-26",
+            "joined": "2026-06-16",
+            "sectionid": "990002",
+            "age": "13 / 0"
+          },
+          {
+            "scoutid": "7000024",
+            "firstname": "Xander",
+            "lastname": "Pretendy",
+            "dob": "2013-02-19",
+            "joined": "2022-08-06",
+            "sectionid": "990002",
+            "age": "13 / 7"
+          },
+          {
+            "scoutid": "7000025",
+            "firstname": "Yara",
+            "lastname": "Example",
+            "dob": "2012-07-15",
+            "joined": "2025-07-28",
+            "sectionid": "990002",
+            "age": "14 / 2"
+          },
+          {
+            "scoutid": "7000026",
+            "firstname": "Zeb",
+            "lastname": "Fixture",
+            "dob": "2011-12-09",
+            "joined": "2024-06-05",
+            "sectionid": "990002",
+            "age": "14 / 9"
+          },
+          {
+            "scoutid": "7000027",
+            "firstname": "Arlo",
+            "lastname": "Placeholder",
+            "dob": "2011-06-09",
+            "joined": "2022-07-15",
+            "sectionid": "990002",
+            "age": "15 / 3"
+          },
+          {
+            "scoutid": "7000028",
+            "firstname": "Bonnie",
+            "lastname": "Testwell",
+            "dob": "2022-02-19",
+            "joined": "2023-10-30",
+            "sectionid": "990002",
+            "age": "4 / 7"
+          },
+          {
+            "scoutid": "7000029",
+            "firstname": "Cass",
+            "lastname": "Sampleton",
+            "dob": "2021-08-21",
+            "joined": "2025-04-21",
+            "sectionid": "990002",
+            "age": "5 / 1"
+          },
+          {
+            "scoutid": "7000030",
+            "firstname": "Dot",
+            "lastname": "Dummyford",
+            "dob": "2020-09-26",
+            "joined": "2026-08-25",
+            "sectionid": "990002",
+            "age": "6 / 0"
+          },
+          {
+            "scoutid": "7000031",
+            "firstname": "Eli",
+            "lastname": "Mockridge",
+            "dob": "2020-02-20",
+            "joined": "2026-08-25",
+            "sectionid": "990002",
+            "age": "6 / 7"
+          },
+          {
+            "scoutid": "7000032",
+            "firstname": "Flo",
+            "lastname": "Fakely",
+            "dob": "2019-06-09",
+            "joined": "2022-05-30",
+            "sectionid": "990002",
+            "age": "7 / 3"
+          },
+          {
+            "scoutid": "7000033",
+            "firstname": "Gil",
+            "lastname": "Seedling",
+            "dob": "2018-11-02",
+            "joined": "2023-04-03",
+            "sectionid": "990002",
+            "age": "7 / 10"
+          },
+          {
+            "scoutid": "7000034",
+            "firstname": "Hope",
+            "lastname": "Stubbs-Test",
+            "dob": "2017-12-08",
+            "joined": "2024-07-05",
+            "sectionid": "990002",
+            "age": "8 / 9"
+          },
+          {
+            "scoutid": "7000035",
+            "firstname": "Ivo",
+            "lastname": "Notreal",
+            "dob": "2016-11-02",
+            "joined": "2025-04-10",
+            "sectionid": "990002",
+            "age": "9 / 10"
+          },
+          {
+            "scoutid": "7000036",
+            "firstname": "Jess",
+            "lastname": "Pretendy",
+            "dob": "2016-03-27",
+            "joined": "2022-10-23",
+            "sectionid": "990002",
+            "age": "10 / 6"
+          },
+          {
+            "scoutid": "7000037",
+            "firstname": "Kai",
+            "lastname": "Example",
+            "dob": "2015-08-21",
+            "joined": "2024-08-24",
+            "sectionid": "990002",
+            "age": "11 / 1"
+          },
+          {
+            "scoutid": "7000038",
+            "firstname": "Lottie",
+            "lastname": "Fixture",
+            "dob": "2013-12-08",
+            "joined": "2022-11-02",
+            "sectionid": "990002",
+            "age": "12 / 9"
+          },
+          {
+            "scoutid": "7000039",
+            "firstname": "Monty",
+            "lastname": "Placeholder",
+            "dob": "2012-11-02",
+            "joined": "2024-02-06",
+            "sectionid": "990002",
+            "age": "13 / 10"
+          },
+          {
+            "scoutid": "7000040",
+            "firstname": "Nia",
+            "lastname": "Testwell",
+            "dob": "2012-03-27",
+            "joined": "2022-09-25",
+            "sectionid": "990002",
+            "age": "14 / 6"
+          }
+        ]
+      },
+      "getIndividual": {
+        "7000023": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000023",
+            "firstname": "Wren",
+            "lastname": "Notreal",
+            "dob": "2013-09-26",
+            "joined": "2026-06-16",
+            "started": "2026-06-16",
+            "sectionid": "990002",
+            "customfields": {
+              "customfield_123": "N"
+            }
+          }
+        },
+        "7000024": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000024",
+            "firstname": "Xander",
+            "lastname": "Pretendy",
+            "dob": "2013-02-19",
+            "joined": "2022-08-06",
+            "started": "2022-08-06",
+            "sectionid": "990002",
+            "customfields": {
+              "customfield_123": "N"
+            }
+          }
+        },
+        "7000025": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000025",
+            "firstname": "Yara",
+            "lastname": "Example",
+            "dob": "2012-07-15",
+            "joined": "2025-07-28",
+            "started": "2025-07-28",
+            "sectionid": "990002",
+            "customfields": {
+              "customfield_123": "N"
+            }
+          }
+        },
+        "7000026": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000026",
+            "firstname": "Zeb",
+            "lastname": "Fixture",
+            "dob": "2011-12-09",
+            "joined": "2024-06-05",
+            "started": "2024-06-05",
+            "sectionid": "990002",
+            "customfields": {
+              "customfield_123": "N"
+            }
+          }
+        },
+        "7000027": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000027",
+            "firstname": "Arlo",
+            "lastname": "Placeholder",
+            "dob": "2011-06-09",
+            "joined": "2022-07-15",
+            "started": "2022-07-15",
+            "sectionid": "990002",
+            "customfields": {
+              "customfield_123": "N"
+            }
+          }
+        },
+        "7000028": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000028",
+            "firstname": "Bonnie",
+            "lastname": "Testwell",
+            "dob": "2022-02-19",
+            "joined": "2023-10-30",
+            "started": "2023-10-30",
+            "sectionid": "990002",
+            "customfields": {
+              "customfield_123": "N"
+            }
+          }
+        },
+        "7000029": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000029",
+            "firstname": "Cass",
+            "lastname": "Sampleton",
+            "dob": "2021-08-21",
+            "joined": "2025-04-21",
+            "started": "2025-04-21",
+            "sectionid": "990002",
+            "customfields": {
+              "customfield_123": "N"
+            }
+          }
+        },
+        "7000030": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000030",
+            "firstname": "Dot",
+            "lastname": "Dummyford",
+            "dob": "2020-09-26",
+            "joined": "2026-08-25",
+            "started": "2026-08-25",
+            "sectionid": "990002",
+            "customfields": {
+              "customfield_123": "Y"
+            }
+          }
+        },
+        "7000031": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000031",
+            "firstname": "Eli",
+            "lastname": "Mockridge",
+            "dob": "2020-02-20",
+            "joined": "2026-08-25",
+            "started": "2026-08-25",
+            "sectionid": "990002",
+            "customfields": {
+              "customfield_123": "N"
+            }
+          }
+        },
+        "7000032": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000032",
+            "firstname": "Flo",
+            "lastname": "Fakely",
+            "dob": "2019-06-09",
+            "joined": "2022-05-30",
+            "started": "2022-05-30",
+            "sectionid": "990002",
+            "customfields": {
+              "customfield_123": "Y"
+            }
+          }
+        },
+        "7000033": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000033",
+            "firstname": "Gil",
+            "lastname": "Seedling",
+            "dob": "2018-11-02",
+            "joined": "2023-04-03",
+            "started": "2023-04-03",
+            "sectionid": "990002",
+            "customfields": {
+              "customfield_123": "Y"
+            }
+          }
+        },
+        "7000034": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000034",
+            "firstname": "Hope",
+            "lastname": "Stubbs-Test",
+            "dob": "2017-12-08",
+            "joined": "2024-07-05",
+            "started": "2024-07-05",
+            "sectionid": "990002",
+            "customfields": {
+              "customfield_123": "N"
+            }
+          }
+        },
+        "7000035": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000035",
+            "firstname": "Ivo",
+            "lastname": "Notreal",
+            "dob": "2016-11-02",
+            "joined": "2025-04-10",
+            "started": "2025-04-10",
+            "sectionid": "990002",
+            "customfields": {
+              "customfield_123": "N"
+            }
+          }
+        },
+        "7000036": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000036",
+            "firstname": "Jess",
+            "lastname": "Pretendy",
+            "dob": "2016-03-27",
+            "joined": "2022-10-23",
+            "started": "2022-10-23",
+            "sectionid": "990002",
+            "customfields": {
+              "customfield_123": "N"
+            }
+          }
+        },
+        "7000037": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000037",
+            "firstname": "Kai",
+            "lastname": "Example",
+            "dob": "2015-08-21",
+            "joined": "2024-08-24",
+            "started": "2024-08-24",
+            "sectionid": "990002",
+            "customfields": {
+              "customfield_123": "Y"
+            }
+          }
+        },
+        "7000038": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000038",
+            "firstname": "Lottie",
+            "lastname": "Fixture",
+            "dob": "2013-12-08",
+            "joined": "2022-11-02",
+            "started": "2022-11-02",
+            "sectionid": "990002",
+            "customfields": {
+              "customfield_123": "N"
+            }
+          }
+        },
+        "7000039": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000039",
+            "firstname": "Monty",
+            "lastname": "Placeholder",
+            "dob": "2012-11-02",
+            "joined": "2024-02-06",
+            "started": "2024-02-06",
+            "sectionid": "990002",
+            "customfields": {
+              "customfield_123": "N"
+            }
+          }
+        },
+        "7000040": {
+          "ok": true,
+          "read_only": [],
+          "data": {
+            "scoutid": "7000040",
+            "firstname": "Nia",
+            "lastname": "Testwell",
+            "dob": "2012-03-27",
+            "joined": "2022-09-25",
+            "started": "2022-09-25",
+            "sectionid": "990002",
+            "customfields": {
+              "customfield_123": "N"
+            }
+          }
+        }
+      },
+      "customdata_getData": {
+        "7000023": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Sam"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Notreal"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "sam.notreal@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960254"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 211,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "1",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 212,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 213,
+                  "type": "text",
+                  "varname": "f_5",
+                  "label": "Old priority (do not use)",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 214,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Scouts & Explorers waiting list"
+          }
+        },
+        "7000024": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Jamie"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Pretendy"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "jamie.pretendy@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960261"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 211,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 212,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "Sibling in Cubs – priority per group policy",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 213,
+                  "type": "text",
+                  "varname": "f_5",
+                  "label": "Old priority (do not use)",
+                  "value": "B",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 214,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "yes",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Scouts & Explorers waiting list"
+          }
+        },
+        "7000025": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Sam"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Example"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "sam.example@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960268"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 211,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "2",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 212,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 213,
+                  "type": "text",
+                  "varname": "f_5",
+                  "label": "Old priority (do not use)",
+                  "value": "A",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 214,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Scouts & Explorers waiting list"
+          }
+        },
+        "7000026": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Sam"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Fixture"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "sam.fixture@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960275"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 211,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "3",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 212,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "Young carer – discuss with GSL",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 213,
+                  "type": "text",
+                  "varname": "f_5",
+                  "label": "Old priority (do not use)",
+                  "value": "A",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 214,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Scouts & Explorers waiting list"
+          }
+        },
+        "7000027": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Taylor"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Placeholder"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "taylor.placeholder@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960282"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 211,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "4",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 212,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 213,
+                  "type": "text",
+                  "varname": "f_5",
+                  "label": "Old priority (do not use)",
+                  "value": "B",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 214,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "yes",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Scouts & Explorers waiting list"
+          }
+        },
+        "7000028": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Casey"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Testwell"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "casey.testwell@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960289"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 211,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "4",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 212,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "Declined place once (holiday), still keen",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "Keen on camping",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 213,
+                  "type": "text",
+                  "varname": "f_5",
+                  "label": "Old priority (do not use)",
+                  "value": "B",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 214,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Scouts & Explorers waiting list"
+          }
+        },
+        "7000029": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Alex"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Sampleton"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "alex.sampleton@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960296"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 211,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 212,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "Friend already attends",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 213,
+                  "type": "text",
+                  "varname": "f_5",
+                  "label": "Old priority (do not use)",
+                  "value": "A",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 214,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Scouts & Explorers waiting list"
+          }
+        },
+        "7000030": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Robin"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Dummyford"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "robin.dummyford@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960303"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 211,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "5",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 212,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "Can only do Thursday evenings",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "Friend already attends",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 213,
+                  "type": "text",
+                  "varname": "f_5",
+                  "label": "Old priority (do not use)",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 214,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Scouts & Explorers waiting list"
+          }
+        },
+        "7000031": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Jamie"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Mockridge"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "jamie.mockridge@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960310"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 211,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 212,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 213,
+                  "type": "text",
+                  "varname": "f_5",
+                  "label": "Old priority (do not use)",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 214,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "yes",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Scouts & Explorers waiting list"
+          }
+        },
+        "7000032": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Robin"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Fakely"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "robin.fakely@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960317"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 211,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "6",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 212,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "Friend already attends",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 213,
+                  "type": "text",
+                  "varname": "f_5",
+                  "label": "Old priority (do not use)",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 214,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "yes",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Scouts & Explorers waiting list"
+          }
+        },
+        "7000033": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Jo"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Seedling"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "jo.seedling@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960324"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 211,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "7",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 212,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "Friend already attends",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 213,
+                  "type": "text",
+                  "varname": "f_5",
+                  "label": "Old priority (do not use)",
+                  "value": "A",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 214,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Scouts & Explorers waiting list"
+          }
+        },
+        "7000034": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Sam"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Stubbs-Test"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "sam.stubbstest@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960331"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 211,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 212,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "Sibling in Cubs – priority per group policy",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "Keen on camping",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 213,
+                  "type": "text",
+                  "varname": "f_5",
+                  "label": "Old priority (do not use)",
+                  "value": "A",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 214,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "yes",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Scouts & Explorers waiting list"
+          }
+        },
+        "7000035": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Morgan"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Notreal"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "morgan.notreal@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960338"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 211,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "8",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 212,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "Friend already attends",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 213,
+                  "type": "text",
+                  "varname": "f_5",
+                  "label": "Old priority (do not use)",
+                  "value": "A",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 214,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Scouts & Explorers waiting list"
+          }
+        },
+        "7000036": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Robin"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Pretendy"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "robin.pretendy@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960345"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 211,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "9",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 212,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "Keen on camping",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 213,
+                  "type": "text",
+                  "varname": "f_5",
+                  "label": "Old priority (do not use)",
+                  "value": "A",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 214,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Scouts & Explorers waiting list"
+          }
+        },
+        "7000037": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Jo"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Example"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "jo.example@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960352"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 211,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 212,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "Keen on camping",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 213,
+                  "type": "text",
+                  "varname": "f_5",
+                  "label": "Old priority (do not use)",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 214,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "yes",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Scouts & Explorers waiting list"
+          }
+        },
+        "7000038": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Alex"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Fixture"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "alex.fixture@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960359"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 211,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "10",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 212,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "Previously in another group's Beavers",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "Friend already attends",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 213,
+                  "type": "text",
+                  "varname": "f_5",
+                  "label": "Old priority (do not use)",
+                  "value": "B",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 214,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "yes",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Scouts & Explorers waiting list"
+          }
+        },
+        "7000039": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Jo"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Placeholder"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "jo.placeholder@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960366"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 211,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 212,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "Keen on camping",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 213,
+                  "type": "text",
+                  "varname": "f_5",
+                  "label": "Old priority (do not use)",
+                  "value": "A",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 214,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "yes",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Scouts & Explorers waiting list"
+          }
+        },
+        "7000040": {
+          "status": true,
+          "error": null,
+          "data": [
+            {
+              "group_id": 1,
+              "identifier": "contact_primary_1",
+              "name": "Primary Contact 1",
+              "columns": [
+                {
+                  "column_id": 2,
+                  "varname": "firstname",
+                  "label": "First Name",
+                  "type": "text",
+                  "value": "Pat"
+                },
+                {
+                  "column_id": 3,
+                  "varname": "lastname",
+                  "label": "Last Name",
+                  "type": "text",
+                  "value": "Testwell"
+                },
+                {
+                  "column_id": 12,
+                  "varname": "email1",
+                  "label": "Email 1",
+                  "type": "email",
+                  "value": "pat.testwell@example.com"
+                },
+                {
+                  "column_id": 18,
+                  "varname": "phone1",
+                  "label": "Phone 1",
+                  "type": "phone",
+                  "value": "01632 960373"
+                }
+              ]
+            },
+            {
+              "group_id": 5,
+              "identifier": "customisable_data",
+              "name": "Customisable Data",
+              "columns": [
+                {
+                  "column_id": 211,
+                  "type": "text",
+                  "varname": "f_1",
+                  "label": "Waiting list rank",
+                  "value": "11",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 212,
+                  "type": "textarea",
+                  "varname": "f_2",
+                  "label": "Waiting list notes",
+                  "value": "Moved into area recently",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 95,
+                  "type": "text",
+                  "varname": "cf_joining_comments",
+                  "label": "Joining comments",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 96,
+                  "type": "select",
+                  "varname": "cf_place_accepted_",
+                  "label": "Place accepted?",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 213,
+                  "type": "text",
+                  "varname": "f_5",
+                  "label": "Old priority (do not use)",
+                  "value": "B",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                },
+                {
+                  "column_id": 214,
+                  "type": "checkbox",
+                  "varname": "f_3",
+                  "label": "Sibling already in group",
+                  "value": "",
+                  "is_core": "no",
+                  "force_read_only": "no"
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "group_name": "Fictional 1st Nowhere Scout Group",
+            "section_name": "Fictional 1st Nowhere – Scouts & Explorers waiting list"
+          }
+        }
+      }
+    }
+  ]
+}

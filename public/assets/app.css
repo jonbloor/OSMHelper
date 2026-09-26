@@ -982,3 +982,34 @@ table.data tbody tr.row-no-section td {
 }
 
 /* cachebust-20260921b: nights-away [hidden] picker filter */
+
+/* Waiting list: score help + per-row breakdown (hover = title, tap = details) */
+.score-info { text-decoration: none; margin-left: 0.2rem; font-weight: 400; }
+.score-info:hover, .score-info:focus { text-decoration: underline; }
+.score-bd > summary { list-style: none; cursor: help; display: inline; }
+.score-bd > summary::-webkit-details-marker { display: none; }
+.score-bd > summary .score-val { border-bottom: 1px dotted currentColor; }
+.score-bd[open] .score-bd-text { display: block; }
+.score-bd-text { display: none; margin-top: 0.25rem; font-size: 0.8rem; color: var(--muted, #555); white-space: normal; min-width: 12rem; }
+.table-export-note { font-size: 0.8rem; align-self: center; }
+.save-hit { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; cursor: pointer; }
+.save-hit input { width: 1.25rem; height: 1.25rem; }
+
+@media (max-width: 720px) {
+  .btn-sm { min-height: 44px; padding: 0.55rem 0.8rem; }
+  .rank-table .col-narrow-hide { display: none; }
+}
+
+/* Nav: the group holding the current page is underlined (not auto-opened). */
+.nav-group.has-current > summary { border-bottom-color: #0b6e4f; }
+.nav-links summary:focus-visible { outline: 2px solid #0b6e4f; outline-offset: 2px; }
+
+/* Changelog — same muted slate as Roadmap */
+a.nav-changelog .nav-svg { color: #4b5563; }
+a.nav-changelog:hover { border-bottom-color: #4b5563; }
+a.nav-changelog[aria-current="page"] { border-bottom-color: #0b6e4f; }
+/* Nav groups already draw their own caret (summary::after); hide the browser's extra triangle. */
+.nav-links summary { list-style: none; cursor: pointer; }
+.nav-links summary::-webkit-details-marker { display: none; }
+.nav-links summary { display: inline-flex; align-items: center; gap: 0.25rem; }
+@media (max-width: 720px) { .nav-links summary { display: flex; } }

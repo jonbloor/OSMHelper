@@ -1,0 +1,119 @@
+{% extends 'layout.twig' %}
+{% block body %}
+{% if flash %}
+<div class="alert {% if flash.type == 'error' %}alert-error{% endif %}">{{ flash.message }}</div>
+{% endif %}
+<div class="card">
+  <h2>Waiting list ranking</h2>
+  {% set pickerAction = '/waiting-list/rank/' %}
+  {% include '_waiting_picker.twig' %}
+  <p>Type a rank for each applicant (1 = first to be offered a place), add a note, {% if fieldMap.willing_column_id %}set Willing to help, {% endif %}then review. Leave a rank blank if you haven’t decided yet. Shared ranks and gaps are fine. Nothing is saved until you review and save.</p>
+  <p class="muted">{{ waitingList.name }} · Rank uses “{{ fieldMap.rank_label }}” · Notes uses “{{ fieldMap.notes_label }}”{% if fieldMap.willing_column_id %} · Willing to help uses “{{ fieldMap.willing_label }}”{% else %} · Willing to help not set up{% endif %} · <a href="/waiting-list/fields/?section={{ waitingList.id }}">Change fields</a>{% if fetchedAt is defined %} · Fetched {{ fetchedAt }}{% endif %}</p>
+  <p class="muted score-note"><strong>How the score works:</strong> age in years (including part-years) × 3, plus months on the list (days ÷ 30), plus 20 if Willing to help is yes. A higher score means a stronger claim to a place; Rank is your leaders’ decision and can differ. The score stays in OSMHelper and is never saved to OSM. Hover over or tap a score for the breakdown{% if fieldMap.willing_column_id %}; it updates when you change Willing to help{% endif %}. <a href="/help/#waiting-score">More about the score</a>.</p>
+  {% include '_waiting_access.twig' %}
+  {% if rateBlocked %}
+    <div class="alert alert-error">Your OSM allowance is low ({{ rateLimit.remaining ?? '?' }} remaining), so we did not load the waiting list. Wait for it to reset (see Home), then reload this page.</div>
+  {% else %}
+  {% if listError %}<p class="alert alert-error">{{ listError }}</p>{% endif %}
+  {% if mappingBroken %}
+    <div class="alert alert-error">The mapped fields were not found on these applicants in OSM (renamed or deleted?). <a href="/waiting-list/fields/?section={{ waitingList.id }}">Choose the fields again</a>. Saving is disabled until then.</div>
+  {% endif %}
+  {% if ties %}
+    <p class="alert">Shared ranks: {{ ties|join(', ') }}. That is allowed; ties are ordered by score.</p>
+  {% endif %}
+  {% if renumber %}
+    <div class="alert">We’ve filled in ranks 1, 2, 3… in the current order (by rank, then score). <strong>{{ proposedChanges }}</strong> rank(s) would change. Nothing is saved until you review and save. <a href="/waiting-list/rank/?section={{ waitingList.id }}">Undo suggestion</a>.</div>
+  {% endif %}
+  <p class="muted">Before you change anything, download a copy (CSV or Excel). It includes every row, even if you’ve searched, and both the values in OSM and anything you’ve typed. The Rank (OSM) and {{ fieldMap.notes_label ?: 'Notes' }} (OSM) columns are your backup.</p>
+  <form method="post" action="/waiting-list/review/" id="rank-form">
+    {% include '_csrf.twig' %}
+    <input type="hidden" name="section" value="{{ waitingList.id }}">
+    <div class="table-wrap">
+    {% set w = fieldMap.willing_column_id %}
+    <table class="data rank-table" data-table-tools data-export-rows="all" data-export-name="waiting-list-ranks">
+      <thead><tr><th>Rank (OSM)</th><th>New rank</th><th>Name</th><th class="col-narrow-hide">Age</th><th class="col-narrow-hide">Days waiting</th><th>Suggested section</th><th class="col-narrow-hide">Score {% include '_score_help.twig' %}</th>{% if w %}<th>{{ fieldMap.willing_label ?: 'Willing to help' }} (OSM)</th><th>New willing to help</th>{% endif %}<th>Leaders’ notes</th><th>{{ fieldMap.notes_label ?: 'Notes' }} (OSM)</th><th>Add a note</th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+        {% set a = r %}
+        <tr>
+          <td>{{ r.rankValue }}</td>
+          <td>
+            {% if r.editable and not mappingBroken %}
+            <input type="hidden" name="who[{{ r.scoutid }}]" value="{{ r.firstName }} {{ r.lastName }}">
+            <input type="hidden" name="orig_rank[{{ r.scoutid }}]" value="{{ r.rankValue }}">
+            <input type="text" name="rank[{{ r.scoutid }}]" value="{{ r.inputRank }}" maxlength="4" inputmode="numeric" autocomplete="off" style="width:5.5rem" aria-label="Rank for {{ r.firstName }} {{ r.lastName }}">
+            {% else %}<span class="muted">Couldn’t read</span>{% endif %}
+          </td>
+          <td>{{ r.firstName }} {{ r.lastName }}</td>
+          <td class="col-narrow-hide">{{ r.age }}</td><td class="col-narrow-hide">{{ r.timeOnList }}</td><td>{{ r.idealSection }}</td>
+          {% include '_score_cell.twig' with {extraClass: 'col-narrow-hide'} %}
+          {% if w %}
+          <td>{{ r.willingValue }}</td>
+          <td>
+            {% if r.editable and not mappingBroken %}
+            <input type="hidden" name="orig_willing[{{ r.scoutid }}]" value="{{ r.willingValue }}">
+            <select name="willing[{{ r.scoutid }}]" class="willing-select" data-current-yes="{{ r.willingYes ? '1' : '0' }}" aria-label="Willing to help for {{ r.firstName }} {{ r.lastName }}">
+              <option value="keep" data-export="{{ r.willingValue }}" selected>Keep{% if r.willingValue != '' %} (“{{ r.willingValue|length > 20 ? r.willingValue|slice(0, 20) ~ '…' : r.willingValue }}”){% else %} (blank){% endif %}</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+              <option value="blank" data-export="">Blank</option>
+            </select>
+            {% endif %}
+          </td>
+          {% endif %}
+          <td class="notes muted">{{ r.leadersNotes }}</td>
+          <td class="notes" style="white-space:pre-line">{{ r.notesValue }}</td>
+          <td>
+            {% if r.editable and not mappingBroken %}
+            <input type="hidden" name="orig_notes[{{ r.scoutid }}]" value="{{ r.notesValue }}">
+            <textarea name="notes[{{ r.scoutid }}]" rows="2" maxlength="{{ noteEntryMax }}" placeholder="New note (optional)" style="min-width:14rem" aria-label="New note for {{ r.firstName }} {{ r.lastName }}"></textarea>
+            {% endif %}
+          </td>
+        </tr>
+      {% else %}
+        {% if not listError %}<tr><td colspan="{{ w ? 12 : 10 }}" class="muted">Nobody is on this waiting list in OSM at the moment. If you expected applicants, check you’ve chosen the right list above.</td></tr>{% endif %}
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    <div class="row" style="margin-top:1rem">
+      <button class="btn" type="submit" {% if mappingBroken or rows is empty %}disabled{% endif %}>Review changes</button>
+      <a class="btn btn-secondary" href="/waiting-list/rank/?section={{ waitingList.id }}&amp;renumber=1">Suggest ranks 1, 2, 3…</a>
+      <a class="btn btn-secondary" href="/waiting-list/?section={{ waitingList.id }}">Back to waiting list</a>
+    </div>
+    <p class="muted">A new note is added at the top of the existing notes as <code>dd/mm/yy hh:mm - your name - "note"</code>; earlier notes are kept. Leave the box empty to leave notes alone.</p>
+    <p class="muted">Review re-reads current values from OSM (about one request per changed applicant) and shows only what changed.</p>
+  </form>
+  {% if fieldMap.willing_column_id %}
+  <script>
+    // Show the effect of a proposed Willing to help change on the score (display only; the score is never saved).
+    (function () {
+      function fmt(n) { return (Math.round(n * 10) / 10).toFixed(1); }
+      document.querySelectorAll('select.willing-select').forEach(function (sel) {
+        sel.addEventListener('change', function () {
+          var tr = sel.closest('tr');
+          var td = tr && tr.querySelector('td.score-cell[data-base-score]');
+          if (!td) return;
+          var yes = sel.value === 'keep' ? sel.getAttribute('data-current-yes') === '1' : sel.value === 'Yes';
+          var base = parseFloat(td.getAttribute('data-base-score'));
+          var ageRaw = td.getAttribute('data-age');
+          var age = ageRaw === '' ? null : parseFloat(ageRaw);
+          var months = parseInt(td.getAttribute('data-days'), 10) / 30;
+          var total = base + (yes ? 20 : 0);
+          var text = (age === null ? 'Age unknown (counts as 0)' : ('Age ' + fmt(age) + ' × 3 = ' + fmt(age * 3))) +
+            ' + ' + fmt(months) + ' months + willing ' + (yes ? 20 : 0) + ' = ' + fmt(total) +
+            (sel.value === 'keep' ? '' : ' (if you save this change)');
+          td.setAttribute('data-sort', fmt(total));
+          if (sel.value === 'keep') td.removeAttribute('data-export');
+          else td.setAttribute('data-export', fmt(total) + ' (if saved)');
+          td.title = text;
+          td.querySelector('.score-val').textContent = fmt(total) + (sel.value === 'keep' ? '' : '*');
+          td.querySelector('.score-bd-text').textContent = text;
+        });
+      });
+    })();
+  </script>
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}
