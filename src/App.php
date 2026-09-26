@@ -11,6 +11,7 @@ use App\Http\Controllers\RoadmapController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MembersController;
 use App\Http\Controllers\MembershipDashboardController;
+use App\Http\Controllers\NightsAwayController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\TopAwardsController;
 use App\Http\Controllers\WaitingListController;
@@ -18,6 +19,7 @@ use App\Http\Router;
 use Dotenv\Dotenv;
 use Twig\Environment;
 use Twig\Loader\FilesystemLoader;
+use Twig\TwigFunction;
 final class App
 {
     private static ?Environment $twig = null;
@@ -43,6 +45,7 @@ final class App
         $help = new HelpController();
         $roadmap = new RoadmapController();
         $topAwards = new TopAwardsController();
+        $nightsAway = new NightsAwayController();
 
         $router->get('/', [$home, 'index']);
         $router->get('/auth', [$auth, 'redirectToOsm']);
@@ -55,6 +58,8 @@ final class App
         $router->get('/waiting-list', [$wl, 'index']);
         $router->get('/members', [$mem, 'index']);
         $router->get('/member-checks', [$mem, 'checks']);
+        $router->get('/nights-away', [$nightsAway, 'index']);
+        $router->post('/nights-away/select', [$nightsAway, 'select']);
         $router->get('/bank-transfers', [$bank, 'index']);
         $router->get('/bank-transfers/all', [$bank, 'allTransfers']);
         $router->post('/bank-transfers/select', [$bank, 'select']);
@@ -175,5 +180,15 @@ final class App
         self::$twig = new Environment(new FilesystemLoader($this->root . '/templates'), [
             'cache' => false, 'debug' => Config::debug(), 'strict_variables' => false,
         ]);
+        $root = $this->root;
+        self::$twig->addFunction(new TwigFunction('asset', static function (string $path) use ($root): string {
+            $path = ltrim($path, '/');
+            if (!str_starts_with($path, 'assets/')) {
+                $path = 'assets/' . $path;
+            }
+            $file = $root . '/public/' . $path;
+            $v = is_readable($file) ? (string) filemtime($file) : '1';
+            return '/' . $path . '?v=' . rawurlencode($v);
+        }));
     }
 }

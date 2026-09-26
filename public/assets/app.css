@@ -1,4 +1,4 @@
-/* cache-bust d6over1 */
+/* cache-bust d6nights2 */
 :root {
   --bg: #f4f6f8;
   --card: #ffffff;
@@ -918,6 +918,48 @@ table.data tbody tr.row-no-section td {
 }
 .top-awards-summary p { margin: 0.25rem 0; }
 
+.nights-away-pick label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-width: 40rem;
+}
+.nights-away-pick select {
+  width: 100%;
+  max-width: 40rem;
+}
+.nights-away-member-list {
+  max-height: 18rem;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.25rem 0.6rem;
+  max-width: 40rem;
+}
+/* [hidden] must beat display:flex on labels or type-to-filter does nothing */
+.nights-away-pick [hidden] {
+  display: none !important;
+}
+.nights-away-pick .nights-away-member {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.5rem;
+  max-width: none;
+  margin-bottom: 0;
+  padding: 0.28rem 0;
+  font-weight: 400;
+}
+.nights-away-pick .nights-away-pick-all {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+}
+.nights-away-summaries {
+  margin: 0 0 0.75rem;
+  padding-left: 1.2rem;
+}
+
 /* Site-wide OSM rate-limit banners */
 .rate-limit-banner {
   margin: 0.75rem 0 0;
@@ -938,3 +980,5 @@ table.data tbody tr.row-no-section td {
 .rate-limit-info .warning-nearing {
   color: #8a6d00;
 }
+
+/* cachebust-20260921b: nights-away [hidden] picker filter */

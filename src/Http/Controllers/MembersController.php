@@ -278,6 +278,7 @@ final class MembersController
                         'dob' => $m['dob'],
                         'patrol' => $sec['patrol'],
                         'age' => number_format((float) $m['age'], 1),
+                        'scoutid' => $m['scoutid'],
                     ];
                 }
             }

@@ -1,0 +1,314 @@
+{% extends 'layout.twig' %}
+{% block body %}
+<div class="card">
+  <h2>Nights away</h2>
+  <p>List the Nights Away staged badge entries OSM holds for a member (badge 94). That is the same table leaders fill in under Badges → Staged → Nights Away — individual camps plus the running total and awarded stage.</p>
+  <p class="muted">We read badge 94 in every Beavers / Cubs / Scouts / Explorers section this login can see, then add OSM’s <strong>other-sections</strong> records for that member (camps stored on a previous section after they moved up). Duplicate camp names are merged. The first load uses OSM quota; later members reuse a {{ cacheTtlMinutes }}-minute cache for the current-section tables.</p>
+</div>
+
+<div class="card">
+  <h3>Choose a member</h3>
+  {% if rateLimitCritical|default(false) %}
+  <div class="alert alert-error" style="margin-top:0.75rem">OSM API allowance critical ({{ rateLimit.remaining }} remaining). Avoid loading a fresh nights list until it recovers.</div>
+  {% elseif rateLimitNearing|default(false) %}
+  <div class="alert" style="margin-top:0.75rem">Nearing OSM rate limit ({{ rateLimit.remaining }} remaining{% if rateLimit.limit %} of {{ rateLimit.limit }}{% endif %}). Prefer a cached list.</div>
+  {% endif %}
+  {% if members is empty and not error %}
+  <p class="alert">No youth members loaded. Check your OSM role, or open Help.</p>
+  {% else %}
+  <form method="post" action="/nights-away/select/" class="stack nights-away-pick" data-nights-pick>
+    {% include '_csrf.twig' %}
+    <p class="muted" style="margin:0 0 0.5rem">Youth members only — Leaders and Young Leaders (YL) patrols are omitted. Tick one or more members.</p>
+    <label>Search
+      <input type="search" data-member-search placeholder="Type a name…" autocomplete="off" autofocus>
+    </label>
+    <label class="nights-away-pick-all"><input type="checkbox" data-pick-all> Select all shown</label>
+    <div class="nights-away-member-list" data-member-list>
+      {% for m in members %}
+      <label class="nights-away-member" data-search="{{ (m.lastname ~ ' ' ~ m.firstname ~ ' ' ~ m.firstname ~ ' ' ~ m.lastname ~ ' ' ~ m.sections)|lower }}">
+        <input type="checkbox" name="scoutids[]" value="{{ m.scoutid }}" {% if m.scoutid in scoutIds|default([]) %}checked{% endif %}>
+        <span>{{ m.lastname }}, {{ m.firstname }}{% if m.sections %} <span class="muted">{{ m.sections }}</span>{% endif %}</span>
+      </label>
+      {% endfor %}
+    </div>
+    <div>
+      <button class="btn" type="submit">Show nights away</button>
+      <p class="muted" style="margin:0.5rem 0 0">The first lookup for this session fetches Nights Away badge records from OSM.</p>
+    </div>
+  </form>
+  {% endif %}
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+{% if needsBadgeScope %}
+<div class="alert alert-error">OSM did not allow badge access. Sign out and <a href="/auth/">connect again</a> so OSMHelper can request <code>section:badge:write</code> (that scope also covers reading badge records). {{ scopeHint }}</div>
+{% endif %}
+{% if rateLimitBanner %}
+<div class="alert alert-error">{{ rateLimitBanner }}</div>
+{% endif %}
+{% if incomplete %}
+<div class="alert">This list is incomplete because OSM quota ran out while loading. Wait for remaining requests on Home to recover, then Refresh.</div>
+{% endif %}
+{% if notes %}
+<details>
+  <summary class="muted">Load notes ({{ notes|length }})</summary>
+  <ul class="muted">
+    {% for n in notes %}<li>{{ n }}</li>{% endfor %}
+  </ul>
+</details>
+{% endif %}
+
+{% if selectedMembers %}
+<div class="card">
+  {% if multi %}
+  <h3>{{ selectedMembers|length }} members</h3>
+  <ul class="nights-away-summaries">
+    {% for s in memberSummaries %}
+    <li><strong>{{ s.name }}</strong> — {{ s.totalNights }} night{{ s.totalNights == 1 ? '' : 's' }}
+      {% if s.awarded %}· stage {{ s.awarded }}{% endif %}
+      · {{ s.eventCount }} camp{{ s.eventCount == 1 ? '' : 's' }}
+    </li>
+    {% endfor %}
+  </ul>
+  <p>
+    <strong>{{ totalNights }}</strong> night{{ totalNights == 1 ? '' : 's' }} away in total
+    · <strong>{{ eventCount }}</strong> recorded camp{{ eventCount == 1 ? '' : 's' }}
+  </p>
+  {% else %}
+  <h3>{% if member.firstname or member.lastname %}{{ member.firstname }} {{ member.lastname }}{% else %}Member {{ scoutid }}{% endif %}</h3>
+  {% if member.sections %}<p class="muted">Sections: {{ member.sections }}</p>{% endif %}
+  <p>
+    <strong>{{ totalNights }}</strong> night{{ totalNights == 1 ? '' : 's' }} away
+    {% if awarded %}· awarded stage <strong>{{ awarded }}</strong>{% if awardedDate %} ({{ awardedDate }}){% endif %}{% endif %}
+    · <strong>{{ eventCount }}</strong> recorded camp{{ eventCount == 1 ? '' : 's' }}
+  </p>
+  {% if osmTotal is not null and listedNights is not null and osmTotal != listedNights %}
+  <p class="muted">OSM’s running total is {{ osmTotal }}. The table below lists {{ eventCount }} named entries totalling {{ listedNights }} — extra nights may sit only on the total, without a camp column.</p>
+  {% endif %}
+  {% endif %}
+  {% if yearTotals %}
+  <p class="muted">By year (from the camp name, when it includes a year):
+    {% for y, n in yearTotals %}
+      <strong>{{ y }}</strong> {{ n }}{% if not loop.last %} · {% endif %}
+    {% endfor %}
+  </p>
+  {% endif %}
+  {% if fromCache and cacheAt %}
+  <p class="muted">Showing cached badge records from {{ cacheAt }}
+    {% if cacheTtlMinutes %} · cache lasts about {{ cacheTtlMinutes }} minutes{% endif %}.
+    <a href="/nights-away/?scoutids={{ scoutIdsQuery|url_encode }}&amp;refresh=1">Refresh now</a> (uses OSM quota).
+  </p>
+  {% else %}
+  <p class="muted"><a href="/nights-away/?scoutids={{ scoutIdsQuery|url_encode }}&amp;refresh=1">Refresh now</a> (uses OSM quota — skip while rate-limited).{% if apiCalls %} · {{ apiCalls }} OSM calls this load.{% endif %}</p>
+  {% endif %}
+
+  {% if yearKeys %}
+  <div class="section-filters" id="nights-year-filters" data-nights-year-filter>
+    <p class="muted" style="margin-bottom:0.35rem">Show years:</p>
+    <div class="filter-chips">
+      <label class="filter-chip"><input type="checkbox" data-filter-all checked> All</label>
+      {% for y in yearKeys %}
+      <label class="filter-chip"><input type="checkbox" data-filter-year value="{{ y }}" checked> {% if y == '—' %}No year{% else %}{{ y }}{% endif %}</label>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <p class="muted" style="margin-bottom:0.5rem">Tick camps to multi-select records. Export still uses the visible rows (year filter + search).</p>
+  <label class="nights-away-pick-all"><input type="checkbox" id="nights-select-all"> Select all shown</label>
+  <div class="table-wrap">
+  {% if multi %}
+  {% set exportTitle = (selectedMembers|length) ~ ' members — Nights away' %}
+  {% set exportSubtitle = totalNights ~ ' night' ~ (totalNights == 1 ? '' : 's') ~ ' away in total' %}
+  {% else %}
+  {% set exportMember = (member.firstname|default('') ~ ' ' ~ member.lastname|default(''))|trim %}
+  {% if exportMember == '' %}{% set exportMember = 'Member ' ~ scoutid %}{% endif %}
+  {% set exportTitle = exportMember ~ ' — Nights away' %}
+  {% set exportSubtitle = totalNights ~ ' night' ~ (totalNights == 1 ? '' : 's') ~ ' away in total' %}
+  {% endif %}
+  <table class="data" id="nights-away-table" data-table-tools
+    data-export-name="nights-away"
+    data-export-title="{{ exportTitle }}"
+    data-export-subtitle="{{ exportSubtitle }}">
+    <thead>
+      <tr>
+        <th></th>
+        {% if multi %}<th>Member</th>{% endif %}
+        <th>Camp / event</th>
+        <th>Section</th>
+        <th>Year</th>
+        <th>Nights</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in rows %}
+      <tr data-year="{{ r.year }}" data-nights="{{ r.nights }}">
+        <td><input type="checkbox" class="nights-row-cb" value="{{ r.scoutid|default('') }}|{{ r.name }}"></td>
+        {% if multi %}<td>{{ r.memberName }}</td>{% endif %}
+        <td>{{ r.name }}</td>
+        <td>{{ r.sectionName }}</td>
+        <td>{{ r.year }}</td>
+        <td>{{ r.nights }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="{{ multi ? 6 : 5 }}" class="muted">No Nights Away camps recorded for this member on badge 94 in the sections we can see.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="muted"><span id="nights-visible-count">{{ rows|length }}</span> shown · <span id="nights-visible-total">{{ listedNights|default(0) }}</span> nights in view · <span id="nights-selected-count">0</span> selected · <span id="nights-selected-total">0</span> nights selected</p>
+</div>
+{% endif %}
+
+<script>
+(function () {
+  var pick = document.querySelector('[data-nights-pick]');
+  if (pick) {
+    var search = pick.querySelector('[data-member-search]');
+    var all = pick.querySelector('[data-pick-all]');
+    var labels = Array.prototype.slice.call(pick.querySelectorAll('.nights-away-member'));
+    function shownLabels() {
+      return labels.filter(function (lab) { return !lab.hidden; });
+    }
+    function applySearch() {
+      var q = (search && search.value || '').toLowerCase().trim();
+      var tokens = q === '' ? [] : q.split(/\s+/).filter(Boolean);
+      labels.forEach(function (lab) {
+        var hay = lab.getAttribute('data-search') || '';
+        var miss = tokens.some(function (t) { return hay.indexOf(t) === -1; });
+        lab.hidden = miss;
+      });
+      syncAll();
+    }
+    function syncAll() {
+      if (!all) return;
+      var vis = shownLabels();
+      var cbs = vis.map(function (lab) { return lab.querySelector('input[type=checkbox]'); }).filter(Boolean);
+      all.checked = cbs.length > 0 && cbs.every(function (cb) { return cb.checked; });
+      all.indeterminate = !all.checked && cbs.some(function (cb) { return cb.checked; });
+    }
+    if (search) search.addEventListener('input', applySearch);
+    if (all) {
+      all.addEventListener('change', function () {
+        shownLabels().forEach(function (lab) {
+          var cb = lab.querySelector('input[type=checkbox]');
+          if (cb) cb.checked = all.checked;
+        });
+      });
+    }
+    pick.addEventListener('change', function (e) {
+      if (e.target && e.target.matches('input[name="scoutids[]"]')) syncAll();
+    });
+    pick.addEventListener('submit', function (e) {
+      var any = pick.querySelector('input[name="scoutids[]"]:checked');
+      if (!any) {
+        e.preventDefault();
+        alert('Tick at least one member.');
+      }
+    });
+    applySearch();
+  }
+
+  var root = document.querySelector('[data-nights-year-filter]');
+  var table = document.getElementById('nights-away-table');
+  var countEl = document.getElementById('nights-visible-count');
+  var totalEl = document.getElementById('nights-visible-total');
+  var selCountEl = document.getElementById('nights-selected-count');
+  var selTotalEl = document.getElementById('nights-selected-total');
+  var selectAll = document.getElementById('nights-select-all');
+  function yearEnabled() {
+    var enabled = null;
+    if (!root) return null;
+    enabled = {};
+    Array.prototype.slice.call(root.querySelectorAll('[data-filter-year]')).forEach(function (cb) {
+      if (cb.checked) enabled[cb.value] = true;
+    });
+    return enabled;
+  }
+  function visibleCampRows() {
+    if (!table) return [];
+    return Array.prototype.filter.call(table.querySelectorAll('tbody tr[data-year]'), function (tr) {
+      return !tr.hidden;
+    });
+  }
+  function applyYear() {
+    if (!table) return;
+    var enabled = yearEnabled();
+    var rows = table.querySelectorAll('tbody tr[data-year]');
+    var visible = 0;
+    var nights = 0;
+    rows.forEach(function (tr) {
+      var y = tr.getAttribute('data-year') || '—';
+      if (y === '') { y = '—'; }
+      var show = !enabled || !!enabled[y];
+      tr.dataset.filterHidden = show ? '0' : '1';
+      tr.hidden = !show;
+      if (show) {
+        visible++;
+        nights += parseInt(tr.getAttribute('data-nights') || '0', 10) || 0;
+      }
+    });
+    if (countEl) countEl.textContent = String(visible);
+    if (totalEl) totalEl.textContent = String(nights);
+    if (root) {
+      var allCb = root.querySelector('[data-filter-all]');
+      var yearCbs = Array.prototype.slice.call(root.querySelectorAll('[data-filter-year]'));
+      if (allCb) {
+        allCb.checked = yearCbs.length > 0 && yearCbs.every(function (cb) { return cb.checked; });
+        allCb.indeterminate = !allCb.checked && yearCbs.some(function (cb) { return cb.checked; });
+      }
+    }
+    syncRowSelect();
+  }
+  function syncRowSelect() {
+    var vis = visibleCampRows();
+    var selected = 0;
+    var nights = 0;
+    vis.forEach(function (tr) {
+      var cb = tr.querySelector('.nights-row-cb');
+      if (cb && cb.checked) {
+        selected++;
+        nights += parseInt(tr.getAttribute('data-nights') || '0', 10) || 0;
+      }
+    });
+    if (selCountEl) selCountEl.textContent = String(selected);
+    if (selTotalEl) selTotalEl.textContent = String(nights);
+    if (selectAll) {
+      var cbs = vis.map(function (tr) { return tr.querySelector('.nights-row-cb'); }).filter(Boolean);
+      selectAll.checked = cbs.length > 0 && cbs.every(function (cb) { return cb.checked; });
+      selectAll.indeterminate = !selectAll.checked && cbs.some(function (cb) { return cb.checked; });
+    }
+  }
+  if (root) {
+    var allCb = root.querySelector('[data-filter-all]');
+    var yearCbs = Array.prototype.slice.call(root.querySelectorAll('[data-filter-year]'));
+    if (allCb) {
+      allCb.addEventListener('change', function () {
+        yearCbs.forEach(function (cb) { cb.checked = allCb.checked; });
+        applyYear();
+      });
+    }
+    yearCbs.forEach(function (cb) {
+      cb.addEventListener('change', applyYear);
+    });
+  }
+  if (selectAll) {
+    selectAll.addEventListener('change', function () {
+      visibleCampRows().forEach(function (tr) {
+        var cb = tr.querySelector('.nights-row-cb');
+        if (cb) cb.checked = selectAll.checked;
+      });
+      syncRowSelect();
+    });
+  }
+  if (table) {
+    table.addEventListener('change', function (e) {
+      if (e.target && e.target.classList.contains('nights-row-cb')) syncRowSelect();
+    });
+  }
+  applyYear();
+})();
+</script>
+{% endblock %}

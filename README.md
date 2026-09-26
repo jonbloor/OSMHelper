@@ -46,7 +46,7 @@ Optional: `OSM_API_BASE` (default `https://www.onlinescoutmanager.co.uk`), `APP_
 2. Set the same value in `/home/osmhelper/app/.env` as `REDIRECT_URI=https://osmhelper.co.uk/callback`
 3. Mismatch causes OSM to reject the authorize redirect or token exchange.
 
-Scopes requested: `section:member:read section:quartermaster:write section:finance:read`  
+Scopes requested: `section:member:read section:quartermaster:write section:finance:read section:badge:write`  
 Also sends `access_type=offline` (same as Node) if OSM issues refresh tokens.
 
 ### Session privacy

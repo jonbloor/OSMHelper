@@ -2,7 +2,7 @@
 {% block body %}
 <div class="card">
   <h2>Members — {{ groupName }}</h2>
-  <p class="muted">Fetched {{ fetchedAt }}. For Young Leaders / Leaders / multi-section checks see <a href="/member-checks/">Member checks</a>.</p>
+  <p class="muted">Fetched {{ fetchedAt }}. For Young Leaders / Leaders / multi-section checks see <a href="/member-checks/">Member checks</a>. Overnight camps: <a href="/nights-away/">Nights away</a>.</p>
   {% if errorMessage %}<div class="alert alert-error">{{ errorMessage }}</div>{% endif %}
 
   {% if sectionNames %}
@@ -19,14 +19,15 @@
 
   <div class="table-wrap">
   <table class="data" id="members-table" data-table-tools data-export-name="members">
-    <thead><tr><th>Section</th><th>Type</th><th>Name</th><th>Patrol</th><th>Age</th><th>DoB</th></tr></thead>
+    <thead><tr><th>Section</th><th>Type</th><th>Name</th><th>Patrol</th><th>Age</th><th>DoB</th><th>Nights</th></tr></thead>
     <tbody>
     {% for m in members %}
       <tr data-section="{{ m.section_name }}">
         <td>{{ m.section_name }}</td><td>{{ m.section_type }}</td><td>{{ m.firstname }} {{ m.lastname }}</td><td>{{ m.patrol }}</td><td>{{ m.age }}</td><td>{{ m.dob }}</td>
+        <td>{% if m.scoutid %}<a href="/nights-away/?scoutid={{ m.scoutid|url_encode }}">Nights</a>{% endif %}</td>
       </tr>
     {% else %}
-      <tr><td colspan="6" class="muted">No members loaded.</td></tr>
+      <tr><td colspan="7" class="muted">No members loaded.</td></tr>
     {% endfor %}
     </tbody>
   </table>

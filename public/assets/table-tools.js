@@ -85,21 +85,55 @@
 
   function exportPdf(table, name) {
     // Printable window — user can Save as PDF from the browser print dialog
+    var title = (table.getAttribute('data-export-title') || '').trim() || name;
+    var subtitle = (table.getAttribute('data-export-subtitle') || '').trim();
     var cols = headers(table);
-    var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + xmlEsc(name) + '</title>' +
-      '<style>body{font:12px/1.4 system-ui,sans-serif;padding:16px}h1{font-size:16px;margin:0 0 12px}' +
+    var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + xmlEsc(title) + '</title>' +
+      '<style>body{font:12px/1.4 system-ui,sans-serif;padding:16px;color:#111}' +
+      'h1{font-size:18px;margin:0 0 6px}p.sub{margin:0 0 14px;font-size:13px;color:#333}' +
       'table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:4px 6px;text-align:left}' +
-      'th{background:#f0f3f6}@media print{button{display:none}}</style></head><body>' +
-      '<h1>' + xmlEsc(name) + '</h1><table><thead><tr>' +
+      'th{background:#f0f3f6}tfoot td{font-weight:600;background:#f7f9fb}' +
+      '@media print{button{display:none}}</style></head><body>' +
+      '<h1>' + xmlEsc(title) + '</h1>';
+    if (subtitle) {
+      html += '<p class="sub">' + xmlEsc(subtitle) + '</p>';
+    }
+    html += '<table><thead><tr>' +
       cols.map(function (c) { return '<th>' + xmlEsc(c) + '</th>'; }).join('') +
       '</tr></thead><tbody>';
+    var nightsCol = -1;
+    cols.forEach(function (c, i) {
+      if (/^nights$/i.test(c)) nightsCol = i;
+    });
+    var visibleNights = 0;
+    var rowCount = 0;
     visibleRows(table.tBodies[0] || table).forEach(function (tr) {
       if (tr.querySelector('td[colspan]')) return;
-      html += '<tr>' + rowCells(tr).map(function (c) {
+      var cells = rowCells(tr);
+      rowCount++;
+      if (nightsCol >= 0) {
+        var n = parseInt(String(cells[nightsCol] || '').replace(/,/g, ''), 10);
+        if (!isNaN(n)) visibleNights += n;
+      }
+      html += '<tr>' + cells.map(function (c) {
         return '<td>' + xmlEsc(c) + '</td>';
       }).join('') + '</tr>';
     });
-    html += '</tbody></table><script>window.onload=function(){window.print()}<\/script></body></html>';
+    html += '</tbody>';
+    if (nightsCol >= 0 && rowCount > 0) {
+      html += '<tfoot><tr>';
+      cols.forEach(function (c, i) {
+        if (i === 0) {
+          html += '<td>Total (rows shown)</td>';
+        } else if (i === nightsCol) {
+          html += '<td>' + visibleNights + '</td>';
+        } else {
+          html += '<td></td>';
+        }
+      });
+      html += '</tr></tfoot>';
+    }
+    html += '</table><script>window.onload=function(){window.print()}<\/script></body></html>';
     var w = window.open('', '_blank');
     if (!w) {
       alert('Allow pop-ups to export PDF (print → Save as PDF).');

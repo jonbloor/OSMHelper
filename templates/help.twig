@@ -18,12 +18,17 @@
 
     <section class="help-section" id="members">
       <h3>Members</h3>
-      <p>A flat list of youth and young leaders across your accessible sections, with age/DoB filled in where OSM needs an extra lookup. Use the section checkboxes to show or hide rows without reloading the page. The table is sortable, searchable, and exportable (CSV / Excel / PDF). Leaders are not listed here.</p>
+      <p>A flat list of youth and young leaders across your accessible sections, with age/DoB filled in where OSM needs an extra lookup. Use the section checkboxes to show or hide rows without reloading the page. The table is sortable, searchable, and exportable (CSV / Excel / PDF). Leaders are not listed here. Each row has a <strong>Nights</strong> link into Nights away for that member.</p>
     </section>
 
     <section class="help-section" id="checks">
       <h3>Checks</h3>
       <p>Troubleshooting tables: youth in more than one section (excluding Leaders and Young Leaders patrols), Young Leaders checks, and Leaders checks. Status cells use green for OK and amber for issues. Each table supports sort, search and export.</p>
+    </section>
+
+    <section class="help-section" id="nights-away">
+      <h3>Nights away</h3>
+      <p>Under <strong>Badges → Nights away</strong>: pick one or more youth members (Leaders and Young Leaders / YL patrols are omitted) and list the camps OSM has on the <strong>Nights Away staged badge</strong> (badge 94). Tick camps in the results to multi-select records. We read that badge in every Beavers / Cubs / Scouts / Explorers section this login can see, then call OSM’s <code>/v3/badges/records/other-sections</code> so camps from a previous section still appear after they move up. Each Members row also has a <strong>Nights</strong> link.</p>
     </section>
 
     <section class="help-section" id="waiting">
@@ -57,12 +62,12 @@
 
     <section class="help-section" id="rate-limit">
       <h3>API rate limit</h3>
-      <p>OSM applies an API allowance <strong>per user</strong> (your OSM login) — it is not a “how busy OSM is” meter. Home and the hub show your limit, remaining requests, and when the window resets. A banner appears site-wide when you are nearing the limit (and again when remaining is critical). Open fewer heavy pages until it refreshes. Members, Checks, Dashboard, Waiting, Equipment, Bank and Top awards each use quota when you load them.</p>
+      <p>OSM applies an API allowance <strong>per user</strong> (your OSM login) — it is not a “how busy OSM is” meter. Home and the hub show your limit, remaining requests, and when the window resets. A banner appears site-wide when you are nearing the limit (and again when remaining is critical). Open fewer heavy pages until it refreshes. Members, Checks, Dashboard, Waiting, Equipment, Bank, Top awards and Nights away each use quota when you load them.</p>
     </section>
 
     <section class="help-section" id="tables">
       <h3>Tables (sort, search, export)</h3>
-      <p>On <strong>Members</strong>, <strong>Checks</strong>, <strong>Waiting</strong>, <strong>Equipment</strong> and <strong>Top awards</strong>, click a column header to sort, use Search to filter rows, and export the visible rows as <strong>CSV</strong>, <strong>Excel</strong> (.xls), or <strong>PDF</strong> (opens the print dialog — choose Save as PDF). Data tables use gentle alternating row colours for readability.</p>
+      <p>On <strong>Members</strong>, <strong>Checks</strong>, <strong>Waiting</strong>, <strong>Equipment</strong>, <strong>Top awards</strong> and <strong>Nights away</strong>, click a column header to sort, use Search to filter rows, and export the visible rows as <strong>CSV</strong>, <strong>Excel</strong> (.xls), or <strong>PDF</strong> (opens the print dialog — choose Save as PDF). Data tables use gentle alternating row colours for readability.</p>
     </section>
 
     <section class="help-section" id="roadmap">
