@@ -1013,3 +1013,61 @@ a.nav-changelog[aria-current="page"] { border-bottom-color: #0b6e4f; }
 .nav-links summary::-webkit-details-marker { display: none; }
 .nav-links summary { display: inline-flex; align-items: center; gap: 0.25rem; }
 @media (max-width: 720px) { .nav-links summary { display: flex; } }
+
+
+/* Roadmap status: colour + text + symbol (never colour alone) */
+.rm-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+  margin: 0.9rem 0 0;
+  padding: 0.6rem 0.8rem;
+  background: #f7f9fb;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+.rm-legend-title { font-weight: 600; }
+.rm-key { display: inline-flex; align-items: center; gap: 0.35rem; margin-right: 0.8rem; }
+.rm-legend-text { color: var(--muted); }
+.rm-jump { margin: 0.6rem 0 0; }
+.rm-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.rm-status-shipped { background: #e3f4ea; color: #075a3f; border-color: #9fd3b6; }
+.rm-status-progress { background: #fff1db; color: #7a4100; border-color: #f0c27a; }
+.rm-status-planned { background: #eaf0f8; color: #26456e; border-color: #b7c8de; }
+.rm-status-later { background: #f0f2f4; color: #414a55; border-color: #c9d0d8; border-style: dashed; }
+.rm-list { list-style: none; margin: 0.6rem 0 0; padding: 0; display: grid; gap: 0.6rem; }
+.rm-item {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-left: 5px solid #8a95a1;
+  border-radius: 8px;
+  padding: 0.65rem 0.9rem;
+}
+.rm-item.rm-shipped { border-left-color: #0b6e4f; background: #f6fbf8; }
+.rm-item.rm-progress { border-left-color: #c26a00; }
+.rm-item.rm-planned { border-left-color: #3b6aa8; }
+.rm-item.rm-later { border-left-color: #8a95a1; border-left-style: dashed; }
+.rm-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.6rem; font-size: 0.85rem; }
+.rm-head time { font-weight: 600; color: var(--text); }
+.rm-area { color: var(--muted); }
+.rm-area::before { content: "· "; }
+.rm-title { margin: 0.35rem 0 0; font-size: 1rem; }
+.rm-item p { margin: 0.25rem 0 0; max-width: 46rem; color: var(--text); }
+@media (max-width: 520px) {
+  .rm-item { padding: 0.6rem 0.7rem; }
+  .rm-legend { font-size: 0.85rem; flex-direction: column; align-items: flex-start; }
+  .rm-key { margin-right: 0; }
+}

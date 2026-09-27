@@ -1,51 +1,121 @@
 {% extends 'layout.twig' %}
 
+{% macro status(kind) %}
+  {%- if kind == 'shipped' -%}<span class="rm-status rm-status-shipped"><span aria-hidden="true">✓</span> Shipped</span>
+  {%- elseif kind == 'progress' -%}<span class="rm-status rm-status-progress"><span aria-hidden="true">◐</span> In progress</span>
+  {%- elseif kind == 'later' -%}<span class="rm-status rm-status-later"><span aria-hidden="true">○</span> Later</span>
+  {%- else -%}<span class="rm-status rm-status-planned"><span aria-hidden="true">○</span> Planned</span>
+  {%- endif -%}
+{% endmacro %}
+
 {% block body %}
+{% import _self as rm %}
   <div class="card roadmap-page">
     <h2>Roadmap</h2>
     <p class="lede">Here are the things on our to do list. If there is something that bugs you about OSM or something which is missing, let us know and we can see if it is possible.</p>
 
-    <section class="help-section" id="p2">
-      <h3>Phase 2 — Writes</h3>
-      <table class="data">
-        <thead><tr><th>Area</th><th>Item</th><th>Phase</th></tr></thead>
-        <tbody>
-          <tr><td>Equipment</td><td>Bulk select + move to Settings locations via updateListItemColumnValue (columnid 3) — shipped</td><td>Done</td></tr>
-          <tr><td>Equipment</td><td>Add / edit quartermaster items (real OSM writes)</td><td>P2</td></tr>
-          <tr><td>Waiting list</td><td>Rank, dated notes and willing to help saved to your OSM custom fields (review, then save; the score stays in OSMHelper), with more than one waiting list — shipped 26 Sep 2026 (<a href="/changelog/">changelog</a>)</td><td>Done</td></tr>
-          <tr><td>Settings</td><td>Equipment locations list (add / edit / reorder) — shipped</td><td>Done</td></tr>
-          <tr><td>Bank</td><td>v3 accounts list + transactions (read, pence÷100) — shipped</td><td>Done</td></tr>
-          <tr><td>Finance</td><td>All transfers across accounts (read) — shipped</td><td>Done</td></tr>
-          <tr><td>Nav</td><td>Grouped nav with icons + per-group colours — shipped</td><td>Done</td></tr>
-          <tr><td>Nav</td><td>Badges group in main nav — shipped</td><td>Done</td></tr>
-          <tr><td>Badges</td><td>Top-awards picker + export nudge + confirm write (dry-run→write) — shipped</td><td>Done</td></tr>
-          <tr><td>Badges</td><td>Nights away per member from OSM staged badge 94 (getBadgeRecords) — shipped</td><td>Done</td></tr>
-        </tbody>
-      </table>
+    <div class="rm-legend" aria-label="Status key">
+      <span class="rm-legend-title">Key:</span>
+      <span class="rm-key">{{ rm.status('shipped') }} <span class="rm-legend-text">live now, with the date it went live</span></span>
+      <span class="rm-key">{{ rm.status('progress') }} <span class="rm-legend-text">being built</span></span>
+      <span class="rm-key">{{ rm.status('planned') }} <span class="rm-legend-text">next up</span></span>
+      <span class="rm-key">{{ rm.status('later') }} <span class="rm-legend-text">backlog</span></span>
+    </div>
+
+    <p class="rm-jump muted">Jump to: <a href="#shipped">Shipped</a> · <a href="#in-progress">In progress</a> · <a href="#planned">Planned</a> · <a href="#later">Later</a></p>
+
+    <section class="help-section" id="shipped" aria-labelledby="shipped-h">
+      <h3 id="shipped-h">Shipped</h3>
+      <p class="muted">Newest first. The <a href="/changelog/">Changelog</a> has the details.</p>
+      <ul class="rm-list">
+        <li class="rm-item rm-shipped">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-09-26">26 Sep 2026</time> <span class="rm-area">Waiting list</span></div>
+          <h4 class="rm-title">Waiting list rank, dated notes and willing to help</h4>
+          <p>Rank applicants, add dated notes and mark who is willing to help, then review and save to your own OSM custom fields. Works with more than one waiting list. The score is explained on the page and stays in OSMHelper.</p>
+        </li>
+        <li class="rm-item rm-shipped">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-09-26">26 Sep 2026</time> <span class="rm-area">Site</span></div>
+          <h4 class="rm-title">Changelog page</h4>
+          <p>A list of what’s new, linked from the menu and footer.</p>
+        </li>
+        <li class="rm-item rm-shipped">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-09-21">21 Sep 2026</time> <span class="rm-area">Badges</span></div>
+          <h4 class="rm-title">Nights Away tracker</h4>
+          <p>Pick one or more members with search (Leaders and Young Leaders are left out) to see nights away per camp from OSM, including named Discovery camps. Sort across members, filter by year, and export to PDF with the scout’s name and totals.</p>
+        </li>
+        <li class="rm-item rm-shipped">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-09-06">6 Sep 2026</time> <span class="rm-area">Badges</span></div>
+          <h4 class="rm-title">Top awards</h4>
+          <p>Pick a section to see how close each member is to their top award (Chief Scout’s award), review the suggested progress, then confirm to write it to OSM. Updated on 7 and 8 Sep 2026 with Bronze and Silver awards and rate-limit warnings.</p>
+        </li>
+        <li class="rm-item rm-shipped">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-09-06">6 Sep 2026</time> <span class="rm-area">Finance</span></div>
+          <h4 class="rm-title">Bank accounts, transactions and All transfers</h4>
+          <p>Read your OSM bank accounts and transactions, and see transfers across all accounts with unmatched in/out legs flagged.</p>
+        </li>
+        <li class="rm-item rm-shipped">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-09-06">6 Sep 2026</time> <span class="rm-area">Equipment</span></div>
+          <h4 class="rm-title">Equipment list, bulk move and locations</h4>
+          <p>All your OSM equipment columns in one searchable table, broken items highlighted, and bulk moves to locations you set up in Settings.</p>
+        </li>
+        <li class="rm-item rm-shipped">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-09-06">6 Sep 2026</time> <span class="rm-area">Members</span></div>
+          <h4 class="rm-title">Members, member checks and group numbers</h4>
+          <p>Members across sections, checks for missing details, the waiting list, and group numbers with bar charts by section.</p>
+        </li>
+        <li class="rm-item rm-shipped">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-09-06">6 Sep 2026</time> <span class="rm-area">Site</span></div>
+          <h4 class="rm-title">Menus, tables, Help and Roadmap</h4>
+          <p>Grouped menus with icons, tables you can sort, search and export, the OSM rate limit shown on screen, and the Help and Roadmap pages.</p>
+        </li>
+      </ul>
     </section>
 
-    <section class="help-section" id="p3">
-      <h3>Phase 3 — Badge spreadsheet ingest</h3>
-      <table class="data">
-        <thead><tr><th>Area</th><th>Item</th><th>Phase</th></tr></thead>
-        <tbody>
-          <tr><td>Badges</td><td>Upload CSV/XLSX → map columns → dry-run → commit via OSM badge APIs</td><td>P3</td></tr>
-        </tbody>
-      </table>
+    <section class="help-section" id="in-progress" aria-labelledby="in-progress-h">
+      <h3 id="in-progress-h">In progress</h3>
+      <p class="muted">Nothing is being built right now. The next job will come from the Planned list below.</p>
     </section>
 
-    <section class="help-section" id="p4">
-      <h3>Phase 4 / backlog</h3>
-      <table class="data">
-        <thead><tr><th>Area</th><th>Item</th><th>Phase</th></tr></thead>
-        <tbody>
-          <tr><td>Members</td><td>Duplicates polish</td><td>P4</td></tr>
-          <tr><td>Badges</td><td>Challenge badge printout</td><td>P4</td></tr>
-                    <tr><td>Programme</td><td>Complete Programme printout</td><td>P4</td></tr>
-          <tr><td>Programme</td><td>Term Summary printout</td><td>P4</td></tr>
-          <tr><td>Sections</td><td>Section overview</td><td>P4</td></tr>
-        </tbody>
-      </table>
+    <section class="help-section" id="planned" aria-labelledby="planned-h">
+      <h3 id="planned-h">Planned</h3>
+      <ul class="rm-list">
+        <li class="rm-item rm-planned">
+          <div class="rm-head">{{ rm.status('planned') }} <span class="rm-area">Equipment</span></div>
+          <h4 class="rm-title">Add and edit equipment items</h4>
+          <p>Create and update quartermaster items in OSM from OSMHelper.</p>
+        </li>
+        <li class="rm-item rm-planned">
+          <div class="rm-head">{{ rm.status('planned') }} <span class="rm-area">Badges</span></div>
+          <h4 class="rm-title">Badge spreadsheet upload</h4>
+          <p>Upload a CSV or Excel file, match its columns, check a dry run, then save the badges to OSM.</p>
+        </li>
+      </ul>
+    </section>
+
+    <section class="help-section" id="later" aria-labelledby="later-h">
+      <h3 id="later-h">Later</h3>
+      <ul class="rm-list">
+        <li class="rm-item rm-later">
+          <div class="rm-head">{{ rm.status('later') }} <span class="rm-area">Programme</span></div>
+          <h4 class="rm-title">Complete Programme printout</h4>
+        </li>
+        <li class="rm-item rm-later">
+          <div class="rm-head">{{ rm.status('later') }} <span class="rm-area">Programme</span></div>
+          <h4 class="rm-title">Term Summary printout</h4>
+        </li>
+        <li class="rm-item rm-later">
+          <div class="rm-head">{{ rm.status('later') }} <span class="rm-area">Badges</span></div>
+          <h4 class="rm-title">Challenge badge printout</h4>
+        </li>
+        <li class="rm-item rm-later">
+          <div class="rm-head">{{ rm.status('later') }} <span class="rm-area">Members</span></div>
+          <h4 class="rm-title">Tidier duplicate checks</h4>
+        </li>
+        <li class="rm-item rm-later">
+          <div class="rm-head">{{ rm.status('later') }} <span class="rm-area">Sections</span></div>
+          <h4 class="rm-title">Section overview</h4>
+        </li>
+      </ul>
     </section>
 
     <section class="help-section" id="requests">
