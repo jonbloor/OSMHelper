@@ -53,6 +53,12 @@ Database (only if the DB itself is damaged; stops nothing, but do it at a quiet 
 Use `.restore` rather than copying the file over the live DB: a plain `cp` while PHP has it open (or with a stale
 `-wal` next to it) can corrupt it.
 
+## Admins (`ADMIN_OSM_USER_IDS`)
+`.env` key, comma-separated OSM user IDs (e.g. `ADMIN_OSM_USER_IDS=96377`). Those users see the most recent OSM API
+errors for **every** group on the signed-in home page. Everyone else sees only errors for the sections their own OSM
+login can see (or no panel). Unset or empty: nobody sees other groups' errors. A user's OSM ID is shown in waiting-list
+field settings as "Name (OSM user N)". Users signed in before this change see their own errors after signing in again.
+
 ## Debug files and member data
 - Top awards caches (`storage/top-awards-cache-<section>.json`, member names) are deleted once older than 2 hours on
   every Top awards cache read/write, and a user's sections are cleared when they log out.

@@ -84,7 +84,7 @@ final class OsmErrorLog
         if (!is_array($lines) || $lines === []) {
             return [];
         }
-        $slice = array_slice($lines, -max(1, min(50, $limit)));
+        $slice = array_slice($lines, -max(1, min(self::MAX_ENTRIES, $limit)));
         $out = [];
         foreach ($slice as $line) {
             $decoded = json_decode((string) $line, true);
@@ -93,6 +93,32 @@ final class OsmErrorLog
             }
         }
         return $out;
+    }
+
+    /**
+     * Newest-last errors for the given sections only (entries without a section_id are left out,
+     * since they can't be tied to a group). Looks back over the whole capped log.
+     *
+     * @param list<string> $sectionIds
+     * @return list<array<string, mixed>>
+     */
+    public static function recentForSections(array $sectionIds, int $limit = 8): array
+    {
+        $want = array_flip(array_map('strval', $sectionIds));
+        if ($want === []) {
+            return [];
+        }
+        $out = [];
+        foreach (array_reverse(self::recent(self::MAX_ENTRIES)) as $row) {
+            $sid = isset($row['section_id']) ? (string) $row['section_id'] : '';
+            if ($sid !== '' && isset($want[$sid])) {
+                $out[] = $row;
+                if (count($out) >= $limit) {
+                    break;
+                }
+            }
+        }
+        return array_reverse($out);
     }
 
     private static function rotateIfNeeded(string $path): void

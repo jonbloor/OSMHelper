@@ -106,6 +106,25 @@ final class Config
      * Debug files that can contain OSM data (storage/osm-debug.json, storage/top-awards-dryrun.json).
      * Separate explicit flag, off by default; APP_DEBUG alone does not turn them on.
      */
+    /**
+     * OSM user IDs allowed to see the OSM API error log for every group on the signed-in home page.
+     * Comma-separated ADMIN_OSM_USER_IDS; unset/empty means nobody sees other groups' errors.
+     *
+     * @return list<string>
+     */
+    public static function adminOsmUserIds(): array
+    {
+        $raw = (string) (self::get('ADMIN_OSM_USER_IDS', '') ?? '');
+        $ids = array_filter(array_map('trim', explode(',', $raw)), static fn (string $v): bool => $v !== '');
+        return array_values(array_unique($ids));
+    }
+
+    public static function isAdmin(?string $osmUserId): bool
+    {
+        $id = trim((string) $osmUserId);
+        return $id !== '' && in_array($id, self::adminOsmUserIds(), true);
+    }
+
     public static function debugFiles(): bool
     {
         return filter_var(self::get('OSM_DEBUG_FILES', 'false'), FILTER_VALIDATE_BOOLEAN);

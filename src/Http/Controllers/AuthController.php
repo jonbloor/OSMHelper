@@ -135,6 +135,16 @@ final class AuthController
             unset($_SESSION['memberWriteDenied']);
 
             $sections = $data['sections'] ?? [];
+            // Section IDs this login can see (used to show only this user's own OSM errors on Home).
+            $sectionIds = [];
+            if (is_array($sections)) {
+                foreach ($sections as $sec) {
+                    if (is_array($sec) && isset($sec['section_id']) && is_scalar($sec['section_id'])) {
+                        $sectionIds[] = (string) $sec['section_id'];
+                    }
+                }
+            }
+            $_SESSION['osmSectionIds'] = array_values(array_unique($sectionIds));
             $groupName = 'OSM Helper';
             if (is_array($sections) && isset($sections[0]) && is_array($sections[0])) {
                 $groupName = (string) ($sections[0]['group_name'] ?? $groupName);

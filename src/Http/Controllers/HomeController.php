@@ -32,7 +32,15 @@ final class HomeController
         }
         if ($authed) {
             $ctx = array_merge($ctx, Auth::ensureRateLimit());
-            $ctx['osmRecentErrors'] = OsmErrorLog::recent(8);
+            // Admins (ADMIN_OSM_USER_IDS) see every group's errors; everyone else only their own sections'.
+            if (Config::isAdmin($_SESSION['osmUserId'] ?? null)) {
+                $ctx['osmRecentErrors'] = OsmErrorLog::recent(8);
+                $ctx['osmErrorsScope'] = 'all';
+            } else {
+                $ids = $_SESSION['osmSectionIds'] ?? [];
+                $ctx['osmRecentErrors'] = OsmErrorLog::recentForSections(is_array($ids) ? array_map('strval', $ids) : [], 8);
+                $ctx['osmErrorsScope'] = 'mine';
+            }
         }
         App::render('home.twig', $ctx);
     }
