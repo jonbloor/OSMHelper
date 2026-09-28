@@ -39,14 +39,15 @@ final class AuthController
         header('Cache-Control: no-store, no-cache, must-revalidate');
         $esc = htmlspecialchars($url, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $js = json_encode($url, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
-        echo '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">';
+        echo '<!DOCTYPE html><html lang="en-GB"><head><meta charset="utf-8">';
         echo '<meta name="viewport" content="width=device-width, initial-scale=1">';
         echo '<meta http-equiv="refresh" content="0;url=' . $esc . '">';
         echo '<title>Connecting to OSM…</title>';
-        echo '<style>body{font-family:system-ui,sans-serif;max-width:32rem;margin:3rem auto;padding:0 1rem;line-height:1.5}</style>';
+        echo '<style>body{font-family:system-ui,sans-serif;max-width:32rem;margin:3rem auto;padding:0 1rem;line-height:1.5}.disclaimer{margin-top:2.5rem;font-size:.85rem;color:#555}</style>';
         echo '</head><body>';
         echo '<p>Connecting to Online Scout Manager…</p>';
         echo '<p><a href="' . $esc . '">Continue</a> if you are not redirected.</p>';
+        echo '<p class="disclaimer">OSMHelper is an independent tool built by a Scout volunteer. It isn&#39;t made, run or endorsed by Online Scout Manager or The Scout Association.</p>';
         echo '<script>location.replace(' . $js . ');</script>';
         echo '</body></html>';
         exit;
@@ -161,6 +162,8 @@ final class AuthController
 
     public function logout(): void
     {
+        // Top awards caches hold member names: clear this session's before the session goes.
+        TopAwardsController::clearSessionCaches();
         $_SESSION = [];
         if (ini_get('session.use_cookies')) {
             $params = session_get_cookie_params();

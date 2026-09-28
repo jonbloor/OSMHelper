@@ -6,7 +6,7 @@ use App\Config;
 
 /**
  * Write truncated OSM response shapes to storage (outside webroot).
- * Gated by APP_DEBUG; redacts likely PII / money fields; keeps file small.
+ * Gated by the explicit OSM_DEBUG_FILES env flag (off by default); redacts likely PII / money fields; keeps file small.
  */
 final class OsmDebug
 {
@@ -22,7 +22,7 @@ final class OsmDebug
 
     public static function log(string $label, array $payload): void
     {
-        if (!Config::debug()) {
+        if (!Config::debugFiles()) {
             return;
         }
         $dir = dirname(__DIR__, 2) . '/storage';

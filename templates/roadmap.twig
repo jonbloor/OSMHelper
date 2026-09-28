@@ -13,6 +13,7 @@
   <div class="card roadmap-page">
     <h2>Roadmap</h2>
     <p class="lede">Here are the things on our to do list. If there is something that bugs you about OSM or something which is missing, let us know and we can see if it is possible.</p>
+    <p class="muted">This page is also the changelog: what went live and when is listed under <a href="#history">Changelog</a>, newest first.</p>
 
     <div class="rm-legend" aria-label="Status key">
       <span class="rm-legend-title">Key:</span>
@@ -22,11 +23,11 @@
       <span class="rm-key">{{ rm.status('later') }} <span class="rm-legend-text">backlog</span></span>
     </div>
 
-    <p class="rm-jump muted">Jump to: <a href="#shipped">Shipped</a> · <a href="#in-progress">In progress</a> · <a href="#planned">Planned</a> · <a href="#later">Later</a></p>
+    <p class="rm-jump muted">Jump to: <a href="#shipped">Shipped</a> · <a href="#history">Changelog</a> · <a href="#in-progress">In progress</a> · <a href="#planned">Planned</a> · <a href="#later">Later</a></p>
 
     <section class="help-section" id="shipped" aria-labelledby="shipped-h">
       <h3 id="shipped-h">Shipped</h3>
-      <p class="muted">Newest first. The <a href="/changelog/">Changelog</a> has the details.</p>
+      <p class="muted">Newest first. The <a href="#history">Changelog</a> below has the details.</p>
       <ul class="rm-list">
         <li class="rm-item rm-shipped">
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-09-26">26 Sep 2026</time> <span class="rm-area">Waiting list</span></div>
@@ -35,8 +36,8 @@
         </li>
         <li class="rm-item rm-shipped">
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-09-26">26 Sep 2026</time> <span class="rm-area">Site</span></div>
-          <h4 class="rm-title">Changelog page</h4>
-          <p>A list of what’s new, linked from the menu and footer.</p>
+          <h4 class="rm-title">Changelog</h4>
+          <p>A dated list of what’s new. Since 28 Sep 2026 it’s part of this page, under <a href="#history">Changelog</a>.</p>
         </li>
         <li class="rm-item rm-shipped">
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-09-21">21 Sep 2026</time> <span class="rm-area">Badges</span></div>
@@ -67,6 +68,46 @@
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-09-06">6 Sep 2026</time> <span class="rm-area">Site</span></div>
           <h4 class="rm-title">Menus, tables, Help and Roadmap</h4>
           <p>Grouped menus with icons, tables you can sort, search and export, the OSM rate limit shown on screen, and the Help and Roadmap pages.</p>
+        </li>
+      </ul>
+    </section>
+
+    <section class="help-section" id="history" aria-labelledby="history-h">
+      <h3 id="history-h">Changelog</h3>
+      <p class="muted">What changed, newest first. Each entry went live on the date shown.</p>
+      <ul class="rm-list">
+        <li class="rm-item rm-shipped rm-history" id="2026-09-28">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-09-28">28 Sep 2026</time></div>
+          <h4 class="rm-title">Clearer homepage, one Roadmap and changelog page</h4>
+          <ul>
+            <li><strong>New homepage:</strong> a plainer, first-person homepage with real screenshots of the tools (all using made-up names), a short note on why OSMHelper exists, and a clear “Before you connect” section.</li>
+            <li><strong>One page for plans and changes:</strong> the Changelog is now part of this Roadmap page. Old <code>/changelog/</code> links bring you here.</li>
+            <li><strong>Menu on phones:</strong> when you’re not signed in, the Menu button now shows on small screens, so Home, Help and Roadmap can be reached.</li>
+            <li><strong>Footer and contact:</strong> the footer now says who runs OSMHelper and that it isn’t made or endorsed by Online Scout Manager or The Scout Association. The contact address is now hello@jonbloor.co.uk.</li>
+            <li><strong>Less kept on the server:</strong> Top awards results are deleted from the server after 2 hours and when you log out, debug files are off, and the error log strips names and contact details.</li>
+          </ul>
+        </li>
+        <li class="rm-item rm-shipped rm-history" id="2026-09-27">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-09-27">27 Sep 2026</time></div>
+          <h4 class="rm-title">Clearer roadmap</h4>
+          <ul>
+            <li><strong>Status at a glance:</strong> the <a href="/roadmap/">Roadmap</a> now groups items as Shipped, In progress, Planned and Later. Each item has a labelled badge with a symbol, not just a colour, and there’s a key at the top.</li>
+            <li><strong>Dates:</strong> shipped items show the date they went live, newest first. The Nights Away tracker, Top awards, Finance, Equipment and Members tools are now listed as shipped.</li>
+            </ul>
+        </li>
+        <li class="rm-item rm-shipped rm-history" id="2026-09-26">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-09-26">26 Sep 2026</time></div>
+          <h4 class="rm-title">Waiting list ranking</h4>
+          <ul>
+            <li><strong>Rank &amp; notes:</strong> leaders can give each applicant a rank (1 = first to be offered a place) and add notes, then review exactly what will change before saving to OSM. Values live in your own OSM custom fields; OSMHelper only remembers which fields to use, shared across your group.</li>
+            <li><strong>Dated notes:</strong> a new note is added at the top of the existing notes as <code>dd/mm/yy hh:mm - your name - "note"</code> (UK time), so earlier notes are kept.</li>
+            <li><strong>Willing to help:</strong> optionally choose an OSM field for it on the Fields page. It can be set to Yes, No or blank from the ranking page and adds 20 to the score when it’s yes.</li>
+            <li><strong>More than one waiting list:</strong> pick a list at the top of each page; each list is set up separately.</li>
+            <li><strong>Score explained:</strong> the Waiting list and ranking pages now say how the score works, and hovering over or tapping a score shows the breakdown. The score stays in OSMHelper and is never saved to OSM.</li>
+            <li><strong>Safer saving:</strong> changes are re-read from OSM before saving, saved one at a time (stopping at the first problem), then checked in OSM; the results page shows what was sent and what OSM now holds.</li>
+            <li><strong>Exports:</strong> CSV, Excel and PDF from the Waiting list and ranking pages include every row (even when searching) and the values you’ve typed.</li>
+            <li><strong>Menus:</strong> the Members, Badges and Finance menus now close when you click elsewhere, press Escape or choose an item.</li>
+            </ul>
         </li>
       </ul>
     </section>
@@ -120,8 +161,24 @@
 
     <section class="help-section" id="requests">
       <h3>Feature requests</h3>
-      <p>Got an idea? Email <a href="mailto:jon@osmhelper.co.uk">jon@osmhelper.co.uk</a>.</p>
-      <p class="muted"><a href="/help/">Help</a> explains what works today, and the <a href="/changelog/">Changelog</a> lists what’s new.</p>
+      <p>Got an idea? Email <a href="mailto:hello@jonbloor.co.uk">hello@jonbloor.co.uk</a>.</p>
+      <p class="muted"><a href="/help/">Help</a> explains what works today, and the <a href="#history">Changelog</a> above lists what’s new.</p>
     </section>
   </div>
+  <script>
+    // /changelog/ 301s to /roadmap/?from=changelog (no fragment). Browsers keep the original fragment on a
+    // fragment-less redirect, so old links like /changelog/#2026-09-26 still land on that entry. With no
+    // fragment, jump to the Changelog section. Either way, drop ?from= from the address bar.
+    (function () {
+      var q = new URLSearchParams(location.search);
+      if (q.get('from') !== 'changelog') return;
+      var hash = location.hash;
+      if (!hash) {
+        var h = document.getElementById('history');
+        if (h) h.scrollIntoView();
+        hash = '#history';
+      }
+      if (history.replaceState) history.replaceState(null, '', location.pathname + hash);
+    })();
+  </script>
 {% endblock %}

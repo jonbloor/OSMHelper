@@ -6,7 +6,8 @@ namespace App\Osm;
 
 /**
  * Durable append-only OSM API error log (always on, outside webroot).
- * Redacts tokens/PII; keeps scoutid/section_id/badge_id for diagnosis.
+ * Redacts tokens and personal details (names, emails, phone numbers, dates of birth, notes) from the
+ * free-text fields; keeps numeric scoutid/section_id/badge_id for diagnosis.
  * Rotate by capping entry count and approximate file size.
  */
 final class OsmErrorLog
@@ -14,6 +15,9 @@ final class OsmErrorLog
     private const MAX_ENTRIES = 200;
     private const MAX_BYTES = 524288; // 512 KiB soft cap before trim
     private const FILENAME = 'osm-errors.jsonl';
+
+    /** Keys whose values are personal details and must never reach the log. */
+    private const PII_KEYS = 'first_?name|last_?name|full_?name|name|email\\d*|phone\\d*|mobile|address\\d*|dob|date_of_birth|notes?|comment';
 
     /**
      * @param array{
@@ -47,11 +51,11 @@ final class OsmErrorLog
                 ? (int) $entry['http_status']
                 : null,
             'osm_code' => self::clipNullable($entry['osm_code'] ?? null, 80),
-            'osm_message' => self::clipNullable($entry['osm_message'] ?? null, 240),
+            'osm_message' => self::clipNullable(self::redactDetail($entry['osm_message'] ?? null), 240),
             'kind' => self::clip((string) ($entry['kind'] ?? 'http'), 40),
-            'section_id' => self::clipNullable($entry['section_id'] ?? null, 32),
-            'badge_id' => self::clipNullable($entry['badge_id'] ?? null, 32),
-            'scoutid' => self::clipNullable($entry['scoutid'] ?? null, 32),
+            'section_id' => self::idOnly($entry['section_id'] ?? null),
+            'badge_id' => self::idOnly($entry['badge_id'] ?? null),
+            'scoutid' => self::idOnly($entry['scoutid'] ?? null),
             'detail' => self::clipNullable(self::redactDetail($entry['detail'] ?? null), 200),
         ];
 
@@ -97,7 +101,7 @@ final class OsmErrorLog
         $needTrim = is_int($size) && $size > self::MAX_BYTES;
         if (!$needTrim) {
             // Cheap line-count check only when file is large-ish
-            if (!is_int($size) || $size < 65536) {
+            if (!is_int($size) || $size < 32768) {
                 return;
             }
         }
@@ -155,6 +159,24 @@ final class OsmErrorLog
         $s = (string) $v;
         $s = preg_replace('/Bearer\s+[A-Za-z0-9._\-]+/i', 'Bearer [redacted]', $s) ?? $s;
         $s = preg_replace('/(access_token|refresh_token|client_secret|SESSION_SECRET)=([^&\s]+)/i', '$1=[redacted]', $s) ?? $s;
+        // Personal fields in JSON-ish text ("firstname":"Ann", 'lastname' => 'Smith', notes=...).
+        $s = preg_replace(
+            '/(["\']?(?:' . self::PII_KEYS . ')["\']?\s*(?::|=>|=)\s*)("(?:[^"\\\\]|\\\\.)*"|\'[^\']*\'|[^,&}\r\n]+)/i',
+            '$1"[redacted]"',
+            $s
+        ) ?? $s;
+        $s = preg_replace('/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i', '[email]', $s) ?? $s;
+        $s = preg_replace('/(?<![\d\-])(?:\+44\s?|0)\d(?:[\s\-]?\d){8,9}(?!\d)/', '[phone]', $s) ?? $s;
         return $s;
+    }
+
+    /** IDs are kept only if they look like IDs (digits/short tokens), never free text. */
+    private static function idOnly(mixed $v): ?string
+    {
+        if ($v === null) {
+            return null;
+        }
+        $s = trim((string) $v);
+        return preg_match('/^[A-Za-z0-9_\-]{1,32}$/', $s) === 1 ? $s : null;
     }
 }

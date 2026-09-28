@@ -101,4 +101,13 @@ final class Config
     {
         return filter_var(self::get('APP_DEBUG', 'false'), FILTER_VALIDATE_BOOLEAN);
     }
+
+    /**
+     * Debug files that can contain OSM data (storage/osm-debug.json, storage/top-awards-dryrun.json).
+     * Separate explicit flag, off by default; APP_DEBUG alone does not turn them on.
+     */
+    public static function debugFiles(): bool
+    {
+        return filter_var(self::get('OSM_DEBUG_FILES', 'false'), FILTER_VALIDATE_BOOLEAN);
+    }
 }

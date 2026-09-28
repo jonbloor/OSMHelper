@@ -153,6 +153,13 @@ footer.app-footer {
   color: var(--muted);
   font-size: 0.85rem;
 }
+footer.app-footer p { margin: 0 0 0.25rem; }
+footer.app-footer .footer-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+footer.app-footer .footer-disclaimer { max-width: 70ch; }
 
 /* OSMHelper shell patch — apply on top of current main app.css
    Goal: width + nav wrap + light spacing. Do not change Settings form logic. */
@@ -317,7 +324,9 @@ a.nav-logout:hover { border-bottom-color: #5c6570; }
     background: transparent;
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 0.4rem 0.7rem;
+    padding: 0.4rem 0.9rem;
+    min-height: 44px;
+    min-width: 44px;
     font-weight: 600;
     cursor: pointer;
   }
@@ -336,6 +345,10 @@ a.nav-logout:hover { border-bottom-color: #5c6570; }
   .nav-links summary {
     padding: 0.65rem 0.25rem;
     border-bottom: 1px solid var(--border);
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
   }
 
   .nav-group { display: block; width: 100%; }
@@ -463,96 +476,123 @@ input[type=number], select {
   .nav-toggle { display: inline-block; }
 }
 
-/* Home / login landing only. Append to public/assets/app.css.
-   Do not change Settings form rules or nav shell. */
-
-.home-hero .eyebrow {
-  margin: 0 0 0.5rem;
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--accent);
-}
-
-.home-hero h2 {
-  margin: 0 0 0.75rem;
-  font-size: 1.55rem;
-  line-height: 1.25;
-}
-
-.home-hero .lede {
-  margin: 0 0 1.25rem;
-  font-size: 1.05rem;
-  color: var(--text);
-  max-width: 38rem;
-}
-
-.home-oauth-note {
-  margin: 0.85rem 0 0;
-  font-size: 0.9rem;
-}
-
-.home-tools h3,
-.home-trust h3 {
-  margin: 0 0 0.85rem;
-  font-size: 1.05rem;
-}
-
-.tool-cards {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 0.85rem;
-}
-
-.tool-cards li {
-  background: #f7faf8;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.85rem 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.tool-cards strong {
-  color: var(--text);
-  font-size: 0.95rem;
-}
-
-.tool-cards span {
-  color: var(--muted);
-  font-size: 0.9rem;
-  line-height: 1.45;
-}
-
-.home-trust .disclaimer {
-  margin: 0 0 0.75rem;
-  padding: 0.75rem 0.9rem;
-  border-left: 4px solid var(--accent);
-  background: rgba(11, 110, 79, 0.06);
-  border-radius: 0 8px 8px 0;
-  font-weight: 500;
-}
-
-.home-links {
-  margin: 1rem 0 0;
-}
-
-.home-links a {
-  font-weight: 600;
-}
-
+/* Signed-in home */
 .home-signed-in h2 {
   margin: 0 0 0.5rem;
 }
 
+/* Logged-out homepage (body.page-home). Everything below is scoped so app pages are unaffected. */
+@font-face {
+  font-family: "Source Serif 4";
+  src: url("fonts/source-serif-4-semibold-latin.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+body.page-home { background: #fff; }
+body.page-home .wrap-wide { max-width: calc(1120px + 2.5rem); }
+.home-public {
+  --serif: "Source Serif 4", Charter, "Bitstream Charter", "Sitka Text", Cambria, Georgia, serif;
+  max-width: 1120px;
+  margin: 0 auto;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+.home-public p,
+.home-public li,
+.home-public dd { max-width: 65ch; }
+.home-public h2,
+.home-public h3,
+.home-public h4 { font-family: var(--serif); font-weight: 600; color: var(--text); }
+.home-public h3 { font-size: 1.5rem; line-height: 1.25; margin: 0 0 0.75rem; }
+.home-public h4 { font-size: 1.15rem; margin: 0 0 0.5rem; }
+.home-public p { margin: 0 0 1rem; }
+.home-public ul { margin: 0 0 1rem; padding-left: 1.25rem; }
+.home-public li { margin-bottom: 0.4rem; }
+.home-public a:not(.btn) { text-decoration: underline; text-underline-offset: 2px; }
+.home-public a:focus-visible,
+.home-public summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+.home-public section + section { margin-top: 96px; }
+
+.home-hero { display: grid; gap: 48px; align-items: center; padding-top: 48px; }
+.home-hero h2 { font-size: 2.25rem; line-height: 1.15; margin: 0 0 16px; }
+.home-subline { font-size: 1.125rem; }
+.home-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem; margin: 1.5rem 0 1rem; }
+.home-actions .btn { font-size: 1rem; padding: 0.7rem 1.2rem; }
+.home-public a.btn-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 0.25rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+.home-oauth-note { font-size: 0.9rem; color: var(--muted); }
+
+.home-shot { margin: 0; }
+.home-shot + .home-shot { margin-top: 24px; }
+.home-shot img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+}
+.home-shot figcaption { font-size: 0.9rem; color: var(--muted); margin-top: 8px; }
+
+.home-note { max-width: 60ch; border-left: 3px solid var(--accent); padding-left: 20px; }
+.home-signature { font-weight: 600; margin-top: 1.25rem; }
+
+.home-feature { display: grid; gap: 32px; align-items: start; }
+.home-feature-text > :last-child { margin-bottom: 0; }
+
+.home-also dl { display: grid; gap: 0.75rem 2.5rem; margin: 0; }
+.home-also dl > div { max-width: 65ch; }
+.home-also dt { display: inline; font-weight: 700; }
+.home-also dd { display: inline; margin: 0; }
+
+.home-before { background: #f4f6f8; padding: 56px 24px; border-radius: 6px; }
+.home-before-cols { display: grid; gap: 24px 48px; }
+.home-before .home-independent { margin: 0.5rem 0 0; font-weight: 600; }
+
+.home-faq details { border-top: 1px solid var(--border); }
+.home-faq details:last-of-type { border-bottom: 1px solid var(--border); }
+.home-faq summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0.6rem 0;
+  font-weight: 600;
+}
+.home-faq details p { margin: 0 0 1rem; }
+
+.home-closing-line { font-family: var(--serif); font-weight: 600; font-size: 1.5rem; margin-bottom: 1rem; }
+.home-closing .btn { font-size: 1rem; padding: 0.7rem 1.2rem; }
+.home-links { margin-top: 1.5rem; color: var(--muted); }
+
+@media (min-width: 900px) {
+  .home-hero { grid-template-columns: 5fr 7fr; }
+  .home-feature { grid-template-columns: 5fr 7fr; gap: 48px; }
+  .home-feature--flip { grid-template-columns: 7fr 5fr; }
+  .home-feature--flip .home-feature-media { order: -1; }
+  .home-also dl { grid-template-columns: 1fr 1fr; }
+  .home-before-cols { grid-template-columns: 1fr 1fr; }
+  .home-before { padding: 56px 48px; }
+}
+@media (max-width: 720px) {
+  .home-public section + section { margin-top: 56px; }
+  .home-hero { padding-top: 16px; gap: 32px; }
+}
 @media (max-width: 520px) {
-  .home-hero h2 { font-size: 1.35rem; }
-  .tool-cards { grid-template-columns: 1fr; }
+  .home-hero h2 { font-size: 1.75rem; }
+  .home-public h3 { font-size: 1.3rem; }
+  .home-before { padding: 32px 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-public * { scroll-behavior: auto; transition: none; animation: none; }
 }
 
 /* API rate limit (signed-in home) */
@@ -1004,10 +1044,6 @@ table.data tbody tr.row-no-section td {
 .nav-group.has-current > summary { border-bottom-color: #0b6e4f; }
 .nav-links summary:focus-visible { outline: 2px solid #0b6e4f; outline-offset: 2px; }
 
-/* Changelog — same muted slate as Roadmap */
-a.nav-changelog .nav-svg { color: #4b5563; }
-a.nav-changelog:hover { border-bottom-color: #4b5563; }
-a.nav-changelog[aria-current="page"] { border-bottom-color: #0b6e4f; }
 /* Nav groups already draw their own caret (summary::after); hide the browser's extra triangle. */
 .nav-links summary { list-style: none; cursor: pointer; }
 .nav-links summary::-webkit-details-marker { display: none; }
@@ -1066,6 +1102,8 @@ a.nav-changelog[aria-current="page"] { border-bottom-color: #0b6e4f; }
 .rm-area::before { content: "· "; }
 .rm-title { margin: 0.35rem 0 0; font-size: 1rem; }
 .rm-item p { margin: 0.25rem 0 0; max-width: 46rem; color: var(--text); }
+.rm-item ul { list-style: disc; margin: 0.35rem 0 0; padding-left: 1.2rem; max-width: 52rem; }
+.rm-item ul li { margin: 0.2rem 0; }
 @media (max-width: 520px) {
   .rm-item { padding: 0.6rem 0.7rem; }
   .rm-legend { font-size: 0.85rem; flex-direction: column; align-items: flex-start; }

@@ -25,6 +25,11 @@ final class HomeController
             'groupName' => $_SESSION['groupName'] ?? null,
             'osmRecentErrors' => [],
         ];
+        if (!$authed) {
+            $ctx['pageTitle'] = 'OSMHelper: waiting list, badges and group admin tools for OSM';
+            $ctx['metaDescription'] = 'An independent helper for Online Scout Manager, built by a Scout leader. Rank your waiting list, check group numbers, track top awards and nights away, and tidy equipment, using your own OSM login.';
+            $ctx['bodyClass'] = 'page-home';
+        }
         if ($authed) {
             $ctx = array_merge($ctx, Auth::ensureRateLimit());
             $ctx['osmRecentErrors'] = OsmErrorLog::recent(8);

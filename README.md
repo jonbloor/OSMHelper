@@ -65,6 +65,8 @@ Server session stores only: `accessToken`, `email`, `groupName`, `fullName`. No 
 
 ## CloudPanel deploy
 
+See [docs/DEPLOY-RUNBOOK.md](docs/DEPLOY-RUNBOOK.md) for backups (outside `app/storage/`), storage permissions and `umask 002` for CLI scripts, and the nginx `absolute_redirect off;` fix.
+
 Docroot stays: `/home/osmhelper/htdocs/osmhelper.co.uk`
 
 App lives at: `/home/osmhelper/app/`

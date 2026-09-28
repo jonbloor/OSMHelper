@@ -1,22 +1,23 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-GB">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% if title and title != 'OSMHelper' %}{{ title }} · {% endif %}OSMHelper</title>
+  <title>{% block title %}{% if pageTitle is defined and pageTitle %}{{ pageTitle }}{% else %}{% if title and title != 'OSMHelper' %}{{ title }} · {% endif %}OSMHelper{% endif %}{% endblock %}</title>
+  {% block meta %}{% if metaDescription is defined and metaDescription %}<meta name="description" content="{{ metaDescription }}">{% endif %}{% endblock %}
   <link rel="stylesheet" href="{{ asset('app.css') }}">
   <script src="{{ asset('table-tools.js') }}" defer></script>
 </head>
-<body>
+<body{% if bodyClass is defined and bodyClass %} class="{{ bodyClass }}"{% endif %}>
   <div id="page-loading" class="page-loading" hidden aria-live="polite" aria-busy="true">
     <span class="page-loading-box"><span class="loading-spinner" aria-hidden="true"></span> Loading… Please wait.</span>
   </div>
   <div class="wrap wrap-wide">
     <header class="app-header">
       <h1><a href="/">OSMHelper</a></h1>
-      {% if authed is defined and authed %}
       <button type="button" class="nav-toggle" aria-controls="app-nav" aria-expanded="false">Menu</button>
-      <nav id="app-nav" class="nav-links">
+      {% if authed is defined and authed %}
+      <nav id="app-nav" class="nav-links" aria-label="Main">
         <a class="nav-item nav-home" href="/dashboard/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 10v10h14V10"/></svg> Home</a>
 
         <details class="nav-group nav-members">
@@ -50,9 +51,15 @@
         <a class="nav-item nav-settings" href="/settings/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg> Settings</a>
         <a class="nav-item nav-help" href="/help/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg> Help</a>
         <a class="nav-item nav-roadmap" href="/roadmap/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg> Roadmap</a>
-        <a class="nav-item nav-changelog" href="/changelog/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg> Changelog</a>
         <a class="nav-item nav-logout" href="/logout/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg> Logout</a>
       </nav>
+      {% else %}
+      <nav id="app-nav" class="nav-links nav-public" aria-label="Main">
+        <a class="nav-item nav-home" href="/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 10v10h14V10"/></svg> Home</a>
+        <a class="nav-item nav-help" href="/help/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg> Help</a>
+        <a class="nav-item nav-roadmap" href="/roadmap/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg> Roadmap</a>
+      </nav>
+      {% endif %}
       <script>
         (function () {
           var btn = document.querySelector('.nav-toggle');
@@ -131,14 +138,6 @@
           });
         })();
       </script>
-      {% else %}
-      <nav class="nav-links nav-public">
-        <a class="nav-item nav-home" href="/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 10v10h14V10"/></svg> Home</a>
-        <a class="nav-item nav-help" href="/help/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg> Help</a>
-        <a class="nav-item nav-roadmap" href="/roadmap/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg> Roadmap</a>
-        <a class="nav-item nav-changelog" href="/changelog/"><svg class="nav-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg> Changelog</a>
-      </nav>
-      {% endif %}
     </header>
     {% if authed is defined and authed and rateLimit is defined %}
       {% if rateLimitCritical|default(false) %}
@@ -148,7 +147,10 @@
       {% endif %}
     {% endif %}
     {% block body %}{% endblock %}
-    <footer class="app-footer"><a href="/">OSM Helper</a> - Tools to make OSM Better · <a href="/roadmap/">Roadmap</a> · <a href="/changelog/">Changelog</a></footer>
+    <footer class="app-footer">
+      <p class="footer-links"><a href="/">OSMHelper</a> · An independent volunteer project by Jon Bloor · <a href="/help/">Help</a> · <a href="/roadmap/">Roadmap</a> · <a href="mailto:hello@jonbloor.co.uk">hello@jonbloor.co.uk</a></p>
+      <p class="footer-disclaimer">OSMHelper is an independent tool built by a Scout volunteer. It isn't made, run or endorsed by Online Scout Manager or The Scout Association.</p>
+    </footer>
   </div>
   <script>
     (function () {

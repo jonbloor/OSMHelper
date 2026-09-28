@@ -23,11 +23,12 @@ final class TopAwardsController
     private const TYPE_ACTIVITY = 2;
     private const TYPE_STAGED = 3;
 
-    /** Cache successful calcs so refresh does not re-hammer OSM. */
-    private const CACHE_TTL_SEC = 7200; // 2 hours
-
-    /** Serve stale cache this long when quota is low / refresh would hurt. */
-    private const STALE_CACHE_SEC = 21600; // 6 hours
+    /**
+     * Cache successful calcs so refresh does not re-hammer OSM. The cache holds member names, so it
+     * must never outlive this TTL: expired files are deleted on every cache read/write, and the
+     * sections a user touched are cleared at logout (see clearSessionCaches()).
+     */
+    public const CACHE_TTL_SEC = 7200; // 2 hours
 
     /** Remaining requests at/below which we refuse further badge fan-out. */
     private const RATE_LOW_REMAINING = 40;
@@ -162,10 +163,10 @@ final class TopAwardsController
             $rateLow = $api->isRateLow(self::RATE_LOW_REMAINING);
             $cached = null;
             if ($forceRefresh && $rateLow) {
-                $cached = self::readCache($sectionId, true);
+                $cached = self::readCache($sectionId);
                 $rateLimitBanner = 'Refresh skipped — OSM quota is low (see remaining on Home). Wait until it recovers before Refresh; Top awards will keep using cache to avoid locking you out of OSM.';
             } elseif (!$forceRefresh) {
-                $cached = self::readCache($sectionId, false);
+                $cached = self::readCache($sectionId);
             }
             // forceRefresh with healthy quota → $cached stays null (live calc)
 
@@ -176,9 +177,6 @@ final class TopAwardsController
                 $notes = is_array($cached['notes'] ?? null) ? $cached['notes'] : [];
                 if ($rateLimitBanner === null && is_string($cached['rateLimitBanner'] ?? null)) {
                     $rateLimitBanner = $cached['rateLimitBanner'];
-                }
-                if (!empty($cached['_stale']) && $rateLimitBanner === null) {
-                    $rateLimitBanner = 'Showing older cached results while OSM quota recovers. Prefer waiting over Refresh.';
                 }
                 $fromCache = true;
                 $cacheAt = $cached['at'] ?? null;
@@ -205,7 +203,7 @@ final class TopAwardsController
                 $scopeHint = $error;
             }
             if (self::is429($e)) {
-                $stale = isset($sectionId) ? self::readCache($sectionId, true) : null;
+                $stale = isset($sectionId) ? self::readCache($sectionId) : null;
                 if (is_array($stale)) {
                     $rows = $stale['rows'] ?? [];
                     $challengeBadge = $stale['challengeBadge'] ?? null;
@@ -687,13 +685,20 @@ final class TopAwardsController
     }
 
     /** @param array<string, mixed> $res */
+    /** Shape of an unexpected OSM response for the error log: keys and scalar flags only, no values. */
     private static function briefResponse(array $res): string
     {
-        $json = json_encode($res, JSON_UNESCAPED_SLASHES);
-        if (!is_string($json)) {
-            return '(unencodable)';
+        $parts = [];
+        foreach (array_slice($res, 0, 12, true) as $k => $v) {
+            if (is_bool($v) || $v === null) {
+                $parts[] = $k . '=' . var_export($v, true);
+            } elseif (in_array((string) $k, ['ok', 'status', 'error'], true) && is_scalar($v)) {
+                $parts[] = $k . '=' . substr((string) $v, 0, 40);
+            } else {
+                $parts[] = $k . ':' . gettype($v);
+            }
         }
-        return strlen($json) > 240 ? substr($json, 0, 240) . '…' : $json;
+        return 'response keys: ' . ($parts === [] ? '(empty)' : implode(', ', $parts));
     }
 
     /**
@@ -1654,9 +1659,17 @@ final class TopAwardsController
         return $ind;
     }
 
-    /** @param array<string, mixed> $payload */
+    /**
+     * Debug-only dump of the whole page payload (includes member names). Off unless the
+     * OSM_DEBUG_FILES env flag is set; never on in production.
+     *
+     * @param array<string, mixed> $payload
+     */
     private static function writeDryRun(array $payload): void
     {
+        if (!\App\Config::debugFiles()) {
+            return;
+        }
         $dir = dirname(__DIR__, 3) . '/storage';
         if (!is_dir($dir)) {
             @mkdir($dir, 0770, true);
@@ -1766,8 +1779,9 @@ final class TopAwardsController
     }
 
     /** @return array<string, mixed>|null */
-    private static function readCache(string $sectionId, bool $allowStale = false): ?array
+    private static function readCache(string $sectionId): ?array
     {
+        self::sweepExpiredCaches();
         $path = self::cachePath($sectionId);
         if (!is_readable($path)) {
             return null;
@@ -1775,28 +1789,26 @@ final class TopAwardsController
         $raw = file_get_contents($path);
         $data = json_decode((string) $raw, true);
         if (!is_array($data) || empty($data['at'])) {
+            @unlink($path);
             return null;
         }
         $ts = strtotime((string) $data['at']);
-        if ($ts === false) {
+        if ($ts === false || time() - $ts > self::CACHE_TTL_SEC) {
+            @unlink($path);
             return null;
         }
-        $age = time() - $ts;
-        if ($age > self::CACHE_TTL_SEC) {
-            if (!$allowStale || $age > self::STALE_CACHE_SEC) {
-                return null;
-            }
-            $data['_stale'] = true;
-        }
+        self::rememberSection($sectionId);
         return $data;
     }
 
     /** @param array<string, mixed> $payload */
     private static function writeCache(string $sectionId, array $payload): void
     {
+        self::sweepExpiredCaches();
         $path = self::cachePath($sectionId);
         @file_put_contents($path, json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n", LOCK_EX);
         @chmod($path, 0660);
+        self::rememberSection($sectionId);
     }
 
     private static function clearCache(string $sectionId): void
@@ -1805,5 +1817,47 @@ final class TopAwardsController
         if (is_file($path)) {
             @unlink($path);
         }
+    }
+
+    /** Delete every Top awards cache file older than the TTL (any section, any user). */
+    public static function sweepExpiredCaches(): void
+    {
+        $files = glob(dirname(__DIR__, 3) . '/storage/top-awards-cache-*.json');
+        if (!is_array($files)) {
+            return;
+        }
+        $cutoff = time() - self::CACHE_TTL_SEC;
+        foreach ($files as $f) {
+            $mtime = @filemtime($f);
+            if ($mtime === false || $mtime < $cutoff) {
+                @unlink($f);
+            }
+        }
+    }
+
+    /** Note which sections' caches this session used, so logout can clear them. */
+    private static function rememberSection(string $sectionId): void
+    {
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            return;
+        }
+        $list = $_SESSION['_topAwardsCacheSections'] ?? [];
+        if (!is_array($list)) {
+            $list = [];
+        }
+        $list[$sectionId] = true;
+        $_SESSION['_topAwardsCacheSections'] = $list;
+    }
+
+    /** Called at logout: clear caches for sections this session touched, then sweep expired ones. */
+    public static function clearSessionCaches(): void
+    {
+        $list = $_SESSION['_topAwardsCacheSections'] ?? [];
+        if (is_array($list)) {
+            foreach (array_keys($list) as $sectionId) {
+                self::clearCache((string) $sectionId);
+            }
+        }
+        self::sweepExpiredCaches();
     }
 }

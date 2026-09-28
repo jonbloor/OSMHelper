@@ -1,5 +1,18 @@
 {% extends 'layout.twig' %}
 
+{% macro shot(file, w, h, alt, caption, eager) %}
+  <figure class="home-shot">
+    <picture>
+      {# 640/960/1200/1600w WebP; sizes = hero/feature media column (7fr of the 1120px wrap on desktop). #}
+      <source type="image/webp"
+        srcset="{{ asset('home/' ~ file ~ '-640.webp') }} 640w, {{ asset('home/' ~ file ~ '-960.webp') }} 960w, {{ asset('home/' ~ file ~ '-1200.webp') }} 1200w, {{ asset('home/' ~ file ~ '.webp') }} 1600w"
+        sizes="(min-width: 1180px) 626px, (min-width: 900px) 55vw, calc(100vw - 2.5rem)">
+      <img src="{{ asset('home/' ~ file ~ '.png') }}" width="{{ w }}" height="{{ h }}" alt="{{ alt }}"{% if not eager %} loading="lazy"{% endif %} decoding="async">
+    </picture>
+    {% if caption %}<figcaption>{{ caption }}</figcaption>{% endif %}
+  </figure>
+{% endmacro %}
+
 {% block body %}
 {% if authed %}
   <p class="slow-fetch-warning muted">Some tools take a moment — we fetch fresh data from OSM.</p>
@@ -37,94 +50,144 @@
   </div>
   {% endif %}
 {% else %}
-  <section class="home-hero card">
-    <p class="eyebrow">Volunteer Scouts tooling</p>
-    <h2>OSMHelper for group leaders</h2>
-    <p class="lede">
-      Connect with Online Scout Manager once, then check group numbers, the waiting list,
-      members, equipment and bank transfers without digging through OSM screens.
-    </p>
-    <p>
-      <a class="btn" href="/auth/">Connect with OSM</a>
-    </p>
-    <p class="muted home-oauth-note">
-      You will be sent to OSM to authorise. We only keep your access token in the server session.
-    </p>
+{% import _self as home %}
+<div class="home-public">
+
+  <section class="home-hero" aria-labelledby="home-hero-h">
+    <div class="home-hero-text">
+      <h2 id="home-hero-h">Waiting list, badges and kit, sorted from your OSM data</h2>
+      <p class="home-subline">OSMHelper signs in to Online Scout Manager with your own login and puts the jobs that take ages in OSM onto one page each: agreeing who gets the next place, working out top awards, counting nights away, and tidying equipment.</p>
+      <p class="home-actions">
+        <a class="btn" href="/auth/">Connect with OSM</a>
+        <a class="btn-link" href="/help/">Read the guide first</a>
+      </p>
+      <p class="home-oauth-note">You'll be sent to OSM to give permission. OSMHelper keeps your OSM access token in the server session only, and fetches member data fresh from OSM each time you open a page.</p>
+    </div>
+    <div class="home-hero-media">
+      {{ home.shot('waiting-list', 1600, 880, "OSMHelper waiting list showing fictional applicants with age, days waiting, suggested section and a score, with one score's working shown: age 10.9 times 3 equals 32.7, plus 29.2 months, plus 20 for willing to help, equals 81.9.", 'The waiting list, with the working behind each score. Made-up names.', true) }}
+    </div>
   </section>
 
-  <section class="card home-tools">
-    <h3>What you can do</h3>
-    <ul class="tool-cards">
-      <li>
-        <strong>Group numbers</strong>
-        <span>Section membership, leaders, capacity and spaces — plus snapshot charts for members vs spaces, waiting by age band, and fullness %.</span>
-      </li>
-      <li>
-        <strong>Waiting list</strong>
-        <span>Who is waiting, a suggested section for each applicant, and a simple score (age, time on the list, willing to help) with the working shown.</span>
-      </li>
-      <li>
-        <strong>Waiting list ranking</strong>
-        <span>Agree the order in which applicants are offered a place: give each one a rank, add dated notes (earlier notes are kept) and record whether they’re willing to help. Review exactly what will change, then save to your own OSM custom fields. Works with more than one waiting list, and the field choice is shared across your group.</span>
-      </li>
-      <li>
-        <strong>Members</strong>
-        <span>Browse youth members with section filters; ages filled from OSM where needed.</span>
-      </li>
-      <li>
-        <strong>Checks</strong>
-        <span>Youth in multiple sections, Young Leaders and Leaders status checks.</span>
-      </li>
-      <li>
-        <strong>Nights away</strong>
-        <span>Camps and night counts from OSM’s Nights Away staged badge, including other-sections records after a member moves up.</span>
-      </li>
-      <li>
-        <strong>Top awards</strong>
-        <span>Calculate Chief Scout Bronze / Silver / Gold progress (with UK change date), review current vs proposed, export, then write selected rows to OSM.</span>
-      </li>
-      <li>
-        <strong>Equipment</strong>
-        <span>Quartermaster lists and items for the section you pick in Settings — sortable, searchable, exportable, with bulk select and move that writes Location into OSM.</span>
-      </li>
-      <li>
-        <strong>Bank</strong>
-        <span>Account balances and transaction lines for the finance section you pick in Settings — sortable, searchable, exportable.</span>
-      </li>
-      <li>
-        <strong>All transfers</strong>
-        <span>Every transfer across your active accounts, with account name — spot missing legs when balances look wrong.</span>
-      </li>
-      <li>
-        <strong>Settings</strong>
-        <span>Age cutoffs, section capacity, Equipment and Bank section picks, and a named list of kit locations.</span>
-      </li>
-      <li>
-        <strong>Help</strong>
-        <span>Plain-English guide to each tool, plus how rate limits work.</span>
-      </li>
-      <li>
-        <strong>Roadmap</strong>
-        <span>What is coming next (writes, badges, backlog) and how to request features.</span>
-      </li>
-    </ul>
+  <section class="home-note" aria-labelledby="home-note-h">
+    <h3 id="home-note-h">Why I built this</h3>
+    {# Final wording from Jason, 28 Sep. #}
+    <p>I'm the Group Lead Volunteer at 4th Ashby Scout Group in Leicestershire. OSM holds everything we need, but some jobs mean clicking through screen after screen: deciding who's next to join from our waiting list, checking who's close to their Chief Scout's Award, or counting nights away for a young person who has moved up a section.</p>
+    <p>So I built OSMHelper to fill those gaps. It pulls our group's own data out of OSM and lays it out for the job in hand. When you change member details, such as waiting list ranks and notes, they're saved back into OSM, so OSM stays the one record of your members. Other groups can use it too.</p>
+    <p>It's a volunteer project. If something is wrong or missing, email me at <a href="mailto:hello@jonbloor.co.uk">hello@jonbloor.co.uk</a>.</p>
+    <p class="home-signature">Jon Bloor<br>Group Lead Volunteer, 4th Ashby Scout Group</p>
   </section>
 
-  <section class="card home-trust">
-    <h3>Privacy &amp; independence</h3>
-    <p class="disclaimer">
-      This is an independent project, not affiliated with Online Scout Manager. Use it at your own risk.
-    </p>
-    <p class="muted">
-      We only keep your OSM access token in a server session (not stored as lasting scout records).
-      No scout data is permanently saved on this server — pages fetch fresh from OSM when you need them.
-    </p>
-    <p class="home-links muted">
-      Leader resources:
-      <a href="https://wogglehq.com" rel="noopener noreferrer" target="_blank">Woggle HQ</a>
-      · Source:
-      <a href="https://github.com/jonbloor/OSMHelper" rel="noopener noreferrer" target="_blank">GitHub</a>
-    </p>
+  <section class="home-feature" aria-labelledby="home-f-wl">
+    <div class="home-feature-text">
+      <h3 id="home-f-wl">Agree the waiting list order, and keep it in OSM</h3>
+      <p>OSMHelper reads your waiting list from OSM and suggests a section for each applicant from their age and your own age cut-offs. It gives each one a simple score: age times three, plus months on the list, plus 20 if the family is willing to help. Tap a score to see how it was worked out.</p>
+      <p>Leaders can then set their own rank (1 is first to be offered a place), add a dated note and record whether a family is willing to help. Before anything is saved, you see exactly what will change. It's all saved to custom fields on each applicant's record in OSM. The score itself is never saved.</p>
+      <ul>
+        <li>Works with more than one waiting list</li>
+        <li>Earlier notes are kept, and each new note is stamped with the date and your name</li>
+        <li>If another leader changed something since you opened the page, that row isn't overwritten unless you choose to</li>
+      </ul>
+    </div>
+    <div class="home-feature-media">
+      {{ home.shot('waiting-review', 1600, 651, 'Review changes screen listing, for three fictional applicants, the value in OSM now and the new rank, willing-to-help and dated note that will be saved.', 'Review exactly what will change before anything is written to OSM.') }}
+    </div>
   </section>
+
+  <section class="home-feature home-feature--flip" aria-labelledby="home-f-gn">
+    <div class="home-feature-text">
+      <h3 id="home-f-gn">See where you have spaces</h3>
+      <p>One page shows members, leaders, capacity and spaces for each section, with how many are waiting and at what age. Charts show members against spaces, the waiting list by age band, and how full each section is. You set section capacity and age cut-offs in Settings.</p>
+    </div>
+    <div class="home-feature-media">
+      {{ home.shot('group-numbers', 1600, 571, 'Group numbers page with bar charts of members and spaces for each section and a chart of waiting-list children by age band.', 'Group numbers, as of page load.') }}
+    </div>
+  </section>
+
+  <section class="home-feature" aria-labelledby="home-f-badges">
+    <div class="home-feature-text">
+      <h3 id="home-f-badges">Top awards and nights away without the spreadsheet</h3>
+      <p><strong>Top awards:</strong> pick a section and OSMHelper works out each member's progress towards the Chief Scout's Bronze, Silver or Gold award. You review what's in OSM now against what it suggests, export a copy, then choose which rows to save back to OSM.</p>
+      <p><strong>Nights away:</strong> pick one or more young people to see their camps and nights from the Nights Away staged badge in OSM, including camps recorded in a previous section before they moved up. Export it to PDF with their name and totals.</p>
+    </div>
+    <div class="home-feature-media">
+      {{ home.shot('top-awards', 1600, 610, "Top awards page comparing current and proposed Chief Scout's award progress for fictional Scouts, with tick boxes to choose which to save.", 'Top awards: check before you save.') }}
+      {{ home.shot('nights-away', 1600, 1349, 'Nights away table listing camps and nights for two fictional members, with totals.', '') }}
+    </div>
+  </section>
+
+  <section class="home-feature home-feature--flip" aria-labelledby="home-f-kit">
+    <div class="home-feature-text">
+      <h3 id="home-f-kit">Kit and bank accounts in tables you can search</h3>
+      <p><strong>Equipment:</strong> all your quartermaster lists in one table you can sort, search and export, with broken items highlighted. Tick several items and move them to a location from your own list. OSMHelper updates the Location in OSM after you confirm.</p>
+      <p><strong>Finance:</strong> bank account balances and transactions, plus every transfer across your active accounts with any unmatched in or out leg highlighted, which helps when the balances don't add up. Finance is read-only: OSMHelper never changes your accounts.</p>
+    </div>
+    <div class="home-feature-media">
+      {{ home.shot('equipment', 1600, 608, 'Equipment table with three tents ticked and the scout hut loft chosen as the location to move them to.', 'Move kit in bulk. You confirm before OSM is updated.') }}
+      {{ home.shot('all-transfers', 1600, 824, 'All transfers table with one unmatched transfer highlighted. Amounts and account names are made up.', '') }}
+    </div>
+  </section>
+
+  <section class="home-also" aria-labelledby="home-also-h">
+    <h3 id="home-also-h">Also included</h3>
+    <dl>
+      <div><dt>Members:</dt> <dd>youth members and young leaders across your sections, filtered by section, with ages filled in from OSM.</dd></div>
+      <div><dt>Checks:</dt> <dd>young people in more than one section, plus Young Leader and leader checks, marked OK or needing a look.</dd></div>
+      <div><dt>Settings:</dt> <dd>age cut-offs, section capacity, which sections hold your kit and your accounts, and your list of kit locations.</dd></div>
+      <div><dt>Tables:</dt> <dd>most tables can be sorted, searched and exported as CSV, Excel or PDF.</dd></div>
+    </dl>
+  </section>
+
+  <section class="home-before" aria-labelledby="home-before-h">
+    <h3 id="home-before-h">Before you connect</h3>
+    <div class="home-before-cols">
+      <div>
+        <h4>You'll need</h4>
+        <ul>
+          <li>An Online Scout Manager login with access to the sections you want to see. OSMHelper can only show what your OSM login can see.</li>
+          <li>To say yes when OSM asks for permission. Saving ranks, notes, awards or kit locations needs permission to update records, so you may be asked to sign in again the first time.</li>
+          <li>A bit of patience. Pages fetch fresh from OSM, so some take a moment, and each one uses part of your OSM API allowance. OSMHelper shows how much you have left.</li>
+        </ul>
+      </div>
+      <div>
+        <h4>It doesn't</h4>
+        <ul>
+          <li>Replace OSM. OSM stays the record, and anything OSMHelper saves goes into OSM.</li>
+          {# Final wording from Jason, 28 Sep. True because Top awards caches are deleted after 2 hours
+             and at logout, debug dumps are off by default, and osm-errors.jsonl redacts personal details. #}
+          <li>Keep copies of member data. Your OSM access token is held only in the server session, and each page fetches fresh data from OSM when you open it. The only things saved on our server are your group settings: age cut-offs, capacity, kit locations and your chosen waiting list fields. We also keep a short error log to fix problems, with personal details removed.</li>
+          <li>Change your bank accounts. Finance pages are read-only.</li>
+        </ul>
+      </div>
+    </div>
+    <p class="home-independent">This is an independent project, not affiliated with Online Scout Manager or The Scout Association. It was built for one Scout group's needs, so it might not suit yours.</p>
+  </section>
+
+  <section class="home-faq" aria-labelledby="home-faq-h">
+    <h3 id="home-faq-h">Questions</h3>
+    <details>
+      <summary>How is the waiting list score worked out?</summary>
+      <p>Age in years (8 years 6 months counts as 8.5) times three, plus months on the list, plus 20 if they're willing to help. It's a starting point. Your leaders' rank is what decides, for example to keep siblings together. The full explanation is in the <a href="/help/">Help</a> guide.</p>
+    </details>
+    <details>
+      <summary>Will it change anything in OSM without asking?</summary>
+      <p>No. Waiting list ranks and notes, top awards and equipment moves all show you what will change first. Nothing is saved until you confirm.</p>
+    </details>
+    <details>
+      <summary>Does it cost anything?</summary>
+      <p>No. It's free to use.</p>
+    </details>
+    <details>
+      <summary>What's coming next?</summary>
+      <p>Adding and editing equipment items, and uploading badges from a spreadsheet, are planned. See the <a href="/roadmap/">Roadmap</a>, and the <a href="/roadmap/#history">Changelog</a> for what's changed recently.</p>
+    </details>
+  </section>
+
+  <section class="home-closing" aria-label="Get started">
+    <p class="home-closing-line">Ready to try it with your own OSM login?</p>
+    <p><a class="btn" href="/auth/">Connect with OSM</a></p>
+    <p class="home-links">Useful for leaders: <a href="https://wogglehq.com" rel="noopener noreferrer" target="_blank">Woggle HQ</a> · Source code: <a href="https://github.com/jonbloor/OSMHelper" rel="noopener noreferrer" target="_blank">GitHub</a></p>
+  </section>
+
+</div>
 {% endif %}
 {% endblock %}
