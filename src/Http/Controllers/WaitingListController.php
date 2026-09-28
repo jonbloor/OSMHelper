@@ -6,6 +6,7 @@ use App\Config;
 use App\Http\Auth;
 use App\Http\Csrf;
 use App\Osm\OsmApi;
+use App\Store\Db;
 use App\Store\SettingsStore;
 use App\Store\WaitingFieldMapStore;
 use App\Waiting\WaitingListService as WL;
@@ -29,6 +30,9 @@ final class WaitingListController
     private const SAME_MEMBER_DELAY_US = 1200000;
     /** Wait before re-reading OSM to check the saved values stuck. */
     private const VERIFY_DELAY_US = 1000000;
+    /** Shown instead of raw database errors (details go to the PHP error log). */
+    private const MAP_LOAD_ERROR = "We couldn't load your saved waiting list settings. This is a problem on our side, and we've been told. You can still view the waiting list.";
+    private const MAP_SAVE_ERROR = "We couldn't save your waiting list settings. This is a problem on our side, and we've been told. Please try again later.";
 
     /** @return array<string, float|int> */
     private static function cutoffs(): array
@@ -81,7 +85,11 @@ final class WaitingListController
         try {
             return ['map' => WaitingFieldMapStore::get(WL::groupKey($list), $list['id']), 'error' => null];
         } catch (Throwable $e) {
-            return ['map' => null, 'error' => 'Could not read saved field settings (' . $e->getMessage() . ').'];
+            // Never show raw SQL/PDO errors to users; log the detail for us instead.
+            error_log('OSMHelper waiting list: could not read saved field settings (group ' . WL::groupKey($list)
+                . ', section ' . (string) ($list['id'] ?? '') . ', db ' . Db::path() . '): '
+                . get_class($e) . ': ' . $e->getMessage());
+            return ['map' => null, 'error' => self::MAP_LOAD_ERROR];
         }
     }
 
@@ -273,7 +281,10 @@ final class WaitingListController
                 'field_group_id' => $cols['groupId'],
             ], self::updatedBy());
         } catch (Throwable $e) {
-            self::flash('error', 'Could not save field settings: ' . $e->getMessage());
+            error_log('OSMHelper waiting list: could not save field settings (group ' . WL::groupKey($list)
+                . ', section ' . (string) ($list['id'] ?? '') . ', db ' . Db::path() . '): '
+                . get_class($e) . ': ' . $e->getMessage());
+            self::flash('error', self::MAP_SAVE_ERROR);
             self::redirect('/waiting-list/fields/', $list['id']);
         }
         self::flash('info', 'Saved. Rank uses “' . $byId[$rankId]['label'] . '”, Notes uses “' . $byId[$notesId]['label'] . '”'

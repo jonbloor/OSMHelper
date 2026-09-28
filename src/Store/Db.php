@@ -29,7 +29,22 @@ final class Db
         $path = self::path();
         $dir = dirname($path);
         if (!is_dir($dir)) {
-            @mkdir($dir, 0770, true);
+            // Fresh deploy: create storage/ ourselves (group-writable so SQLite can add -wal/-shm files).
+            if (!@mkdir($dir, 0770, true) && !is_dir($dir)) {
+                throw new \RuntimeException('Could not create database directory ' . $dir);
+            }
+            @chmod($dir, 02770);
+        }
+        if (!is_writable($dir)) {
+            throw new \RuntimeException('Database directory is not writable by this PHP user: ' . $dir);
+        }
+        foreach (['-wal', '-shm'] as $suffix) {
+            // A -wal/-shm left behind by another user (e.g. a CLI run as the deploy user) makes
+            // SQLite fail with "unable to open database file"; say which file it is.
+            $side = $path . $suffix;
+            if (is_file($side) && (!is_readable($side) || !is_writable($side))) {
+                throw new \RuntimeException('SQLite side file is not readable/writable by this PHP user: ' . $side);
+            }
         }
         $isNew = !is_file($path);
         $pdo = new PDO('sqlite:' . $path, null, null, [
