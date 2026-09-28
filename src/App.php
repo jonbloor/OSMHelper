@@ -30,6 +30,9 @@ final class App
     {
         $this->loadEnv();
         $this->bootSession();
+        // Top awards caches hold member names: delete any past the 2-hour TTL on every request,
+        // so the promise holds even when nobody opens Top awards (glob + mtime, cheap).
+        TopAwardsController::sweepExpiredCaches();
         self::sendSecurityHeaders();
         self::upgradeInsecureOAuthCallback();
         $this->bootTwig();

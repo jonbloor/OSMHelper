@@ -107,8 +107,8 @@ final class Config
      * Separate explicit flag, off by default; APP_DEBUG alone does not turn them on.
      */
     /**
-     * OSM user IDs allowed to see the OSM API error log for every group on the signed-in home page.
-     * Comma-separated ADMIN_OSM_USER_IDS; unset/empty means nobody sees other groups' errors.
+     * OSM user IDs allowed to see the OSM API error log (all groups) on the signed-in home page.
+     * Comma-separated ADMIN_OSM_USER_IDS; nobody else sees the panel. Unset/empty: nobody sees it.
      *
      * @return list<string>
      */

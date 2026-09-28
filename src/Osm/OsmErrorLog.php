@@ -17,7 +17,7 @@ final class OsmErrorLog
     private const FILENAME = 'osm-errors.jsonl';
 
     /** Keys whose values are personal details and must never reach the log. */
-    private const PII_KEYS = 'first_?name|last_?name|full_?name|name|email\\d*|phone\\d*|mobile|address\\d*|dob|date_of_birth|notes?|comment';
+    private const PII_KEYS = 'first_?name|last_?name|full_?name|name|email\\d*|phone\\d*|mobile|address\\d*|dob|date_of_birth|notes?|comment|birthday|date.?of.?birth|emergency\\w*|custom_?data\\w*';
 
     /**
      * @param array{
@@ -95,32 +95,6 @@ final class OsmErrorLog
         return $out;
     }
 
-    /**
-     * Newest-last errors for the given sections only (entries without a section_id are left out,
-     * since they can't be tied to a group). Looks back over the whole capped log.
-     *
-     * @param list<string> $sectionIds
-     * @return list<array<string, mixed>>
-     */
-    public static function recentForSections(array $sectionIds, int $limit = 8): array
-    {
-        $want = array_flip(array_map('strval', $sectionIds));
-        if ($want === []) {
-            return [];
-        }
-        $out = [];
-        foreach (array_reverse(self::recent(self::MAX_ENTRIES)) as $row) {
-            $sid = isset($row['section_id']) ? (string) $row['section_id'] : '';
-            if ($sid !== '' && isset($want[$sid])) {
-                $out[] = $row;
-                if (count($out) >= $limit) {
-                    break;
-                }
-            }
-        }
-        return array_reverse($out);
-    }
-
     private static function rotateIfNeeded(string $path): void
     {
         $size = @filesize($path);
@@ -191,6 +165,8 @@ final class OsmErrorLog
             '$1"[redacted]"',
             $s
         ) ?? $s;
+        // Query strings in logged URLs can carry IDs or search terms: keep the path only.
+        $s = preg_replace('#(https?://[^\s?\#"\']+)\?[^\s\#"\']*#i', '$1?[query removed]', $s) ?? $s;
         $s = preg_replace('/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i', '[email]', $s) ?? $s;
         $s = preg_replace('/(?<![\d\-])(?:\+44\s?|0)\d(?:[\s\-]?\d){8,9}(?!\d)/', '[phone]', $s) ?? $s;
         return $s;

@@ -29,8 +29,11 @@ Stored in `/home/osmhelper/backups/deploy/`. The newest 10 of each kind are kept
 - Not backed up on purpose: `storage/settings.json`, `storage/osm-errors.jsonl`, and any Top awards cache
   (member names, deleted after 2 hours).
 
-The sqlite3 step runs under `umask 007` rather than `027`, because if it has to create `osmhelper.sqlite-wal`/`-shm`
-they must stay group-writable or PHP-FPM can no longer write. The backup file is then `chmod 640`.
+Only the `sqlite3` command runs under `umask 007` (the rest of the backup step uses `027`). Opening the live DB can make
+sqlite3 create `storage/osmhelper.sqlite-wal`/`-shm`; under `027` those would be `640` and PHP-FPM (group `osmhelper`)
+couldn't write to them, so the site would fail to save. With `007` they are `660`, and they get group `osmhelper` from
+the setgid `storage/` dir. The backup file sqlite3 writes is then `chmod 640` (owner `bungle`, group `bungle`; the
+`backups/deploy/` dir has no setgid), so PHP-FPM can't read backups.
 
 ## Restore
 Code (rollback to the previous release):
@@ -54,14 +57,13 @@ Use `.restore` rather than copying the file over the live DB: a plain `cp` while
 `-wal` next to it) can corrupt it.
 
 ## Admins (`ADMIN_OSM_USER_IDS`)
-`.env` key, comma-separated OSM user IDs (e.g. `ADMIN_OSM_USER_IDS=96377`). Those users see the most recent OSM API
-errors for **every** group on the signed-in home page. Everyone else sees only errors for the sections their own OSM
-login can see (or no panel). Unset or empty: nobody sees other groups' errors. A user's OSM ID is shown in waiting-list
-field settings as "Name (OSM user N)". Users signed in before this change see their own errors after signing in again.
+`.env` key, comma-separated OSM user IDs. Live value: `ADMIN_OSM_USER_IDS=96377` (Jon). Only those users see the
+"Recent OSM API errors" panel (last 8 errors, all groups) on the signed-in home page; nobody else sees it at all.
+Unset or empty: nobody sees it. A user's OSM ID appears in waiting-list field settings as "Name (OSM user N)".
 
 ## Debug files and member data
 - Top awards caches (`storage/top-awards-cache-<section>.json`, member names) are deleted once older than 2 hours on
-  every Top awards cache read/write, and a user's sections are cleared when they log out.
+  every request (swept in `App::run()`), and a user's sections are cleared when they log out.
 - `storage/osm-debug.json` and `storage/top-awards-dryrun.json` are only written when `OSM_DEBUG_FILES=true` is set
   in `.env`. Leave it off in production (it is off by default; `APP_DEBUG` alone doesn't turn it on).
 - `storage/osm-errors.jsonl` keeps the last ~200 OSM API errors, with tokens, names, emails, phone numbers and notes
@@ -77,8 +79,9 @@ field settings as "Name (OSM user N)". Users signed in before this change see th
    `/home/osmhelper/logs/php/error.log` and `/home/osmhelper/logs/nginx/error.log` for new lines.
 4. Leave `.env` and `storage/` alone.
 
-Older backups made before 28 Sep 2026 are still under `app/storage/predeploy-*` (code, two `.env` copies and one copy of
-`osmhelper.sqlite` with its `-wal`/`-shm` in `predeploy-hotfix-*`; no Top awards caches or debug dumps, checked 28 Sep). Move them to `/home/osmhelper/backups/deploy/` when convenient; nothing reads them.
+Older ad-hoc backups (`app/storage/predeploy-*`, and `env.bak.*`, `settings.bak.*`, `storage.bak.*` in
+`/home/osmhelper/tmp/`) were deleted on 28 Sep 2026 after the first `backups/deploy/` backup was verified.
+Keep all backups in `/home/osmhelper/backups/deploy/` from now on.
 
 ## Database and storage from the command line
 - The SQLite database (`storage/osmhelper.sqlite`) must stay writable by group `osmhelper`, including the `-wal` and

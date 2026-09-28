@@ -16,7 +16,10 @@ echo "==> Backup current live app + database (outside the app tree)"
 # (Top awards caches are not backed up).
 BACKUP_TS=$(date -u +%Y%m%d-%H%M%S)
 "${SSH[@]}" "set -e; B=/home/osmhelper/backups/deploy; umask 027; mkdir -p \$B; chgrp osmhelper \$B; chmod 750 \$B
-if [ -d /home/osmhelper/app/src ]; then tar -C /home/osmhelper -czf \$B/app-predeploy-$BACKUP_TS.tgz --exclude=app/vendor --exclude=app/storage app && echo \"backup: \$B/app-predeploy-$BACKUP_TS.tgz\"; fi
+if [ -d /home/osmhelper/app/src ]; then
+  tar -C /home/osmhelper -czf \$B/app-predeploy-$BACKUP_TS.tgz --exclude=app/vendor --exclude=app/storage app || exit 1
+  echo \"backup: \$B/app-predeploy-$BACKUP_TS.tgz\"
+fi
 if [ -f /home/osmhelper/app/storage/osmhelper.sqlite ]; then
   (umask 007; sqlite3 /home/osmhelper/app/storage/osmhelper.sqlite \".backup '\$B/db-$BACKUP_TS.sqlite'\")
   chmod 640 \$B/db-$BACKUP_TS.sqlite; echo \"backup: \$B/db-$BACKUP_TS.sqlite\"

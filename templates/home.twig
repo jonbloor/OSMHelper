@@ -31,12 +31,8 @@
   {% if osmRecentErrors %}
   <div class="card">
     <details>
-      <summary class="muted">Recent OSM API errors{% if osmErrorsScope|default('mine') == 'all' %}, all groups{% else %} for your sections{% endif %} ({{ osmRecentErrors|length }})</summary>
-      {% if osmErrorsScope|default('mine') == 'all' %}
-      <p class="muted">Admin view: every group's errors. Redacted log for diagnosis (invalid-action, 403, 429, transport). Full file: <code>storage/osm-errors.jsonl</code> on the server.</p>
-      {% else %}
-      <p class="muted">Errors OSM returned for your sections recently (redacted), to help explain a failed page.</p>
-      {% endif %}
+      <summary class="muted">Recent OSM API errors, all groups ({{ osmRecentErrors|length }})</summary>
+      <p class="muted">Admin only (ADMIN_OSM_USER_IDS). Redacted log for diagnosis (invalid-action, 403, 429, transport). Full file: <code>storage/osm-errors.jsonl</code> on the server.</p>
       <ul class="muted" style="font-size:0.9rem">
       {% for e in osmRecentErrors|reverse %}
         <li><code>{{ e.at|default('—') }}</code>
