@@ -92,6 +92,18 @@ final class AuthController
             $accessToken = $token->getToken();
 
             $_SESSION['accessToken'] = $accessToken;
+            $refresh = $token->getRefreshToken();
+            if (is_string($refresh) && $refresh !== '') {
+                $_SESSION['refreshToken'] = $refresh;
+            } else {
+                unset($_SESSION['refreshToken']);
+            }
+            $expires = $token->getExpires();
+            if (is_int($expires) && $expires > 0) {
+                $_SESSION['accessTokenExpiresAt'] = $expires;
+            } else {
+                unset($_SESSION['accessTokenExpiresAt']);
+            }
 
             $api = new OsmApi();
             $resource = $api->get($accessToken, '/oauth/resource');
