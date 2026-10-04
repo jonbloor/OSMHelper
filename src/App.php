@@ -88,6 +88,7 @@ final class App
         $router->post('/settings/update-sections', [$set, 'updateSections']);
         $router->post('/settings/update-tool-sections', [$set, 'updateToolSections']);
         $router->post('/settings/update-equipment-locations', [$set, 'updateEquipmentLocations']);
+        $router->post('/settings/update-wordpress-waiting-list', [$set, 'updateWordpressWaitingList']);
 
         $router->setNotFound(static function (): void {
             http_response_code(404);

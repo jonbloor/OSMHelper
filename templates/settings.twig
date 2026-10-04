@@ -3,6 +3,57 @@
 {% if saved %}
 <p class="muted">Settings are saved on the server (survive logout).</p>
 {% endif %}
+
+<div class="card">
+  <h2>WordPress waiting-list form</h2>
+  <p class="muted">Parents fill the form on your group website. They never log in to OSM. OSM Helper uses <strong>your</strong> OSM login to write each child into the waiting-list section you choose here. Copy the site key into the WordPress plugin (OSM Helper base URL + site key). Do not put an OSM client id or secret in WordPress.</p>
+  {% if wpFlash %}
+    <p class="{% if wpFlash.type == 'error' %}error{% else %}muted{% endif %}">{{ wpFlash.message }}</p>
+  {% endif %}
+  {% if wpBlocked %}
+    <p class="error">OSM returned <strong>X-Blocked</strong> for this WordPress intake. Further writes are stopped. Clear the block only after fixing the cause.</p>
+    <form method="post" action="/settings/update-wordpress-waiting-list/">
+      {% include '_csrf.twig' %}
+      <input type="hidden" name="wp_action" value="clear_block">
+      <button class="btn btn-danger" type="submit">Clear WordPress OSM block</button>
+    </form>
+  {% endif %}
+  <form method="post" action="/settings/update-wordpress-waiting-list/">
+    {% include '_csrf.twig' %}
+    <input type="hidden" name="wp_action" value="save">
+    <label>Waiting-list section
+      <select name="waiting_list_section_id" required>
+        <option value="">— choose your OSM waiting list —</option>
+        {% for l in waitingLists %}
+          <option value="{{ l.id }}" {% if wpSectionId == l.id %}selected{% endif %}>{{ l.name }}{% if l.groupName %} ({{ l.groupName }}){% endif %} — id {{ l.id }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% if waitingLists is empty %}
+      <p class="muted">No waiting-list section found for this login. Check in OSM that you can see the group’s waiting list, then sign out and sign in again.</p>
+    {% endif %}
+    <p class="muted">Endpoint WordPress calls: <code>{{ wpEndpoint }}</code></p>
+    {% if wpSiteKey %}
+      <label>Site key (paste into WordPress)
+        <input type="text" readonly value="{{ wpSiteKey }}" onclick="this.select();" class="mono" aria-label="WordPress site key">
+      </label>
+      <p class="muted">Treat this like a password. Anyone with the key can submit waiting-list members into your chosen section.</p>
+    {% else %}
+      <p class="muted">Save to create a site key. It will appear here for you to copy.</p>
+    {% endif %}
+    <p>
+      <button class="btn" type="submit">Save WordPress waiting list</button>
+      <button class="btn btn-secondary" type="submit" name="regenerate_key" value="1">Save &amp; regenerate site key</button>
+    </p>
+  </form>
+  {% if wpSiteKey %}
+  <form method="post" action="/settings/update-wordpress-waiting-list/" onsubmit="return confirm('Remove the WordPress site key? The plugin will stop accepting waiting-list forms until you create a new key.');">
+    {% include '_csrf.twig' %}
+    <input type="hidden" name="wp_action" value="disable">
+    <button class="btn btn-danger" type="submit">Disable WordPress intake</button>
+  </form>
+  {% endif %}
+</div>
 <div class="card">
   <h2>Age cutoffs</h2>
   <form method="post" action="/settings/update-cutoffs/">
