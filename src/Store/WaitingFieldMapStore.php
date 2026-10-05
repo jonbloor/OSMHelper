@@ -20,6 +20,23 @@ final class WaitingFieldMapStore
     }
 
     /**
+     * Mapping for a waiting-list section regardless of OSM group (section ids are unique in OSM).
+     * Newest wins if more than one group row exists. Used by WordPress intake, which knows the section only.
+     *
+     * @return array<string, string>|null
+     */
+    public static function findBySection(string $sectionId): ?array
+    {
+        $st = Db::pdo()->prepare('SELECT * FROM waiting_field_maps WHERE section_id = ? ORDER BY updated_at DESC LIMIT 1');
+        $st->execute([$sectionId]);
+        $row = $st->fetch();
+        if (!is_array($row)) {
+            return null;
+        }
+        return array_map(static fn ($v) => $v === null ? '' : (string) $v, $row);
+    }
+
+    /**
      * @param array{section_name?:string,rank_column_id:string,rank_varname?:string,rank_label?:string,
      *   notes_column_id:string,notes_varname?:string,notes_label?:string,field_group_id?:string,
      *   willing_column_id?:string,willing_varname?:string,willing_label?:string} $map  (willing_* optional; '' = not mapped)

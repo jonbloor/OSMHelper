@@ -31,7 +31,7 @@ final class WaitingListSubmitController
 
         try {
             $result = WaitingListIntake::submitWithSiteKey($siteKey, $payload);
-            self::json(200, ['ok' => true, 'scoutid' => $result['scoutid']]);
+            self::json(200, self::successBody($result));
         } catch (WaitingListIntakeException $e) {
             // Do not echo child data or tokens.
             error_log('OSMHelper waiting-list intake: HTTP ' . $e->status() . ' — ' . $e->getMessage());
@@ -40,6 +40,29 @@ final class WaitingListSubmitController
             error_log('OSMHelper waiting-list intake failed: ' . $e->getMessage());
             self::json(502, ['ok' => false, 'error' => 'Could not add the child to the waiting list.']);
         }
+    }
+
+    /**
+     * Success JSON. The member exists in OSM; `partial` is true when an optional step (the parent
+     * note) did not save, with plain-English `warnings` for the WordPress admin log. No PII.
+     *
+     * @param array{scoutid:int, note_status?:string, warnings?:list<string>} $result
+     * @return array<string, mixed>
+     */
+    public static function successBody(array $result): array
+    {
+        $noteStatus = (string) ($result['note_status'] ?? 'none');
+        $warnings = array_values(array_filter(
+            is_array($result['warnings'] ?? null) ? $result['warnings'] : [],
+            'is_string'
+        ));
+        return [
+            'ok' => true,
+            'scoutid' => (int) $result['scoutid'],
+            'partial' => in_array($noteStatus, ['skipped', 'failed'], true),
+            'note_status' => $noteStatus,
+            'warnings' => $warnings,
+        ];
     }
 
     private static function siteKeyFromRequest(): string

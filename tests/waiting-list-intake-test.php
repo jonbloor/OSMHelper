@@ -6,6 +6,7 @@ declare(strict_types=1);
  */
 require dirname(__DIR__) . '/vendor/autoload.php';
 
+use App\Http\Controllers\Api\WaitingListSubmitController;
 use App\Osm\OsmApi;
 use App\Waiting\WaitingListIntake;
 use App\Waiting\WaitingListIntakeException;
@@ -211,6 +212,120 @@ try {
 }
 expect_true($threwStatus, 'throws when customdata status is false');
 expect_eq(count($historyStatus), 2, 'no further calls after status:false');
+
+// --- Parent note (best effort; never fails the member creation) ---
+expect_eq(WaitingListIntake::cleanParentNote(null), '', 'missing note → empty');
+expect_eq(WaitingListIntake::cleanParentNote(['x']), '', 'non-string note → empty');
+expect_eq(WaitingListIntake::cleanParentNote("  <b>Has</b> a brother in Cubs\x07  "), 'Has a brother in Cubs', 'note: tags + control chars stripped, trimmed');
+expect_eq(WaitingListIntake::cleanParentNote("Line one\r\nLine two"), "Line one\nLine two", 'note: CRLF normalised');
+expect_eq(mb_strlen(WaitingListIntake::cleanParentNote(str_repeat('é', 1500))), 1000, 'note capped at 1000 characters (multibyte safe)');
+expect_eq(
+    WaitingListIntake::composeParentNote("Brother in Cubs\nCan help", new DateTimeImmutable('2026-10-05 09:30:00', new DateTimeZone('UTC'))),
+    '05/10/26 10:30 - Parent (website form) - "Brother in Cubs Can help"',
+    'note value uses the Rank & notes history format (Europe/London)'
+);
+
+$assert = new ReflectionMethod(WaitingListIntake::class, 'assertPayload');
+$badNote = $payload;
+$badNote['parent_note'] = ['not', 'text'];
+$threwNote = false;
+try {
+    $assert->invoke(null, $badNote);
+} catch (WaitingListIntakeException $e) {
+    $threwNote = $e->status() === 422;
+}
+expect_true($threwNote, 'non-string parent_note → 422 before any OSM call');
+$okNote = $payload;
+$okNote['parent_note'] = 'Fine';
+$threwOk = false;
+try {
+    $assert->invoke(null, $okNote);
+} catch (Throwable $e) {
+    $threwOk = true;
+}
+expect_true(!$threwOk, 'string parent_note passes payload checks');
+
+/** Guzzle-mocked OsmApi recording requests into $hist (no network). */
+function mock_api(array $responses, array &$hist): OsmApi
+{
+    $stack = HandlerStack::create(new MockHandler($responses));
+    $stack->push(Middleware::history($hist));
+    return new OsmApi(new Client(['handler' => $stack, 'http_errors' => false]));
+}
+function ok_responses(): array
+{
+    return [
+        new Response(200, [], json_encode(['result' => 'ok', 'scoutid' => 661100])),
+        new Response(200, [], json_encode(['status' => true, 'error' => null, 'data' => []])),
+        new Response(200, [], json_encode(['status' => true, 'error' => null, 'data' => []])),
+    ];
+}
+$target = ['group_id' => '5', 'column_id' => '47307', 'label' => 'HNotes'];
+$notePayload = $payload;
+$notePayload['parent_note'] = 'Sibling already in Beavers';
+
+// Written.
+$h = [];
+$apiN = mock_api(array_merge(ok_responses(), [
+    new Response(200, [], json_encode(['status' => true, 'error' => null, 'data' => ['column_id' => 47307, 'value' => 'x']])),
+]), $h);
+$r = WaitingListIntake::createMember($apiN, 'tok', '60830', $notePayload, 1, $target, 0);
+expect_eq($r['scoutid'], 661100, 'note written: scoutid returned');
+expect_eq($r['note_status'], 'written', 'note written: status written');
+expect_eq($r['warnings'], [], 'note written: no warnings');
+expect_eq(count($h), 4, 'note written: four OSM calls');
+$noteReq = $h[3]['request'];
+$noteUri = (string) $noteReq->getUri();
+$noteBody = urldecode((string) $noteReq->getBody());
+expect_true(str_contains($noteUri, 'ext/customdata') && str_contains($noteUri, 'action=updateColumn') && str_contains($noteUri, 'section_id=60830'), 'note uses customdata updateColumn for the section');
+expect_true(str_contains($noteBody, 'associated_id=661100'), 'note targets the new member');
+expect_true(str_contains($noteBody, 'group_id=5'), 'note group_id 5 (customisable data)');
+expect_true(str_contains($noteBody, 'column_id=47307'), 'note column is the mapped Notes field');
+expect_true(str_contains($noteBody, 'Parent (website form) - "Sibling already in Beavers"') || str_contains(str_replace('+', ' ', $noteBody), 'Parent (website form) - "Sibling already in Beavers"'), 'note value carries the parent text');
+
+// Skipped: no Notes field mapped → no fourth call, still success.
+$h = [];
+$r = WaitingListIntake::createMember(mock_api(ok_responses(), $h), 'tok', '60830', $notePayload, 1, null, 0);
+expect_eq($r['note_status'], 'skipped', 'no mapping: note skipped');
+expect_eq(count($h), 3, 'no mapping: no note call');
+expect_true(count($r['warnings']) === 1 && str_contains($r['warnings'][0], 'Notes field'), 'no mapping: warning explains');
+
+// Failed (HTTP 500) → member creation still succeeds.
+$h = [];
+$r = WaitingListIntake::createMember(mock_api(array_merge(ok_responses(), [
+    new Response(500, [], json_encode(['error' => 'boom'])),
+]), $h), 'tok', '60830', $notePayload, 1, $target, 0);
+expect_eq($r['scoutid'], 661100, 'note HTTP 500: scoutid still returned');
+expect_eq($r['note_status'], 'failed', 'note HTTP 500: status failed');
+expect_eq(count($h), 4, 'note HTTP 500: single attempt, no retry');
+
+// Failed (status:false) → still success.
+$h = [];
+$r = WaitingListIntake::createMember(mock_api(array_merge(ok_responses(), [
+    new Response(200, [], json_encode(['status' => false, 'error' => 'nope'])),
+]), $h), 'tok', '60830', $notePayload, 1, $target, 0);
+expect_eq($r['note_status'], 'failed', 'note status:false → failed, no throw');
+
+// No note → no fourth call.
+$h = [];
+$r = WaitingListIntake::createMember(mock_api(ok_responses(), $h), 'tok', '60830', $payload, 1, $target, 0);
+expect_eq($r['note_status'], 'none', 'no note: status none');
+expect_eq(count($h), 3, 'no note: three OSM calls');
+
+// Whitespace/tag-only note counts as no note.
+$h = [];
+$blank = $payload;
+$blank['parent_note'] = '  <p> </p> ';
+$r = WaitingListIntake::createMember(mock_api(ok_responses(), $h), 'tok', '60830', $blank, 1, $target, 0);
+expect_eq($r['note_status'], 'none', 'blank note: status none');
+
+// Success JSON shape.
+$body = WaitingListSubmitController::successBody(['scoutid' => 5, 'note_status' => 'failed', 'warnings' => ['w']]);
+expect_eq($body['ok'], true, 'successBody ok true even when note failed');
+expect_eq($body['partial'], true, 'successBody partial on failed note');
+expect_eq($body['note_status'], 'failed', 'successBody note_status');
+expect_eq(WaitingListSubmitController::successBody(['scoutid' => 5])['partial'], false, 'successBody not partial without note');
+expect_eq(WaitingListSubmitController::successBody(['scoutid' => 5, 'note_status' => 'written', 'warnings' => []])['partial'], false, 'successBody not partial when written');
 
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

@@ -7,6 +7,7 @@
 <div class="card">
   <h2>WordPress waiting-list form</h2>
   <p class="muted">Parents fill the form on your group website. They never log in to OSM. OSM Helper uses <strong>your</strong> OSM login to write each child into the waiting-list section you choose here. Copy the site key into the WordPress plugin (OSM Helper base URL + site key). Do not put an OSM client id or secret in WordPress.</p>
+  <p class="muted">If a parent adds a note on the form, it is saved to the waiting list’s <strong>Notes</strong> field, the one you chose under <a href="/waiting-list/fields/">Waiting list → Rank &amp; notes settings</a>, as a line like <code>05/10/26 10:30 - Parent (website form) - "…"</code>. If no Notes field is chosen, the child is still added, but the note is not saved.</p>
   {% if wpFlash %}
     <p class="{% if wpFlash.type == 'error' %}error{% else %}muted{% endif %}">{{ wpFlash.message }}</p>
   {% endif %}

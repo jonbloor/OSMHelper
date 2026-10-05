@@ -3,6 +3,7 @@ declare(strict_types=1);
 namespace App\Waiting;
 use App\Osm\OsmApi;
 use App\Osm\OsmOAuth;
+use App\Store\WaitingFieldMapStore;
 use App\Store\WordpressSiteKeyStore;
 use League\OAuth2\Client\Provider\Exception\IdentityProviderException;
 use Throwable;
@@ -15,6 +16,10 @@ use Throwable;
  *  2. POST /ext/customdata/?action=update&section_id=S     → member details (group_id 6)
  *  3. POST /ext/customdata/?action=update&section_id=S     → primary contact 1 (group_id 1)
  *  4. optional same for contact 2 (group_id 2)
+ *  5. optional parent note → the waiting list's mapped Notes custom field
+ *     (POST /ext/customdata/?action=updateColumn, group 5 "customisable_data", column chosen by
+ *     leaders in OSM Helper → Waiting list → Rank & notes settings). Best effort: a failed or
+ *     skipped note never undoes or fails the member creation; the result reports it instead.
  *
  * Contact updates use /ext/customdata/ (osm-extender + Newcastle docs), NOT
  * /ext/members/contact/?action=update (that path is for column/value member fields).
@@ -32,9 +37,16 @@ final class WaitingListIntake
         'last_name' => 'lastname',
     ];
 
+    /** Longest parent note accepted from WordPress (characters, after cleaning). */
+    public const PARENT_NOTE_MAX_LEN = 1000;
+    /** Who the note line is attributed to in the OSM Notes history. */
+    public const PARENT_NOTE_AUTHOR = 'Parent (website form)';
+    /** Pause before the note write; OSM can drop close writes to the same member (see WaitingListController). */
+    public const NOTE_WRITE_DELAY_US = 1200000;
+
     /**
-     * @param array<string, mixed> $payload member / member_details / contact1 / contact2
-     * @return array{scoutid: int}
+     * @param array<string, mixed> $payload member / member_details / contact1 / contact2 / parent_note
+     * @return array{scoutid: int, note_status: string, warnings: list<string>}
      */
     public static function submitWithSiteKey(string $siteKey, array $payload): array
     {
@@ -59,8 +71,13 @@ final class WaitingListIntake
         $api = new OsmApi();
         $token = self::accessTokenForRow($row, $api);
 
+        $noteTarget = null;
+        if (self::cleanParentNote($payload['parent_note'] ?? null) !== '') {
+            $noteTarget = self::noteTargetForSection($sectionId);
+        }
+
         try {
-            return self::createMember($api, $token, $sectionId, $payload, (int) $row['id']);
+            return self::createMember($api, $token, $sectionId, $payload, (int) $row['id'], $noteTarget);
         } catch (WaitingListIntakeException $e) {
             throw $e;
         } catch (Throwable $e) {
@@ -82,10 +99,19 @@ final class WaitingListIntake
 
     /**
      * @param array<string, mixed> $payload
-     * @return array{scoutid: int}
+     * @param array{group_id:string,column_id:string,label:string}|null $noteTarget mapped Notes field (null = none)
+     * @return array{scoutid: int, note_status: string, warnings: list<string>}
+     *   note_status: none (no note sent) | written | skipped (no Notes field mapped) | failed (OSM write failed)
      */
-    public static function createMember(OsmApi $api, string $token, string $sectionId, array $payload, int $siteKeyId): array
-    {
+    public static function createMember(
+        OsmApi $api,
+        string $token,
+        string $sectionId,
+        array $payload,
+        int $siteKeyId,
+        ?array $noteTarget = null,
+        int $noteDelayUs = self::NOTE_WRITE_DELAY_US
+    ): array {
         $member = $payload['member'];
         $body = [
             'firstname' => (string) $member['firstname'],
@@ -129,7 +155,135 @@ final class WaitingListIntake
             self::updateContact($api, $token, $sectionId, $scoutid, 2, $contact2, $siteKeyId, $step);
         }
 
-        return ['scoutid' => $scoutid];
+        // The member now exists with contacts. Everything below is best effort and never throws.
+        $note = self::cleanParentNote($payload['parent_note'] ?? null);
+        if ($note === '') {
+            return ['scoutid' => $scoutid, 'note_status' => 'none', 'warnings' => []];
+        }
+        $noteResult = self::writeParentNote($api, $token, $sectionId, $scoutid, $note, $noteTarget, $siteKeyId, $noteDelayUs);
+        return ['scoutid' => $scoutid] + $noteResult;
+    }
+
+    /**
+     * Clean a free-text parent note: plain text only (tags and control characters removed,
+     * line breaks kept as spaces later by WL::noteEntry), trimmed, capped at PARENT_NOTE_MAX_LEN.
+     */
+    public static function cleanParentNote(mixed $raw): string
+    {
+        if (!is_string($raw)) {
+            return '';
+        }
+        $s = str_replace(["\r\n", "\r"], "\n", $raw);
+        if (!mb_check_encoding($s, 'UTF-8')) {
+            $s = mb_convert_encoding($s, 'UTF-8', 'UTF-8');
+        }
+        $s = strip_tags($s);
+        // Drop control characters except newline and tab.
+        $s = (string) preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $s);
+        $s = trim($s);
+        if (mb_strlen($s) > self::PARENT_NOTE_MAX_LEN) {
+            $s = rtrim(mb_substr($s, 0, self::PARENT_NOTE_MAX_LEN));
+        }
+        return $s;
+    }
+
+    /**
+     * Value written to the Notes field, in the same history format the Rank & notes screen uses:
+     * `dd/mm/yy hh:mm - Parent (website form) - "note"` (Europe/London).
+     */
+    public static function composeParentNote(string $note, ?\DateTimeImmutable $now = null): string
+    {
+        return WaitingListService::composeNote(
+            $note,
+            self::PARENT_NOTE_AUTHOR,
+            '',
+            $now ?? new \DateTimeImmutable('now', new \DateTimeZone('UTC'))
+        );
+    }
+
+    /**
+     * The waiting list's mapped Notes field (OSM Helper → Waiting list → Rank & notes settings).
+     *
+     * @return array{group_id:string,column_id:string,label:string}|null
+     */
+    public static function noteTargetForSection(string $sectionId): ?array
+    {
+        try {
+            $map = WaitingFieldMapStore::findBySection($sectionId);
+        } catch (Throwable $e) {
+            error_log('OSMHelper waiting-list intake: could not load the Notes field mapping for section_id=' . $sectionId);
+            return null;
+        }
+        if (!is_array($map) || !ctype_digit((string) ($map['notes_column_id'] ?? ''))) {
+            return null;
+        }
+        $group = (string) ($map['field_group_id'] ?? '');
+        return [
+            'group_id' => ctype_digit($group) ? $group : WaitingListService::FIELD_GROUP_ID,
+            'column_id' => (string) $map['notes_column_id'],
+            'label' => (string) ($map['notes_label'] ?? ''),
+        ];
+    }
+
+    /**
+     * @param array{group_id:string,column_id:string,label:string}|null $target
+     * @return array{note_status: string, warnings: list<string>}
+     */
+    private static function writeParentNote(
+        OsmApi $api,
+        string $token,
+        string $sectionId,
+        int $scoutid,
+        string $note,
+        ?array $target,
+        int $siteKeyId,
+        int $delayUs
+    ): array {
+        if ($target === null) {
+            self::logStepFailure('update-parent-note:no-notes-field-mapped', $sectionId, $scoutid);
+            return [
+                'note_status' => 'skipped',
+                'warnings' => ['The child was added, but the parent note was not saved: no Notes field is chosen for this waiting list in OSM Helper (Waiting list → Rank & notes settings).'],
+            ];
+        }
+        if ($delayUs > 0) {
+            usleep($delayUs);
+        }
+        try {
+            $res = WaitingListService::writeColumn(
+                $api,
+                $token,
+                $sectionId,
+                (string) $scoutid,
+                $target['group_id'],
+                $target['column_id'],
+                self::composeParentNote($note)
+            );
+        } catch (Throwable $e) {
+            $res = ['ok' => false, 'message' => $e->getMessage()];
+        }
+        if (!empty($res['ok'])) {
+            return ['note_status' => 'written', 'warnings' => []];
+        }
+
+        $msg = (string) ($res['message'] ?? '');
+        if (str_contains($msg, 'X-Blocked') || str_contains($msg, 'OSM_BLOCKED')) {
+            // Honour the block for later submissions, but this member was already created.
+            try {
+                WordpressSiteKeyStore::markBlocked($siteKeyId, '1');
+            } catch (Throwable) {
+                // Logged below; the member write already succeeded.
+            }
+            self::logStepFailure('update-parent-note:blocked', $sectionId, $scoutid);
+        } elseif (str_contains($msg, '429')) {
+            self::logStepFailure('update-parent-note:rate-limited', $sectionId, $scoutid);
+        } else {
+            self::logStepFailure('update-parent-note', $sectionId, $scoutid);
+        }
+        return [
+            'note_status' => 'failed',
+            'warnings' => ['The child was added, but OSM did not accept the parent note. Add it by hand in OSM if needed.'],
+        ];
     }
 
     /**
@@ -335,6 +489,11 @@ final class WaitingListIntake
             || trim((string) ($c1['phone1'] ?? '')) === ''
         ) {
             throw new WaitingListIntakeException('Parent 1 details are incomplete.', 422);
+        }
+
+        $note = $payload['parent_note'] ?? null;
+        if ($note !== null && !is_string($note)) {
+            throw new WaitingListIntakeException('Parent note must be text.', 422);
         }
 
         $c2 = $payload['contact2'] ?? null;
