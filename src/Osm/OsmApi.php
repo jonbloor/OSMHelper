@@ -248,6 +248,10 @@ final class OsmApi
             } elseif ($status === 403) {
                 $kind = '403';
             }
+            if (OsmTokens::isNotLoggedInError($status, $osmCode, $osmMsg)) {
+                // Expired/revoked session token: renew it on the next page instead of failing every page.
+                OsmTokens::markRejected($accessToken);
+            }
             OsmErrorLog::log([
                 'method' => $method,
                 'endpoint' => $path,

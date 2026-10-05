@@ -2,10 +2,9 @@
 declare(strict_types=1);
 namespace App\Waiting;
 use App\Osm\OsmApi;
-use App\Osm\OsmOAuth;
+use App\Osm\OsmTokens;
 use App\Store\WaitingFieldMapStore;
 use App\Store\WordpressSiteKeyStore;
-use League\OAuth2\Client\Provider\Exception\IdentityProviderException;
 use Throwable;
 /**
  * Pass-through write: validated WordPress waiting-list payload → OSM member create.
@@ -454,37 +453,17 @@ final class WaitingListIntake
             );
         }
 
-        try {
-            $oauth = new OsmOAuth();
-            $token = $oauth->getProvider()->getAccessToken('refresh_token', [
-                'refresh_token' => $refresh,
-            ]);
-        } catch (IdentityProviderException $e) {
+        // Shared with the leader's session refresh (same lock, row re-read), so neither side spends a
+        // refresh token the other has already rotated. OSM retires the old refresh token on every refresh.
+        $renewed = OsmTokens::renewRow($row);
+        if ($renewed === null) {
             throw new WaitingListIntakeException(
                 'Could not refresh the OSM token. Sign in to OSM Helper and select Save on the WordPress joining form page (/wordpress-form/).',
-                503,
-                $e
-            );
-        } catch (Throwable $e) {
-            throw new WaitingListIntakeException(
-                'Could not refresh the OSM token. Sign in to OSM Helper and select Save on the WordPress joining form page (/wordpress-form/).',
-                503,
-                $e
+                503
             );
         }
-
-        $newAccess = $token->getToken();
-        $newRefresh = $token->getRefreshToken();
-        $newExpires = $token->getExpires();
-        WordpressSiteKeyStore::updateTokens(
-            (int) $row['id'],
-            $newAccess,
-            is_string($newRefresh) && $newRefresh !== '' ? $newRefresh : $refresh,
-            is_int($newExpires) && $newExpires > 0 ? $newExpires : null
-        );
-        // Touch OsmApi so rate-limit session state stays consistent if a session exists.
         unset($api);
-        return $newAccess;
+        return $renewed['access'];
     }
 
     /** @param array<string, mixed> $payload */
