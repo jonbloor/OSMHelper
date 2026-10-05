@@ -2,10 +2,10 @@
   "name": "OSM for WordPress (with OSM Helper waiting-list form)",
   "filename": "osm-for-wordpress.zip",
   "version": "1.0.1",
-  "commit": "6e16cc9",
+  "commit": "812cc78",
   "branch": "feature/waiting-list-form",
-  "built_at": "2026-10-05T10:12:09Z",
-  "size": 56858,
-  "sha256": "1e36b058be7a8b4e5c85678e2115056fb248249c3cbe336c544eb7ff29ccea29",
+  "built_at": "2026-10-05T10:17:23Z",
+  "size": 56917,
+  "sha256": "30375b95ff1e29fb47e5b898f17ac3e1a392f0e93e989f62874da5048a5be522",
   "files": 68
 }
