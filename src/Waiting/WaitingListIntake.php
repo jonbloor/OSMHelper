@@ -14,7 +14,7 @@ use Throwable;
  * OSM write sequence (form-urlencoded, never JSON):
  *  1. POST /ext/members/contact/actions/?action=newMember  → scoutid
  *  2. POST /ext/customdata/?action=update&section_id=S     → member details (group_id 6)
- *  3. POST /ext/customdata/?action=update&section_id=S     → primary contact 1 (group_id 1)
+ *  3. POST /ext/customdata/?action=update&section_id=S     → primary contact 1 (group_id 1, incl. optional phone1_sms=yes)
  *  4. optional same for contact 2 (group_id 2)
  *  5. optional parent note → the waiting list's mapped Notes custom field
  *     (POST /ext/customdata/?action=updateColumn, group 5 "customisable_data", column chosen by
@@ -324,6 +324,12 @@ final class WaitingListIntake
     /**
      * Normalise contact field keys to UK OSM varnames used by data[…].
      *
+     * Address: address1 (line 1), address2 (line 2), address3 (town), address4 (county), postcode
+     * (core columns 7–11; osm gem Osm::Member::Contact attribute map). Yes/no flags such as
+     * phone1_sms ("receive SMS" on phone 1, core column 19; data[phone1_sms]=yes in the Newcastle
+     * docs contact-update example and the osm gem) are sent only as "yes". Anything else is left
+     * unset: OSM shows a blank flag as "no", and "no"/"false" values are not documented.
+     *
      * @param array<string, mixed> $fields
      * @return array<string, string>
      */
@@ -341,9 +347,29 @@ final class WaitingListIntake
                 continue;
             }
             $canon = self::FIELD_ALIASES[$key] ?? $key;
+            if (self::isYesNoFlag($canon)) {
+                if (self::isTruthy($value)) {
+                    $out[$canon] = 'yes';
+                }
+                continue;
+            }
             $out[$canon] = (string) $value;
         }
         return $out;
+    }
+
+    /** OSM contact yes/no flags: phoneN_sms (receive texts), emailN_leaders (receive emails). */
+    public static function isYesNoFlag(string $key): bool
+    {
+        return (bool) preg_match('/^(phone\d+_sms|email\d+_leaders)$/', $key);
+    }
+
+    private static function isTruthy(mixed $value): bool
+    {
+        if ($value === true || $value === 1) {
+            return true;
+        }
+        return is_string($value) && in_array(strtolower(trim($value)), ['yes', 'y', '1', 'true', 'on'], true);
     }
 
     /** Path for bulk contact-detail updates (group_id 1/2/6). */

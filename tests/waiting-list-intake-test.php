@@ -327,5 +327,42 @@ expect_eq($body['note_status'], 'failed', 'successBody note_status');
 expect_eq(WaitingListSubmitController::successBody(['scoutid' => 5])['partial'], false, 'successBody not partial without note');
 expect_eq(WaitingListSubmitController::successBody(['scoutid' => 5, 'note_status' => 'written', 'warnings' => []])['partial'], false, 'successBody not partial when written');
 
+// --- Address order + receive-texts flag ---
+$addr = WaitingListIntake::buildContactUpdateForm(321, 6, [
+    'line_1' => '12 Market Street',
+    'line_2' => 'Packington',
+    'line_3' => 'Ashby-de-la-Zouch',
+    'line_4' => 'Leicestershire',
+    'postcode' => 'LE65 1AP',
+]);
+expect_eq($addr['data[address1]'] ?? null, '12 Market Street', 'line 1 → address1');
+expect_eq($addr['data[address2]'] ?? null, 'Packington', 'line 2 → address2');
+expect_eq($addr['data[address3]'] ?? null, 'Ashby-de-la-Zouch', 'town → address3');
+expect_eq($addr['data[address4]'] ?? null, 'Leicestershire', 'county → address4');
+expect_eq($addr['data[postcode]'] ?? null, 'LE65 1AP', 'postcode → postcode');
+expect_true(!isset($addr['data[address5]']), 'no address5 key');
+
+$sms = WaitingListIntake::buildContactUpdateForm(321, 1, ['firstname' => 'A', 'phone1' => '07700900123', 'phone1_sms' => 'yes']);
+expect_eq($sms['data[phone1_sms]'] ?? null, 'yes', 'phone1_sms yes passed through');
+foreach ([true, '1', 'on', 'YES', 'true'] as $truthy) {
+    expect_eq(WaitingListIntake::normalizeContactFields(['phone1_sms' => $truthy])['phone1_sms'] ?? null, 'yes', 'phone1_sms truthy ' . var_export($truthy, true) . ' → yes');
+}
+foreach (['no', '0', false, 'false', 'nonsense'] as $falsy) {
+    expect_true(!isset(WaitingListIntake::normalizeContactFields(['phone1_sms' => $falsy])['phone1_sms']), 'phone1_sms ' . var_export($falsy, true) . ' left unset');
+}
+expect_true(WaitingListIntake::isYesNoFlag('phone2_sms') && WaitingListIntake::isYesNoFlag('email1_leaders') && !WaitingListIntake::isYesNoFlag('phone1'), 'flag detection');
+
+// Full flow: SMS flag rides in the contact 1 write (no extra OSM call).
+$h = [];
+$smsPayload = $payload;
+$smsPayload['contact1']['phone1_sms'] = 'yes';
+$r = WaitingListIntake::createMember(mock_api(ok_responses(), $h), 'tok', '60830', $smsPayload, 1, null, 0);
+expect_eq(count($h), 3, 'SMS flag adds no extra OSM call');
+$c1body = urldecode((string) $h[2]['request']->getBody());
+expect_true(str_contains($c1body, 'group_id=1') && str_contains($c1body, 'data[phone1_sms]=yes'), 'contact 1 write carries data[phone1_sms]=yes');
+$h = [];
+WaitingListIntake::createMember(mock_api(ok_responses(), $h), 'tok', '60830', $payload, 1, null, 0);
+expect_true(!str_contains(urldecode((string) $h[2]['request']->getBody()), 'phone1_sms'), 'unticked → phone1_sms not sent');
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);
