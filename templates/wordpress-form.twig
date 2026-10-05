@@ -1,0 +1,161 @@
+{% extends 'layout.twig' %}
+{% block body %}
+<div class="card help-page wpf-page">
+  <h2>WordPress joining form</h2>
+  <p class="lede">Put a “join our waiting list” form on your group’s WordPress website. When a parent sends it, OSM Helper adds the child straight to your OSM waiting list, using your OSM login. Parents never sign in to OSM, and your group doesn’t need its own OSM app or API keys.</p>
+
+  {% if wpFlash %}
+    <div class="alert{% if wpFlash.type == 'error' %} alert-error{% endif %}" role="status">{{ wpFlash.message }}</div>
+  {% endif %}
+
+  <dl class="meta wpf-status">
+    <dt>Plugin</dt>
+    <dd>{% if plugin.available %}Version {{ plugin.version ?: 'unknown' }}{% if plugin.builtAtText %}, built {{ plugin.builtAtText }}{% endif %}{% else %}Not available right now{% endif %}</dd>
+    <dt>Waiting list</dt>
+    <dd>{% if wpSectionId %}{{ wpSectionName ?: ('Section ' ~ wpSectionId) }}{% else %}Not chosen yet (step 2){% endif %}</dd>
+    <dt>Site key</dt>
+    <dd>{% if wpSiteKey %}Created{% else %}Not created yet (step 2){% endif %}</dd>
+    <dt>Notes field</dt>
+    <dd>{% if not wpSectionId %}Choose a waiting list first{% elseif notesLabel %}{{ notesLabel }}{% else %}Not chosen, so parent notes won’t be saved (step 4){% endif %}</dd>
+    {% if wpBlocked %}<dt>Status</dt><dd><span class="badge-warn">Stopped: OSM blocked a write</span> (see step 2)</dd>{% endif %}
+  </dl>
+  <p class="rm-jump muted">Jump to: <a href="#download">1. Download</a> · <a href="#connect">2. Site key</a> · <a href="#wordpress">3. WordPress</a> · <a href="#notes">4. Notes field</a> · <a href="#options">Options</a> · <a href="#osm">What goes into OSM</a> · <a href="#troubleshooting">Troubleshooting</a></p>
+
+  <section class="help-section" id="download">
+    <h3>1. Download the plugin</h3>
+    {% if plugin.available %}
+      <p><a class="btn" href="/wordpress-form/download/" download>Download plugin ({{ plugin.filename }}{% if plugin.sizeText %}, {{ plugin.sizeText }}{% endif %})</a></p>
+      <p class="muted">Version {{ plugin.version ?: 'unknown' }}{% if plugin.commit %} (build {{ plugin.commit }}){% endif %}{% if plugin.builtAtText %}, {{ plugin.builtAtText }}{% endif %}. It’s the OSM for WordPress plugin with the OSM Helper waiting-list form added. Keep the zip as it is; don’t unzip it.</p>
+      {% if plugin.sha256 %}<p class="muted wpf-hash">SHA-256: <code>{{ plugin.sha256 }}</code></p>{% endif %}
+    {% else %}
+      <p class="alert alert-error">The plugin download isn’t available right now. Email <a href="mailto:hello@jonbloor.co.uk">hello@jonbloor.co.uk</a>.</p>
+    {% endif %}
+  </section>
+
+  <section class="help-section" id="connect">
+    <h3>2. Choose your waiting list and create a site key</h3>
+    <p>Choose the OSM waiting list that new children should go into, then save. OSM Helper creates a <strong>site key</strong>: a long password that lets your website (and only your website) send forms to OSM Helper. The forms are written to OSM with <strong>your</strong> OSM login, so you need to be able to see this waiting list in OSM.</p>
+    {% if wpBlocked %}
+      <div class="alert alert-error">
+        <p>OSM refused a write from the form and sent a “blocked” reply, so OSM Helper has stopped sending forms to OSM. Parents see an error until this is cleared. Check your OSM account and the waiting list first, then clear the block.</p>
+        <form method="post" action="/wordpress-form/save/">
+          {% include '_csrf.twig' %}
+          <input type="hidden" name="wp_action" value="clear_block">
+          <button class="btn btn-danger" type="submit">Clear the OSM block</button>
+        </form>
+      </div>
+    {% endif %}
+    <form method="post" action="/wordpress-form/save/">
+      {% include '_csrf.twig' %}
+      <input type="hidden" name="wp_action" value="save">
+      <label>Waiting list
+        <select name="waiting_list_section_id" required>
+          <option value="">— choose your OSM waiting list —</option>
+          {% for l in waitingLists %}
+            <option value="{{ l.id }}" {% if wpSectionId == l.id %}selected{% endif %}>{{ l.name }}{% if l.groupName %} ({{ l.groupName }}){% endif %} — id {{ l.id }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% if waitingLists is empty %}
+        <p class="muted">No waiting list found for your login. Check in OSM that you can see your group’s waiting list, then sign out and sign in again.</p>
+      {% endif %}
+      {% if wpSiteKey %}
+        <label>Site key (copy this into WordPress)
+          <input type="text" readonly value="{{ wpSiteKey }}" onclick="this.select();" class="mono" aria-label="WordPress site key">
+        </label>
+        <p class="muted">Treat it like a password. Anyone with it can add children to your waiting list. If it gets out, use <strong>Save and make a new site key</strong>; the old one stops working straight away.</p>
+      {% else %}
+        <p class="muted">Select <strong>Save</strong> to create your site key. It will appear here to copy.</p>
+      {% endif %}
+      <p class="row">
+        <button class="btn" type="submit">Save</button>
+        {% if wpSiteKey %}<button class="btn btn-secondary" type="submit" name="regenerate_key" value="1">Save and make a new site key</button>{% endif %}
+      </p>
+      <p class="muted">Saving also refreshes the OSM sign-in the form uses. If the form ever says the OSM sign-in has expired, come back here, sign in and select Save again.</p>
+    </form>
+    {% if wpSiteKey %}
+    <form method="post" action="/wordpress-form/save/" onsubmit="return confirm('Remove the site key? The form on your website will stop working until you create a new key.');">
+      {% include '_csrf.twig' %}
+      <input type="hidden" name="wp_action" value="disable">
+      <button class="btn btn-danger btn-small" type="submit">Turn off the form (remove site key)</button>
+    </form>
+    {% endif %}
+  </section>
+
+  <section class="help-section" id="wordpress">
+    <h3>3. Set up WordPress</h3>
+    <ol>
+      <li>In WordPress, go to <strong>Plugins → Add New → Upload Plugin</strong>, choose the zip you downloaded and select <strong>Install Now</strong>. If an older copy is installed, WordPress asks whether to replace it: choose <strong>Replace current with uploaded</strong>. Your settings are kept.</li>
+      <li>Select <strong>Activate Plugin</strong>.</li>
+      <li>Open <strong>OSM Settings</strong> in the WordPress menu, then the <strong>Waiting List</strong> tab.</li>
+      <li>In <strong>OSM Helper base URL</strong>, put <code>{{ wpBaseUrl }}</code> (it must start with https; a slash on the end doesn’t matter).</li>
+      <li>In <strong>OSM Helper site key</strong>, paste the site key from step 2. Then save the settings.</li>
+      <li>Create or edit a page (for example “Join us”) and add the shortcode <code>[osm_waiting_list]</code> where the form should go. Publish the page.</li>
+      <li>Open the page as a visitor would and check the form shows. When you’re ready, send one real entry and check the child appears in your OSM waiting list.</li>
+    </ol>
+    <p class="muted">You don’t need an OSM client ID or secret in WordPress, and you don’t need to “Connect with OSM” there. The waiting list is chosen here in OSM Helper, not in WordPress.</p>
+  </section>
+
+  <section class="help-section" id="notes">
+    <h3>4. Choose where parent notes go</h3>
+    <p>The form has an optional “Anything else we should know?” box. OSM Helper saves it to the waiting list’s <strong>Notes</strong> field, the same field leaders use on the Rank &amp; notes page, as a dated line such as <code>05/10/26 10:30 - Parent (website form) - "Sibling already in Beavers"</code>. Earlier notes are kept.</p>
+    <p>{% if not wpSectionId %}Choose your waiting list in step 2 first.{% elseif notesLabel %}Notes go into <strong>{{ notesLabel }}</strong>.{% else %}No Notes field is chosen for this waiting list yet. The child is still added, but the parent’s note isn’t saved.{% endif %}
+      <a href="/waiting-list/fields/{% if wpSectionId %}?section={{ wpSectionId }}{% endif %}">Waiting list → Rank &amp; notes settings</a></p>
+  </section>
+
+  <section class="help-section" id="options">
+    <h3>Options in WordPress (all optional)</h3>
+    <p>These are all on the same <strong>OSM Settings → Waiting List</strong> tab.</p>
+    <ul>
+      <li><strong>Spam protection:</strong> the form always has a hidden spam trap and a limit on how often one address can send it. You can add <strong>Google reCAPTCHA</strong> (the “I’m not a robot” tick box) or <strong>Cloudflare Turnstile</strong>. Each needs a site key and secret key from Google or Cloudflare, set up for your website’s address.</li>
+      <li><strong>Confirmation email:</strong> on by default. After the child is added to OSM, WordPress emails parent 1 (and parent 2 if you choose) a receipt. Set your group name, the From name and a <strong>Reply-to email</strong> (for example your waiting-list secretary), so replies don’t go to the website’s address. You can change the subject and message; placeholders such as <code>{child_first_name}</code>, <code>{parent_note}</code> and <code>{receive_texts}</code> are listed there. No email is sent if adding to OSM failed. If emails don’t arrive, install an SMTP plugin in WordPress.</li>
+      <li><strong>Address lookup:</strong> manual typing always works. You can turn on one of:
+        <ul>
+          <li><strong>Google address search:</strong> parents start typing and pick their address, and the address boxes are filled in. You need a Google Maps API key with <strong>Places API (New)</strong> turned on. Google asks for billing details on the account, but there’s a monthly free allowance that normally covers a group waiting list; set a budget alert to be safe. Restrict the key to your website’s address.</li>
+          <li><strong>postcodes.io postcode check:</strong> free, with no key or account. It checks the postcode is real, tidies it, and fills in the town and county if they’re empty. It can’t list house addresses, so parents still type the first line.</li>
+        </ul>
+      </li>
+      <li><strong>Text messages:</strong> each parent can tick “Receive text messages from Leaders?”. Nothing to set up.</li>
+    </ul>
+  </section>
+
+  <section class="help-section" id="osm">
+    <h3>What goes into OSM</h3>
+    <ul>
+      <li>The child’s name and date of birth, added to the waiting list you chose, with today’s date as the date they joined the list.</li>
+      <li>Home address: address line 1, line 2, town, county and postcode, on the child’s own details.</li>
+      <li>Parent 1 (and parent 2 if given): name, email and phone, as Primary Contact 1 and 2. A ticked “Receive text messages from Leaders?” box turns on OSM’s receive-texts setting for that parent’s phone.</li>
+      <li>The parent’s note, if any, in your chosen Notes field.</li>
+    </ul>
+    <p class="muted">OSM Helper passes each form straight to OSM and doesn’t keep a copy, and WordPress doesn’t store the form either. To do this, OSM Helper keeps your OSM sign-in for the form (not your password) on its server until you turn the form off. If you lose access to the waiting list in OSM, the form stops working; another leader can sign in here and set it up with their own login.</p>
+  </section>
+
+  <section class="help-section" id="troubleshooting">
+    <h3>Troubleshooting</h3>
+    <p>When something goes wrong, parents see “Sorry, we could not add your child to the waiting list right now”. The reason is written to your WordPress error log (ask your web host where to find it) on a line starting <code>OSM waiting list submission failed:</code>. No personal details are logged.</p>
+    <dl class="wpf-faq">
+      <dt>“Invalid site key”, “Missing site key” or “site key is not configured”</dt>
+      <dd>Copy the key again from step 2 and paste it into WordPress with no spaces before or after. If you selected “make a new site key” or turned the form off, the old key no longer works.</dd>
+      <dt>“OSM Helper request failed”, or the base URL won’t save</dt>
+      <dd>Check the base URL in WordPress is exactly <code>{{ wpBaseUrl }}</code>. It must start with https. A slash on the end is fine, and pasting the full address <code>{{ wpEndpoint }}</code> also works. If your web host blocks outgoing connections, ask them to allow osmhelper.co.uk.</dd>
+      <dt>“OSM token expired” or “Could not refresh the OSM token”</dt>
+      <dd>Sign in to OSM Helper, open this page and select <strong>Save</strong> in step 2. This can happen if OSM Helper’s access is removed in OSM, or after a long time without any forms.</dd>
+      <dt>“OSM blocked this application”</dt>
+      <dd>If OSM ever replies that it has blocked a request, OSM Helper stops sending forms until you clear the block in step 2. Find the cause first (for example your OSM account’s access to the waiting list), then clear it.</dd>
+      <dt>“rate limiting (HTTP 429)”</dt>
+      <dd>OSM limits how many requests one login can make in an hour, and your own use of OSM Helper counts too. The parent is asked to try again later. OSM Helper doesn’t retry by itself.</dd>
+      <dt>“Waiting list section is not configured”</dt>
+      <dd>Choose a waiting list and select Save in step 2.</dd>
+      <dt>The child was added, but the note wasn’t saved</dt>
+      <dd>Choose a Notes field in step 4. The parent sees a message asking them to send the note another way.</dd>
+      <dt>The child isn’t in the list I expected</dt>
+      <dd>Check which waiting list is chosen in step 2. Each leader’s site key goes to the waiting list they chose.</dd>
+      <dt>No confirmation emails</dt>
+      <dd>WordPress often can’t send email reliably on its own. Install an SMTP plugin, and set a Reply-to address.</dd>
+      <dt>The address search doesn’t appear</dt>
+      <dd>Check the Google key has Places API (New) turned on, billing is set up, and the key allows your website’s address. Until then, parents can still type the address.</dd>
+    </dl>
+    <p>Still stuck? Email <a href="mailto:hello@jonbloor.co.uk">hello@jonbloor.co.uk</a>.</p>
+  </section>
+</div>
+{% endblock %}

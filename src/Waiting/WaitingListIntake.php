@@ -56,7 +56,7 @@ final class WaitingListIntake
         }
         if (!empty($row['blocked_at'])) {
             throw new WaitingListIntakeException(
-                'OSM blocked this application (X-Blocked). Sign in to OSM Helper, clear the WordPress waiting-list block in Settings after fixing the cause, then retry.',
+                'OSM blocked this application (X-Blocked). Sign in to OSM Helper, fix the cause, then clear the block on the WordPress joining form page (/wordpress-form/).',
                 503
             );
         }
@@ -449,7 +449,7 @@ final class WaitingListIntake
         $refresh = isset($row['refresh_token']) && is_string($row['refresh_token']) ? $row['refresh_token'] : '';
         if ($refresh === '') {
             throw new WaitingListIntakeException(
-                'OSM token expired. Sign in to OSM Helper and save WordPress waiting-list settings again.',
+                'OSM token expired. Sign in to OSM Helper and select Save on the WordPress joining form page (/wordpress-form/).',
                 503
             );
         }
@@ -461,13 +461,13 @@ final class WaitingListIntake
             ]);
         } catch (IdentityProviderException $e) {
             throw new WaitingListIntakeException(
-                'Could not refresh the OSM token. Sign in to OSM Helper and save WordPress waiting-list settings again.',
+                'Could not refresh the OSM token. Sign in to OSM Helper and select Save on the WordPress joining form page (/wordpress-form/).',
                 503,
                 $e
             );
         } catch (Throwable $e) {
             throw new WaitingListIntakeException(
-                'Could not refresh the OSM token. Sign in to OSM Helper and save WordPress waiting-list settings again.',
+                'Could not refresh the OSM token. Sign in to OSM Helper and select Save on the WordPress joining form page (/wordpress-form/).',
                 503,
                 $e
             );
@@ -550,7 +550,7 @@ final class WaitingListIntake
         if (str_contains($msg, 'X-Blocked') || str_contains($msg, 'OSM_BLOCKED')) {
             WordpressSiteKeyStore::markBlocked($siteKeyId, '1');
             throw new WaitingListIntakeException(
-                'OSM blocked this application (X-Blocked). Further OSM writes are stopped until a leader clears the block in OSM Helper Settings.',
+                'OSM blocked this application (X-Blocked). Further OSM writes are stopped until a leader clears the block on the OSM Helper WordPress joining form page (/wordpress-form/).',
                 503,
                 $e
             );

@@ -98,6 +98,21 @@
       <p>The score is worked out in OSMHelper each time the page loads and is never saved to OSM. <strong>#</strong> is the applicant’s position by score. <strong>Rank</strong> is your leaders’ own decision and can differ from the score order, for example to keep siblings together.</p>
     </section>
 
+    <section class="help-section" id="wordpress-form">
+      <h3>WordPress joining form</h3>
+      <p>If your group website uses WordPress, you can add a “join our waiting list” form to it. When a parent sends the form, OSMHelper adds the child straight to your OSM waiting list using <strong>your</strong> OSM login. Parents don’t need an OSM login, and your group doesn’t need to set up its own OSM app or API keys.</p>
+      <p>Everything you need is under <strong>Members → Joining form</strong> once you’re signed in: the plugin download, your site key, step-by-step setup and troubleshooting. In short:</p>
+      <ol>
+        <li>Download the plugin from the Joining form page and install the zip in WordPress (<strong>Plugins → Add New → Upload Plugin</strong>), then activate it.</li>
+        <li>On the Joining form page, choose your OSM waiting list and select Save to create a site key.</li>
+        <li>In WordPress, open <strong>OSM Settings → Waiting List</strong>, enter <code>https://osmhelper.co.uk</code> as the OSM Helper base URL and paste the site key.</li>
+        <li>Add <code>[osm_waiting_list]</code> to a page and publish it.</li>
+      </ol>
+      <p>The form asks for the child’s name, date of birth and home address (address line 1, line 2, town, county, postcode), and up to two parents’ names, emails and phone numbers. Each parent can tick “Receive text messages from Leaders?”, which turns on OSM’s receive-texts setting for their phone. There’s an optional note box; the note is saved to the Notes field you chose under <a href="#waiting-rank">Rank and notes</a>, stamped “Parent (website form)”.</p>
+      <p>In WordPress you can also turn on a confirmation email to the parents (with your own reply-to address), Google reCAPTCHA or Cloudflare Turnstile against spam, and an address lookup: Google address search (needs a Google key) or a free postcode check with postcodes.io.</p>
+      <p>OSMHelper passes each form straight to OSM and doesn’t keep a copy. To do that, it keeps your OSM sign-in for the form (not your password) on the server until you turn the form off on the Joining form page.</p>
+    </section>
+
     <section class="help-section" id="top-awards">
       <h3>Top awards</h3>
       <p>Under <strong>Badges → Top awards</strong>: pick one youth section (Beavers / Cubs / Scouts / Explorers), then calculate. Counts activity and staged badges since each member joined the section, then proposes Chief Scout Bronze (Beavers, /4), Silver (Cubs, /6) or Gold (Scouts, /6) progress — incomplete as <code>x n/T dd-Mon-yy</code>, complete as <code>n/T dd-Mon-yy</code> (UK date at write time; “needs update” compares the count only, not the date). Review current vs proposed, export a copy, tick saved, then confirm. Tick rows or use <strong>Write this one</strong> for selective updates. Scouts Gold uses known badge 1539 / requirement 114339; Beavers Bronze badge 1529 (progress requirement locked from OSM records); Cubs Silver still discovered until its badge id is confirmed. Writes use <code>updateSingleRecord</code> only (fail-fast). Requires <code>section:badge:write</code> — re-login after scope changes. Results cache ~2 hours; Refresh uses quota. API failures land in a redacted server log; signed-in Home shows the latest few.</p>
@@ -119,7 +134,7 @@
 
     <section class="help-section" id="settings">
       <h3>Settings</h3>
-      <p>Age cutoffs, capacity per section, which section Equipment uses, which section Bank uses, and a named <strong>Equipment locations</strong> list (add, edit, reorder, remove). Saves on this server (not only in your browser session) so they stick after logout. Locations power the Equipment bulk-move destination list.</p>
+      <p>Age cutoffs, capacity per section, which section Equipment uses, which section Bank uses, and a named <strong>Equipment locations</strong> list (add, edit, reorder, remove). Saves on this server (not only in your browser session) so they stick after logout. Locations power the Equipment bulk-move destination list. The WordPress joining form has its own page, <strong>Members → Joining form</strong>; Settings links to it.</p>
     </section>
 
     <section class="help-section" id="rate-limit">

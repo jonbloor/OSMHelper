@@ -8,7 +8,6 @@ use App\Http\Auth;
 use App\Osm\OsmApi;
 use App\Store\SettingsStore;
 use App\Store\WordpressSiteKeyStore;
-use App\Waiting\WaitingListService as WL;
 use Throwable;
 final class SettingsController
 {
@@ -64,11 +63,8 @@ final class SettingsController
             }
         }
 
-        $waitingLists = WL::discoverLists($sections)['lists'];
         $osmUserId = (string) ($_SESSION['osmUserId'] ?? '');
         $wpRow = $osmUserId !== '' ? WordpressSiteKeyStore::findByOsmUserId($osmUserId) : null;
-        $wpFlash = $_SESSION['wp_waiting_flash'] ?? null;
-        unset($_SESSION['wp_waiting_flash']);
 
         App::render('settings.twig', Auth::baseContext([
             'title' => 'Settings',
@@ -81,12 +77,9 @@ final class SettingsController
             'financeSectionType' => $financeSectionType,
             'equipmentLocations' => $equipmentLocations,
             'saved' => !empty($saved),
-            'waitingLists' => $waitingLists,
-            'wpSiteKey' => is_array($wpRow) ? (string) ($wpRow['site_key'] ?? '') : '',
-            'wpSectionId' => is_array($wpRow) ? (string) ($wpRow['section_id'] ?? '') : '',
+            'wpConfigured' => is_array($wpRow) && (string) ($wpRow['site_key'] ?? '') !== '',
+            'wpSectionName' => is_array($wpRow) ? (string) ($wpRow['section_name'] ?? '') : '',
             'wpBlocked' => is_array($wpRow) && !empty($wpRow['blocked_at']),
-            'wpFlash' => is_array($wpFlash) ? $wpFlash : null,
-            'wpEndpoint' => 'https://osmhelper.co.uk/api/waiting-list/submit',
         ]));
     }
 
@@ -184,98 +177,10 @@ final class SettingsController
     }
 
 
+    /** Old route kept working: the WordPress form settings now live on /wordpress-form/. */
     public function updateWordpressWaitingList(): void
     {
-        $token = Auth::requireLogin();
-        Csrf::requireValid();
-        $osmUserId = (string) ($_SESSION['osmUserId'] ?? '');
-        if ($osmUserId === '') {
-            $_SESSION['wp_waiting_flash'] = ['type' => 'error', 'message' => 'Could not identify your OSM user. Sign out and sign in again.'];
-            header('Location: /settings/');
-            exit;
-        }
-
-        $action = (string) ($_POST['wp_action'] ?? 'save');
-        if ($action === 'disable') {
-            WordpressSiteKeyStore::deleteForUser($osmUserId);
-            $_SESSION['wp_waiting_flash'] = ['type' => 'success', 'message' => 'WordPress waiting-list site key removed.'];
-            header('Location: /settings/');
-            exit;
-        }
-        if ($action === 'clear_block') {
-            $row = WordpressSiteKeyStore::findByOsmUserId($osmUserId);
-            if ($row !== null) {
-                WordpressSiteKeyStore::clearBlocked((int) $row['id']);
-            }
-            $_SESSION['wp_waiting_flash'] = ['type' => 'success', 'message' => 'WordPress waiting-list OSM block cleared. Fix the cause before accepting new form submissions.'];
-            header('Location: /settings/');
-            exit;
-        }
-
-        $sectionId = trim((string) ($_POST['waiting_list_section_id'] ?? ''));
-        if ($sectionId === '' || !ctype_digit($sectionId)) {
-            $_SESSION['wp_waiting_flash'] = ['type' => 'error', 'message' => 'Choose a waiting-list section.'];
-            header('Location: /settings/');
-            exit;
-        }
-
-        $api = new OsmApi();
-        try {
-            $sections = $api->getDynamicSections($token);
-        } catch (Throwable) {
-            $sections = [];
-        }
-        $lists = WL::discoverLists($sections)['lists'];
-        $sectionName = '';
-        $allowed = false;
-        foreach ($lists as $list) {
-            if ($list['id'] === $sectionId) {
-                $allowed = true;
-                $sectionName = (string) ($list['name'] ?? '');
-                break;
-            }
-        }
-        if (!$allowed) {
-            $_SESSION['wp_waiting_flash'] = ['type' => 'error', 'message' => 'That waiting list is not one this login can see.'];
-            header('Location: /settings/');
-            exit;
-        }
-
-        $access = (string) ($_SESSION['accessToken'] ?? '');
-        if ($access === '') {
-            $_SESSION['wp_waiting_flash'] = ['type' => 'error', 'message' => 'Missing OSM access token. Sign in again.'];
-            header('Location: /settings/');
-            exit;
-        }
-        $refresh = isset($_SESSION['refreshToken']) && is_string($_SESSION['refreshToken']) ? $_SESSION['refreshToken'] : null;
-        $expires = isset($_SESSION['accessTokenExpiresAt']) && is_numeric($_SESSION['accessTokenExpiresAt'])
-            ? (int) $_SESSION['accessTokenExpiresAt']
-            : null;
-        $regenerate = $action === 'regenerate' || !empty($_POST['regenerate_key']);
-
-        try {
-            $saved = WordpressSiteKeyStore::upsertForUser(
-                $osmUserId,
-                $sectionId,
-                $sectionName,
-                $access,
-                $refresh,
-                $expires,
-                $regenerate
-            );
-        } catch (Throwable $e) {
-            error_log('OSMHelper WordPress site key save failed: ' . $e->getMessage());
-            $_SESSION['wp_waiting_flash'] = ['type' => 'error', 'message' => 'Could not save the WordPress site key.'];
-            header('Location: /settings/');
-            exit;
-        }
-
-        $msg = $saved['regenerated']
-            ? 'WordPress site key created. Copy it into your WordPress plugin settings now.'
-            : 'WordPress waiting-list settings saved. OSM token refreshed for intake.';
-        $_SESSION['wp_waiting_flash'] = ['type' => 'success', 'message' => $msg];
-        header('Location: /settings/');
-        exit;
+        (new WordpressFormController())->save();
     }
 
     /**

@@ -56,12 +56,12 @@
   <section class="home-hero" aria-labelledby="home-hero-h">
     <div class="home-hero-text">
       <h2 id="home-hero-h">Waiting list, badges and kit, sorted from your OSM data</h2>
-      <p class="home-subline">OSMHelper signs in to Online Scout Manager with your own login and puts the jobs that take ages in OSM onto one page each: agreeing who gets the next place, working out top awards, counting nights away, and tidying equipment.</p>
+      <p class="home-subline">OSMHelper signs in to Online Scout Manager with your own login and puts the jobs that take ages in OSM onto one page each: agreeing who gets the next place, working out top awards, counting nights away, and tidying equipment. It can also put a joining form on your WordPress website that adds children straight to your OSM waiting list.</p>
       <p class="home-actions">
         <a class="btn" href="/auth/">Connect with OSM</a>
         <a class="btn-link" href="/help/">Read the guide first</a>
       </p>
-      <p class="home-oauth-note">You'll be sent to OSM to give permission. OSMHelper keeps your OSM access token in the server session only, and fetches member data fresh from OSM each time you open a page.</p>
+      <p class="home-oauth-note">You'll be sent to OSM to give permission. OSMHelper keeps your OSM access token in the server session only (unless you turn on the WordPress joining form), and fetches member data fresh from OSM each time you open a page.</p>
     </div>
     <div class="home-hero-media">
       {{ home.shot('waiting-list', 1600, 880, "OSMHelper waiting list showing fictional applicants with age, days waiting, suggested section and a score, with one score's working shown: age 10.9 times 3 equals 32.7, plus 29.2 months, plus 20 for willing to help, equals 81.9.", 'The waiting list, with the working behind each score. Made-up names.', true) }}
@@ -103,6 +103,19 @@
     </div>
   </section>
 
+  <section class="home-feature home-feature--text" aria-labelledby="home-f-wp">
+    <div class="home-feature-text">
+      <h3 id="home-f-wp">A joining form on your WordPress website</h3>
+      <p>Parents fill in a waiting-list form on your group's own website, and OSMHelper adds the child straight to your OSM waiting list using your OSM login. Parents don't need an OSM login, and your group doesn't need to set up its own OSM app or API keys. You install a WordPress plugin, paste in a site key, and add the form to a page.</p>
+      <ul>
+        <li>Child's details, home address and up to two parents, saved as Primary Contacts in OSM</li>
+        <li>Each parent can choose to receive text messages from leaders</li>
+        <li>An optional note from the parent, added to your waiting list notes with the date</li>
+        <li>A confirmation email to parents, address lookup by postcode or Google, and optional captcha against spam</li>
+      </ul>
+    </div>
+  </section>
+
   <section class="home-feature" aria-labelledby="home-f-badges">
     <div class="home-feature-text">
       <h3 id="home-f-badges">Top awards and nights away without the spreadsheet</h3>
@@ -132,6 +145,7 @@
     <dl>
       <div><dt>Members:</dt> <dd>youth members and young leaders across your sections, filtered by section, with ages filled in from OSM.</dd></div>
       <div><dt>Checks:</dt> <dd>young people in more than one section, plus Young Leader and leader checks, marked OK or needing a look.</dd></div>
+      <div><dt>Joining form:</dt> <dd>a waiting-list form for your WordPress website that adds children to OSM. See above.</dd></div>
       <div><dt>Settings:</dt> <dd>age cut-offs, section capacity, which sections hold your kit and your accounts, and your list of kit locations.</dd></div>
       <div><dt>Tables:</dt> <dd>most tables can be sorted, searched and exported as CSV, Excel or PDF.</dd></div>
     </dl>
@@ -155,6 +169,7 @@
           {# Final wording from Jason, 28 Sep. True because Top awards caches are deleted after 2 hours
              and at logout, debug dumps are off by default, and osm-errors.jsonl redacts personal details. #}
           <li>Keep copies of member data. Your OSM access token is held only in the server session, and each page fetches fresh data from OSM when you open it. The only things saved on our server are your group settings: age cut-offs, capacity, kit locations and your chosen waiting list fields. We also keep a short error log to fix problems, with personal details removed.</li>
+          <li>Keep the forms parents send. If you use the WordPress joining form, each form is passed straight to OSM and not kept. To do that, OSMHelper keeps your OSM sign-in for the form (not your password) on the server until you turn the form off.</li>
           <li>Change your bank accounts. Finance pages are read-only.</li>
         </ul>
       </div>
@@ -171,6 +186,10 @@
     <details>
       <summary>Will it change anything in OSM without asking?</summary>
       <p>No. Waiting list ranks and notes, top awards and equipment moves all show you what will change first. Nothing is saved until you confirm.</p>
+    </details>
+    <details>
+      <summary>Can parents join our waiting list from our website?</summary>
+      <p>Yes, if your website uses WordPress. Install the OSMHelper joining form plugin, choose your OSM waiting list in OSMHelper, and add the form to a page. Each form goes straight into your OSM waiting list. The <a href="/help/#wordpress-form">Help</a> guide explains the steps.</p>
     </details>
     <details>
       <summary>Does it cost anything?</summary>

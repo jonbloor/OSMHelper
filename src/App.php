@@ -16,6 +16,7 @@ use App\Http\Controllers\NightsAwayController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\TopAwardsController;
 use App\Http\Controllers\WaitingListController;
+use App\Http\Controllers\WordpressFormController;
 use App\Http\Controllers\Api\WaitingListSubmitController;
 use App\Http\Router;
 use Dotenv\Dotenv;
@@ -53,6 +54,7 @@ final class App
         $topAwards = new TopAwardsController();
         $nightsAway = new NightsAwayController();
         $wlApi = new WaitingListSubmitController();
+        $wpForm = new WordpressFormController();
 
         $router->get('/', [$home, 'index']);
         $router->get('/auth', [$auth, 'redirectToOsm']);
@@ -69,6 +71,9 @@ final class App
         $router->post('/waiting-list/review', [$wl, 'review']);
         $router->post('/waiting-list/apply', [$wl, 'apply']);
         $router->post('/api/waiting-list/submit', [$wlApi, 'submit']);
+        $router->get('/wordpress-form', [$wpForm, 'index']);
+        $router->get('/wordpress-form/download', [$wpForm, 'download']);
+        $router->post('/wordpress-form/save', [$wpForm, 'save']);
         $router->get('/members', [$mem, 'index']);
         $router->get('/member-checks', [$mem, 'checks']);
         $router->get('/nights-away', [$nightsAway, 'index']);
@@ -88,7 +93,8 @@ final class App
         $router->post('/settings/update-sections', [$set, 'updateSections']);
         $router->post('/settings/update-tool-sections', [$set, 'updateToolSections']);
         $router->post('/settings/update-equipment-locations', [$set, 'updateEquipmentLocations']);
-        $router->post('/settings/update-wordpress-waiting-list', [$set, 'updateWordpressWaitingList']);
+        // Old form target (before the WordPress form page existed); same handler, redirects to /wordpress-form/.
+        $router->post('/settings/update-wordpress-waiting-list', [$wpForm, 'save']);
 
         $router->setNotFound(static function (): void {
             http_response_code(404);

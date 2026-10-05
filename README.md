@@ -62,6 +62,10 @@ Server session stores only: `accessToken`, `email`, `groupName`, `fullName`. No 
 | GET | `/callback` | Token exchange → `/dashboard` |
 | GET | `/dashboard` | Auth required; profile + “P0 OAuth OK” |
 | GET | `/logout` | Destroy session |
+| GET | `/wordpress-form` | Auth required; WordPress joining form: plugin download, site key, setup steps |
+| GET | `/wordpress-form/download` | Auth required; streams `downloads/osm-for-wordpress.zip` (refresh with `deploy/refresh-wordpress-plugin.sh`) |
+| POST | `/wordpress-form/save` | Auth + CSRF; save waiting list, create/regenerate/remove site key, clear OSM block (old `/settings/update-wordpress-waiting-list` still works) |
+| POST | `/api/waiting-list/submit` | WordPress plugin intake; `X-Osmhelper-Site-Key` header required (401 without) |
 
 ## CloudPanel deploy
 

@@ -30,6 +30,11 @@
       <p class="muted">Newest first. The <a href="#history">Changelog</a> below has the details.</p>
       <ul class="rm-list">
         <li class="rm-item rm-shipped">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-05">5 Oct 2026</time> <span class="rm-area">Waiting list</span></div>
+          <h4 class="rm-title">WordPress joining form</h4>
+          <p>A waiting-list form for your group’s WordPress website. Parents fill it in and OSMHelper adds the child to your OSM waiting list with your OSM login, so there’s no OSM app to set up for each group. Includes a parent note, confirmation email, address lookup, text-message consent and optional captcha. Set it up under Members → Joining form.</p>
+        </li>
+        <li class="rm-item rm-shipped">
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-09-26">26 Sep 2026</time> <span class="rm-area">Waiting list</span></div>
           <h4 class="rm-title">Waiting list rank, dated notes and willing to help</h4>
           <p>Rank applicants, add dated notes and mark who is willing to help, then review and save to your own OSM custom fields. Works with more than one waiting list. The score is explained on the page and stays in OSMHelper.</p>
@@ -76,6 +81,18 @@
       <h3 id="history-h">Changelog</h3>
       <p class="muted">What changed, newest first. Each entry went live on the date shown.</p>
       <ul class="rm-list">
+        <li class="rm-item rm-shipped rm-history" id="2026-10-05">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-05">5 Oct 2026</time></div>
+          <h4 class="rm-title">WordPress joining form</h4>
+          <ul>
+            <li><strong>Waiting-list form for your website:</strong> a WordPress plugin adds a form with the <code>[osm_waiting_list]</code> shortcode. When a parent sends it, OSMHelper adds the child to your OSM waiting list using your OSM login. Parents don’t need an OSM login, and groups don’t need their own OSM app or API keys.</li>
+            <li><strong>What’s saved in OSM:</strong> the child’s name, date of birth and home address (line 1, line 2, town, county, postcode), and up to two parents as Primary Contacts 1 and 2.</li>
+            <li><strong>Text messages:</strong> each parent can tick “Receive text messages from Leaders?”, which turns on OSM’s receive-texts setting for their phone.</li>
+            <li><strong>Parent note:</strong> an optional note is added to the waiting list’s Notes field (the one chosen in Rank &amp; notes) as a dated line marked “Parent (website form)”. If no Notes field is chosen, the child is still added.</li>
+            <li><strong>In WordPress:</strong> a confirmation email to parents with your own reply-to address, Google reCAPTCHA or Cloudflare Turnstile against spam, and address lookup with Google address search or a free postcodes.io postcode check.</li>
+            <li><strong>Joining form page:</strong> a new <a href="/wordpress-form/">Members → Joining form</a> page has the plugin download, your site key and waiting-list choice (moved from Settings), step-by-step setup and troubleshooting.</li>
+          </ul>
+        </li>
         <li class="rm-item rm-shipped rm-history" id="2026-09-28">
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-09-28">28 Sep 2026</time></div>
           <h4 class="rm-title">Clearer homepage, one Roadmap and changelog page</h4>

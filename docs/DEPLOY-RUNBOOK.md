@@ -25,7 +25,8 @@ Stored in `/home/osmhelper/backups/deploy/`. The newest 10 of each kind are kept
 - `app-predeploy-<UTC TS>.tgz`: the live `app/` tree **without** `vendor/` and `storage/`, but **with** `.env`.
 - `db-<UTC TS>.sqlite`: an online `sqlite3 .backup` copy of `storage/osmhelper.sqlite` (safe while the site is
   running; includes anything still in the WAL). It holds group settings (age cut-offs, capacity, kit locations,
-  waiting-list field choices), not member data.
+  waiting-list field choices) and WordPress joining form site keys with the leader's OSM tokens, not member data.
+  Treat it as secret.
 - Not backed up on purpose: `storage/settings.json`, `storage/osm-errors.jsonl`, and any Top awards cache
   (member names, deleted after 2 hours).
 
@@ -68,6 +69,19 @@ Unset or empty: nobody sees it. A user's OSM ID appears in waiting-list field se
   in `.env`. Leave it off in production (it is off by default; `APP_DEBUG` alone doesn't turn it on).
 - `storage/osm-errors.jsonl` keeps the last ~200 OSM API errors, with tokens, names, emails, phone numbers and notes
   stripped from the text fields. Numeric OSM IDs (member/section/badge) are kept for diagnosis.
+
+## WordPress plugin download (/wordpress-form/)
+Signed-in leaders download the plugin from `/wordpress-form/download/`, which streams
+`downloads/osm-for-wordpress.zip` (outside `public/`, so it's never served as a static file). The page shows the
+version, build commit and date from `downloads/osm-for-wordpress.json`.
+
+To publish a new plugin build:
+1. Commit and push the plugin change in `osm-for-wordpress` (branch `feature/waiting-list-form` until it's merged).
+2. From the OSMHelper repo root: `deploy/refresh-wordpress-plugin.sh /path/to/osm-for-wordpress`
+   (builds the zip from `src/` as an `osm-for-wordpress/` folder without `node_modules`, `tests` or `.git`, and writes
+   the manifest). To ship a zip you've already built, use `ZIP=/path/to/zip deploy/refresh-wordpress-plugin.sh /path/to/repo`.
+   Bump `Version:` in the plugin header first if you want the version number on the page to change.
+3. Commit `downloads/osm-for-wordpress.zip` and `downloads/osm-for-wordpress.json`, push, run `./deploy/deploy.sh`.
 
 ## Partial (file-by-file) deploy
 1. Back up the live copies of the files you'll replace to `/home/osmhelper/backups/deploy/predeploy-<name>-<UTC timestamp>/`
