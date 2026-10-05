@@ -9,9 +9,29 @@ use Throwable;
 /**
  * Pass-through write: validated WordPress waiting-list payload → OSM member create.
  * Does not keep child/parent data after the OSM calls finish.
+ *
+ * OSM write sequence (form-urlencoded, never JSON):
+ *  1. POST /ext/members/contact/actions/?action=newMember  → scoutid
+ *  2. POST /ext/customdata/?action=update&section_id=S     → member details (group_id 6)
+ *  3. POST /ext/customdata/?action=update&section_id=S     → primary contact 1 (group_id 1)
+ *  4. optional same for contact 2 (group_id 2)
+ *
+ * Contact updates use /ext/customdata/ (osm-extender + Newcastle docs), NOT
+ * /ext/members/contact/?action=update (that path is for column/value member fields).
  */
 final class WaitingListIntake
 {
+    /** UK OSM contact field aliases (NZ docs used line_*; UK UI uses address*). */
+    private const FIELD_ALIASES = [
+        'line_1' => 'address1',
+        'line_2' => 'address2',
+        'line_3' => 'address3',
+        'line_4' => 'address4',
+        'address' => 'address1',
+        'first_name' => 'firstname',
+        'last_name' => 'lastname',
+    ];
+
     /**
      * @param array<string, mixed> $payload member / member_details / contact1 / contact2
      * @return array{scoutid: int}
@@ -64,7 +84,7 @@ final class WaitingListIntake
      * @param array<string, mixed> $payload
      * @return array{scoutid: int}
      */
-    private static function createMember(OsmApi $api, string $token, string $sectionId, array $payload, int $siteKeyId): array
+    public static function createMember(OsmApi $api, string $token, string $sectionId, array $payload, int $siteKeyId): array
     {
         $member = $payload['member'];
         $body = [
@@ -77,36 +97,126 @@ final class WaitingListIntake
             'originating_section_id' => $sectionId,
         ];
 
+        $step = 'newMember';
         try {
             $created = $api->post($token, '/ext/members/contact/actions/?action=newMember', $body);
         } catch (Throwable $e) {
+            self::logStepFailure($step, $sectionId, null);
             self::rethrowOsm($e, $siteKeyId);
         }
 
-        $scoutid = isset($created['scoutid']) ? (int) $created['scoutid'] : 0;
-        if ((!isset($created['result']) || $created['result'] !== 'ok') && $scoutid <= 0) {
-            throw new WaitingListIntakeException('OSM did not confirm member creation.', 502);
-        }
+        $scoutid = self::parseNewMemberScoutId($created);
         if ($scoutid <= 0) {
+            self::logStepFailure($step . ':missing-scoutid', $sectionId, null);
             throw new WaitingListIntakeException('OSM did not return a member ID.', 502);
         }
 
         $memberDetails = $payload['member_details'] ?? [];
         if (is_array($memberDetails) && $memberDetails !== []) {
-            self::updateContact($api, $token, $sectionId, $scoutid, 6, $memberDetails, $siteKeyId);
+            $step = 'update-member-details';
+            self::updateContact($api, $token, $sectionId, $scoutid, 6, $memberDetails, $siteKeyId, $step);
         }
 
         $contact1 = $payload['contact1'] ?? [];
         if (is_array($contact1) && $contact1 !== []) {
-            self::updateContact($api, $token, $sectionId, $scoutid, 1, $contact1, $siteKeyId);
+            $step = 'update-contact1';
+            self::updateContact($api, $token, $sectionId, $scoutid, 1, $contact1, $siteKeyId, $step);
         }
 
         $contact2 = $payload['contact2'] ?? null;
         if (is_array($contact2) && $contact2 !== []) {
-            self::updateContact($api, $token, $sectionId, $scoutid, 2, $contact2, $siteKeyId);
+            $step = 'update-contact2';
+            self::updateContact($api, $token, $sectionId, $scoutid, 2, $contact2, $siteKeyId, $step);
         }
 
         return ['scoutid' => $scoutid];
+    }
+
+    /**
+     * Pull the new scout id from a newMember response.
+     * Observed shapes: {result:"ok", scoutid:N} (top-level) or nested under data.
+     *
+     * @param array<string, mixed> $created
+     */
+    public static function parseNewMemberScoutId(array $created): int
+    {
+        $candidates = [
+            $created['scoutid'] ?? null,
+            $created['scout_id'] ?? null,
+            $created['member_id'] ?? null,
+            $created['id'] ?? null,
+        ];
+        $data = $created['data'] ?? null;
+        if (is_array($data)) {
+            $candidates[] = $data['scoutid'] ?? null;
+            $candidates[] = $data['scout_id'] ?? null;
+            $candidates[] = $data['member_id'] ?? null;
+            $candidates[] = $data['id'] ?? null;
+        }
+        foreach ($candidates as $raw) {
+            if (is_int($raw) && $raw > 0) {
+                return $raw;
+            }
+            if (is_string($raw) && ctype_digit($raw) && (int) $raw > 0) {
+                return (int) $raw;
+            }
+            if (is_float($raw) && (int) $raw > 0 && (float) (int) $raw === $raw) {
+                return (int) $raw;
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * Normalise contact field keys to UK OSM varnames used by data[…].
+     *
+     * @param array<string, mixed> $fields
+     * @return array<string, string>
+     */
+    public static function normalizeContactFields(array $fields): array
+    {
+        $out = [];
+        foreach ($fields as $key => $value) {
+            if (!is_string($key) || $key === '') {
+                continue;
+            }
+            if ($value === null || $value === '') {
+                continue;
+            }
+            if (!is_scalar($value)) {
+                continue;
+            }
+            $canon = self::FIELD_ALIASES[$key] ?? $key;
+            $out[$canon] = (string) $value;
+        }
+        return $out;
+    }
+
+    /** Path for bulk contact-detail updates (group_id 1/2/6). */
+    public static function contactUpdatePath(string $sectionId): string
+    {
+        return '/ext/customdata/?action=update&section_id=' . rawurlencode($sectionId);
+    }
+
+    /**
+     * Form body for a contact update (no PII logging — call sites only).
+     *
+     * @param array<string, mixed> $fields
+     * @return array<string, mixed>
+     */
+    public static function buildContactUpdateForm(int $scoutid, int $groupId, array $fields): array
+    {
+        $body = [
+            'associated_type' => 'member',
+            'associated_id' => (string) $scoutid,
+            'group_id' => (string) $groupId,
+            'context' => 'members',
+        ];
+        foreach (self::normalizeContactFields($fields) as $key => $value) {
+            // Literal data[key] keys match osm-extender and OSM's form parser.
+            $body['data[' . $key . ']'] = $value;
+        }
+        return $body;
     }
 
     /**
@@ -119,25 +229,28 @@ final class WaitingListIntake
         int $scoutid,
         int $groupId,
         array $fields,
-        int $siteKeyId
+        int $siteKeyId,
+        string $step
     ): void {
-        $body = [
-            'associated_type' => 'member',
-            'associated_id' => (string) $scoutid,
-            'group_id' => (string) $groupId,
-            'context' => 'members',
-            'sectionid' => $sectionId,
-        ];
-        foreach ($fields as $key => $value) {
-            if ($value === null || $value === '') {
-                continue;
-            }
-            $body['data[' . $key . ']'] = $value;
+        $path = self::contactUpdatePath($sectionId);
+        $body = self::buildContactUpdateForm($scoutid, $groupId, $fields);
+        if (count($body) <= 4) {
+            // Only the envelope keys — nothing to write.
+            return;
         }
         try {
-            $api->post($token, '/ext/members/contact/?action=update', $body);
+            $res = $api->post($token, $path, $body);
         } catch (Throwable $e) {
+            self::logStepFailure($step, $sectionId, $scoutid);
             self::rethrowOsm($e, $siteKeyId);
+        }
+        // customdata update returns {status:true,…}; treat missing/false as failure and abort.
+        if (array_key_exists('status', $res) && $res['status'] !== true) {
+            self::logStepFailure($step . ':status-not-true', $sectionId, $scoutid);
+            throw new WaitingListIntakeException(
+                'Could not write the waiting-list member to OSM.',
+                502
+            );
         }
     }
 
@@ -234,6 +347,16 @@ final class WaitingListIntake
                 throw new WaitingListIntakeException('Parent 2 details are incomplete.', 422);
             }
         }
+    }
+
+    private static function logStepFailure(string $step, string $sectionId, ?int $scoutid): void
+    {
+        // Step + section + scoutid only — never child/parent names, emails, phones, or addresses.
+        error_log(
+            'OSMHelper waiting-list intake step failed: ' . $step
+            . ' section_id=' . $sectionId
+            . ' scoutid=' . ($scoutid !== null ? (string) $scoutid : 'null')
+        );
     }
 
     private static function rethrowOsm(Throwable $e, int $siteKeyId): never

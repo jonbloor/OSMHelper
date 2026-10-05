@@ -294,7 +294,7 @@ final class OsmApi
             'action' => $pick($params, 'action'),
             'section_id' => $pick($params, 'section_id', 'sectionid'),
             'badge_id' => $pick($params, 'badge_id', 'badgeid'),
-            'scoutid' => $pick($params, 'scoutid', 'member_id', 'id'),
+            'scoutid' => $pick($params, 'scoutid', 'associated_id', 'member_id', 'id'),
         ];
     }
 
