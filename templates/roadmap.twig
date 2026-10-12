@@ -30,6 +30,11 @@
       <p class="muted">Newest first. The <a href="#history">Changelog</a> below has the details.</p>
       <ul class="rm-list">
         <li class="rm-item rm-shipped">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-12">12 Oct 2026</time> <span class="rm-area">Group numbers</span></div>
+          <h4 class="rm-title">Choose sections before loading group numbers</h4>
+          <p>Group numbers lists the sections from your OSM sign-in. Tick the ones you need, then load. OSMHelper only fetches those sections, plus the waiting list for the age bands. Explorers, Adults, and sections switched off in Settings are left out.</p>
+        </li>
+        <li class="rm-item rm-shipped">
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-12">12 Oct 2026</time> <span class="rm-area">Members</span></div>
           <h4 class="rm-title">Choose sections before loading members</h4>
           <p>The member list shows the sections from your OSM sign-in. Tick the ones you need, then load. OSMHelper only fetches those sections. Checks still reads every section.</p>
@@ -72,7 +77,7 @@
         <li class="rm-item rm-shipped">
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-09-06">6 Sep 2026</time> <span class="rm-area">Members</span></div>
           <h4 class="rm-title">Members, member checks and group numbers</h4>
-          <p>Youth members and young leaders in the sections you choose, checks for young people in more than one section, the waiting list, and group numbers with bar charts by section.</p>
+          <p>Youth members and young leaders in the sections you choose, checks for young people in more than one section, the waiting list, and group numbers for the sections you choose, with bar charts.</p>
         </li>
         <li class="rm-item rm-shipped">
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-09-06">6 Sep 2026</time> <span class="rm-area">Site</span></div>
@@ -86,6 +91,15 @@
       <h3 id="history-h">Changelog</h3>
       <p class="muted">What changed, newest first. Each entry went live on the date shown.</p>
       <ul class="rm-list">
+        <li class="rm-item rm-shipped rm-history" id="2026-10-12-numbers">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-12">12 Oct 2026</time></div>
+          <h4 class="rm-title">Choose sections before loading group numbers</h4>
+          <ul>
+            <li><strong>Group numbers:</strong> the page lists the sections from your OSM sign-in. Tick the ones you need, then load. OSMHelper only fetches those sections.</li>
+            <li>The waiting list is still read on that load, so the age bands can be filled in. Explorers, Adults, and sections switched off in Settings are not offered.</li>
+            <li>The charts and tables stay until you load a different set or sign out. Sign in again if a section is missing.</li>
+          </ul>
+        </li>
         <li class="rm-item rm-shipped rm-history" id="2026-10-12">
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-12">12 Oct 2026</time></div>
           <h4 class="rm-title">Choose sections before loading members</h4>

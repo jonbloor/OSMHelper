@@ -20,7 +20,7 @@
     <h2>{% if groupName %}{{ groupName }}{% else %}Your group{% endif %}</h2>
     <p class="muted">
       Signed in{% if fullName %} as <strong>{{ fullName }}</strong>{% endif %}.
-      Tools use your OSM account. Most fetch from OSM when you open them. Members waits until you choose sections and load the list.
+      Tools use your OSM account. Most fetch from OSM when you open them. Members and Group numbers wait until you choose sections and load.
     </p>
     {% include '_rate_limit.twig' %}
     <div class="row">
@@ -61,7 +61,7 @@
         <a class="btn" href="/auth/">Connect with OSM</a>
         <a class="btn-link" href="/help/">Read the guide first</a>
       </p>
-      <p class="home-oauth-note">You'll be sent to OSM to give permission. OSMHelper keeps your OSM access token in the server session only, unless you turn on the WordPress joining form. Most tools then read fresh data from OSM. The member list waits until you choose sections.</p>
+      <p class="home-oauth-note">You'll be sent to OSM to give permission. OSMHelper keeps your OSM access token in the server session only, unless you turn on the WordPress joining form. Most tools then read fresh data from OSM. The member list and group numbers wait until you choose sections.</p>
     </div>
     <div class="home-hero-media">
       {{ home.shot('waiting-list', 1600, 880, "OSMHelper waiting list showing fictional applicants with age, days waiting, suggested section and a score, with one score's working shown: age 10.9 times 3 equals 32.7, plus 29.2 months, plus 20 for willing to help, equals 81.9.", 'The waiting list, with the working behind each score. Made-up names.', true) }}
@@ -96,7 +96,7 @@
   <section class="home-feature home-feature--flip" aria-labelledby="home-f-gn">
     <div class="home-feature-text">
       <h3 id="home-f-gn">See where you have spaces</h3>
-      <p>One page shows members, leaders, capacity and spaces for each section, with how many are waiting and at what age. Charts show members against spaces, the waiting list by age band, and how full each section is. You set section capacity and age cut-offs in Settings.</p>
+      <p>One page shows members, leaders, capacity and spaces for each section, with how many are waiting and at what age. Tick the sections from your OSM sign-in, then load. OSMHelper fetches those sections and the waiting list, and leaves out Explorers, Adults, and any section switched off in Settings. Charts show members against spaces, the waiting list by age band, and how full each section is. You set section capacity and age cut-offs in Settings.</p>
     </div>
     <div class="home-feature-media">
       {{ home.shot('group-numbers', 1600, 571, 'Group numbers page with bar charts of members and spaces for each section and a chart of waiting-list children by age band.', 'Group numbers, as of page load.') }}
@@ -159,7 +159,7 @@
         <ul>
           <li>An Online Scout Manager login with access to the sections you want to see. OSMHelper can only show what your OSM login can see.</li>
           <li>To say yes when OSM asks for permission. Saving ranks, notes, awards or kit locations needs permission to update records, so you may be asked to sign in again the first time.</li>
-          <li>A bit of patience. Most pages fetch fresh from OSM, so some take a moment, and each fetch uses part of your OSM API allowance. OSMHelper shows how much you have left. The member list only fetches the sections you tick.</li>
+          <li>A bit of patience. Most pages fetch fresh from OSM, so some take a moment, and each fetch uses part of your OSM API allowance. OSMHelper shows how much you have left. The member list and group numbers only fetch the sections you tick. Group numbers also reads the waiting list then.</li>
         </ul>
       </div>
       <div>
@@ -168,7 +168,7 @@
           <li>Replace OSM. OSM stays the record, and anything OSMHelper saves goes into OSM.</li>
           {# Final wording from Jason, 28 Sep. True because Top awards caches are deleted after 2 hours
              and at logout, debug dumps are off by default, and osm-errors.jsonl redacts personal details. #}
-          <li>Keep copies of member data. Your OSM access token is held only in the server session, and each page fetches fresh data from OSM when you open it. The only things saved on our server are your group settings: age cut-offs, capacity, kit locations and your chosen waiting list fields. We also keep a short error log to fix problems, with personal details removed.</li>
+          <li>Keep copies of member data. Your OSM access token is held only in the server session, and most pages fetch fresh data from OSM when you open them. A member list or group-numbers view stays in that session until you sign out, and is not kept after that. The only things saved on our server are your group settings: age cut-offs, capacity, kit locations and your chosen waiting list fields. We also keep a short error log to fix problems, with personal details removed.</li>
           <li>Keep the forms parents send. If you use the WordPress joining form, each form is passed straight to OSM and not kept. To do that, OSMHelper keeps your OSM sign-in for the form (not your password) on the server until you turn the form off.</li>
           <li>Change your bank accounts. Finance pages are read-only.</li>
         </ul>

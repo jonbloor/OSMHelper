@@ -62,6 +62,7 @@ final class App
         $router->get('/dashboard', [$dash, 'index']);
         $router->get('/logout', [$auth, 'logout']);
         $router->get('/membership-dashboard', [$md, 'index']);
+        $router->post('/membership-dashboard', [$md, 'run']);
         $router->get('/equipment', [$eq, 'index']);
         $router->post('/equipment/move', [$eq, 'move']);
         $router->get('/waiting-list', [$wl, 'index']);

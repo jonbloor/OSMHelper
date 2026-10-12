@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 use App\App;
 use App\Config;
 use App\Http\Auth;
+use App\Http\Csrf;
+use App\Osm\LoginSections;
 use App\Osm\OsmApi;
 use App\Store\CapacitiesStore;
 use App\Store\SettingsStore;
@@ -14,30 +16,115 @@ final class MembershipDashboardController
     public function index(): void
     {
         $token = Auth::requireLogin();
-        $api = new OsmApi();
-        try {
-            $sections = $api->getDynamicSections($token);
-        } catch (Throwable $e) {
-            App::render('error.twig', Auth::baseContext([
-                'title' => 'Membership dashboard',
-                'message' => 'Could not load sections from OSM.',
-            ]));
+        [$choices, $sectionError] = $this->choices($token);
+        $result = $_SESSION['membershipDashboardResult'] ?? null;
+        if (!is_array($result)) {
+            $result = null;
+        }
+        $selected = [];
+        if (is_array($result['sectionIds'] ?? null)) {
+            foreach ($result['sectionIds'] as $id) {
+                if (is_scalar($id)) {
+                    $selected[] = (string) $id;
+                }
+            }
+        }
+        $this->renderDashboard($choices, $selected, $sectionError, $result);
+    }
+
+    public function run(): void
+    {
+        $token = Auth::requireLogin();
+        Csrf::requireValid();
+        [$choices, $sectionError] = $this->choices($token);
+        if ($sectionError !== null) {
+            $this->renderDashboard($choices, [], $sectionError, null);
             return;
         }
+        $raw = $_POST['section_ids'] ?? [];
+        if (!is_array($raw)) {
+            $raw = [];
+        }
+        $picked = LoginSections::pickedSections($choices, $raw);
+        $selected = [];
+        foreach ($raw as $id) {
+            if (is_scalar($id)) {
+                $selected[] = trim((string) $id);
+            }
+        }
+        if ($picked === []) {
+            $this->renderDashboard($choices, $selected, 'Tick at least one section, then load the numbers.', null);
+            return;
+        }
+        $all = LoginSections::fromSession() ?? [];
+        $data = $this->build($token, $picked, $all);
+        $data['sectionIds'] = array_map(static fn (array $sec): string => (string) $sec['section_id'], $picked);
+        $_SESSION['membershipDashboardResult'] = $data;
+        header('Location: /membership-dashboard/');
+        exit;
+    }
 
-        $excluded = ['explorers', 'adults', 'waiting'];
+    /**
+     * @return array{0: list<array{id:string,name:string,type:string,typeLabel:string,groupName:string,termId:mixed}>, 1: ?string}
+     */
+    private function choices(string $token): array
+    {
+        try {
+            $all = LoginSections::ensure($token);
+        } catch (Throwable) {
+            return [[], 'Could not read the sections from this login. Sign out and connect again.'];
+        }
         $saved = SettingsStore::all();
-        $capacities = is_array($saved['capacities'] ?? null) ? $saved['capacities'] : [];
         $visible = is_array($saved['visibleSections'] ?? null) ? $saved['visibleSections'] : [];
-        $cutoffs = array_merge(Config::DEFAULT_CUTOFFS, is_array($saved['cutoffs'] ?? null) ? $saved['cutoffs'] : []);
+        $hidden = [];
+        foreach ($visible as $id => $on) {
+            if ($on === false) {
+                $hidden[(string) $id] = true;
+            }
+        }
+        $choices = array_values(array_filter(
+            LoginSections::dashboardChoices($all),
+            static fn (array $choice): bool => !isset($hidden[$choice['id']])
+        ));
+        return [$choices, null];
+    }
 
-        $filtered = array_values(array_filter($sections, static function ($sec) use ($excluded, $visible) {
-            if (!is_array($sec)) return false;
-            $type = (string) ($sec['section_type'] ?? 'unknown');
-            if (in_array($type, $excluded, true)) return false;
-            $id = (string) ($sec['section_id'] ?? '');
-            return !isset($visible[$id]) || $visible[$id] !== false;
-        }));
+    /**
+     * @param list<array{id:string,name:string,type:string,typeLabel:string,groupName:string,termId:mixed}> $choices
+     * @param list<string> $selectedIds
+     * @param array<string, mixed>|null $result
+     */
+    private function renderDashboard(array $choices, array $selectedIds, ?string $sectionError, ?array $result): void
+    {
+        $loaded = is_array($result) && is_array($result['grouped'] ?? null);
+        $groups = LoginSections::groupChoices($choices);
+        $context = [
+            'title' => 'Group numbers',
+            'groups' => $groups,
+            'choiceCount' => count($choices),
+            'multiGroup' => count($groups) > 1,
+            'selectedIds' => $selectedIds,
+            'sectionError' => $sectionError,
+            'loaded' => $loaded,
+        ];
+        if ($loaded) {
+            $context = array_merge($result, $context);
+        }
+        App::render('membership-dashboard.twig', Auth::baseContext($context));
+    }
+
+    /**
+     * @param list<array{section_id:string,section_name:string,section_type:string,group_name:string,current_term_id:mixed}> $picked
+     * @param list<array{section_id:string,section_name:string,section_type:string,group_name:string,current_term_id:mixed}> $allSections
+     * @return array<string, mixed>
+     */
+    private function build(string $token, array $picked, array $allSections): array
+    {
+        $api = new OsmApi();
+        $sections = $allSections;
+        $filtered = $picked;
+        $saved = SettingsStore::all();
+        $cutoffs = array_merge(Config::DEFAULT_CUTOFFS, is_array($saved['cutoffs'] ?? null) ? $saved['cutoffs'] : []);
 
         $waitingCounts = ['tooYoung' => 0, 'squirrels' => 0, 'beavers' => 0, 'cubs' => 0, 'scouts' => 0, 'explorers' => 0];
         try {
@@ -278,8 +365,7 @@ final class MembershipDashboardController
             $chartMaxWaiting = max($chartMaxWaiting, (int) $w['count']);
         }
 
-        App::render('membership-dashboard.twig', Auth::baseContext([
-            'title' => 'Group numbers',
+        return [
             'grouped' => $sorted,
             'totalMembers' => $totals['members'],
             'totalLeaders' => $totals['leaders'],
@@ -297,6 +383,6 @@ final class MembershipDashboardController
             'chartFullness' => $chartFullness,
             'chartMaxMembersSpaces' => $chartMaxMembersSpaces,
             'chartMaxWaiting' => $chartMaxWaiting,
-        ]));
+        ];
     }
 }

@@ -51,7 +51,7 @@ Also sends `access_type=offline` (same as Node) if OSM issues refresh tokens.
 
 ### Session privacy
 
-The server session stores your OSM access token (and refresh token when OSM sends one), your name, email, group, and the section list from sign-in. A member list you load stays in that session until you sign out. The WordPress joining form also keeps that leader's OSM tokens in the database until the form is turned off. Scout names and dates of birth are not stored long-term.
+The server session stores your OSM access token (and refresh token when OSM sends one), your name, email, group, and the section list from sign-in. A member list or group-numbers view you load stays in that session until you sign out. The WordPress joining form also keeps that leader's OSM tokens in the database until the form is turned off. Scout names and dates of birth are not stored long-term.
 
 ## Routes (P0)
 
@@ -64,6 +64,8 @@ The server session stores your OSM access token (and refresh token when OSM send
 | GET | `/logout` | Destroy session |
 | GET | `/members` | Auth required; tick sections from the sign-in list, then load |
 | POST | `/members` | Auth + CSRF; fetch members for the ticked sections only |
+| GET | `/membership-dashboard` | Auth required; tick sections from the sign-in list, then load |
+| POST | `/membership-dashboard` | Auth + CSRF; fetch counts for the ticked sections, plus the waiting list |
 | GET | `/wordpress-form` | Auth required; WordPress joining form: plugin download, site key, setup steps |
 | GET | `/wordpress-form/download` | Auth required; streams `downloads/osm-for-wordpress.zip` (refresh with `deploy/refresh-wordpress-plugin.sh`) |
 | POST | `/wordpress-form/save` | Auth + CSRF; save waiting list, create/regenerate/remove site key, clear OSM block (old `/settings/update-wordpress-waiting-list` still works) |

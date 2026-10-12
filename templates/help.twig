@@ -3,7 +3,7 @@
 {% block body %}
   <div class="card help-page">
     <h2>Help</h2>
-    <p class="lede">What each part of OSMHelper does, and how to use it. Most tools fetch fresh data from Online Scout Manager when you open them, so some take a moment. Members waits until you choose sections and load the list.</p>
+    <p class="lede">What each part of OSMHelper does, and how to use it. Most tools fetch fresh data from Online Scout Manager when you open them, so some take a moment. Members and Group numbers wait until you choose sections and load.</p>
 
     <section class="help-section" id="home">
       <h3>Home</h3>
@@ -12,8 +12,9 @@
 
     <section class="help-section" id="dashboard">
       <h3>Dashboard (group numbers)</h3>
+      <p>Tick the sections you need, then load the numbers. The ticks are the sections from when you signed in to OSM, so opening the page does not fetch counts. Explorers, Adults, waiting lists, and any section switched off under Settings → Section capacity &amp; visibility are left out. OSMHelper only asks OSM for the sections you ticked, plus the waiting list so the age bands can be filled in. The charts and tables stay until you load a different set or sign out. If a section is missing, sign out and connect again.</p>
       <p>Membership counts by section type (Beavers, Cubs, Scouts, and Squirrels when anyone of that age is on the waiting list). Shows leaders, capacity, spaces, and waiting subtotals. The header reconciles waiting-list size with <strong>Waiting of age</strong>, <strong>Squirrels</strong>, <strong>Too young</strong>, and <strong>Explorers / too old</strong>.</p>
-      <p>At the top of the page, snapshot charts (same data as the tables, no extra OSM calls) show <strong>members vs spaces</strong> by section (including over capacity), <strong>waiting by age band</strong>, and <strong>fullness %</strong> by section type (sections without a set capacity are omitted). Labelled as of page load.</p>
+      <p>At the top of the results, snapshot charts (same data as the tables, no extra OSM calls) show <strong>members vs spaces</strong> by section (including over capacity), <strong>waiting by age band</strong>, and <strong>fullness %</strong> by section type (sections without a set capacity are omitted). Labelled as of that load.</p>
     </section>
 
     <section class="help-section" id="members">
@@ -134,12 +135,12 @@
 
     <section class="help-section" id="settings">
       <h3>Settings</h3>
-      <p>Age cutoffs, capacity per section, which section Equipment uses, which section Bank uses, and a named <strong>Equipment locations</strong> list (add, edit, reorder, remove). Saves on this server (not only in your browser session) so they stick after logout. Locations power the Equipment bulk-move destination list. The WordPress joining form has its own page, <strong>Members → Joining form</strong>; Settings links to it.</p>
+      <p>Age cutoffs, capacity per section, which section Equipment uses, which section Bank uses, and a named <strong>Equipment locations</strong> list (add, edit, reorder, remove). Saves on this server (not only in your browser session) so they stick after logout. Unticking <strong>Show</strong> on a section leaves it off the Group numbers picker. Locations power the Equipment bulk-move destination list. The WordPress joining form has its own page, <strong>Members → Joining form</strong>; Settings links to it.</p>
     </section>
 
     <section class="help-section" id="rate-limit">
       <h3>API rate limit</h3>
-      <p>OSM applies an API allowance <strong>per user</strong> (your OSM login) — it is not a “how busy OSM is” meter. Home and the hub show your limit, remaining requests, and when the window resets. A banner appears site-wide when you are nearing the limit (and again when remaining is critical). Open fewer heavy pages until it refreshes. Members uses quota only when you load the sections you ticked. Checks, Dashboard, Waiting, Equipment, Bank, Top awards and Nights away each use quota when you open them.</p>
+      <p>OSM applies an API allowance <strong>per user</strong> (your OSM login) — it is not a “how busy OSM is” meter. Home and the hub show your limit, remaining requests, and when the window resets. A banner appears site-wide when you are nearing the limit (and again when remaining is critical). Open fewer heavy pages until it refreshes. Members and Group numbers use quota only when you load the sections you ticked. Group numbers also reads the waiting list at that point. Checks, Waiting, Equipment, Bank, Top awards and Nights away each use quota when you open them.</p>
     </section>
 
     <section class="help-section" id="tables">

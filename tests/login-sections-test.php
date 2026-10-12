@@ -81,6 +81,17 @@ check(count($picked) === 1 && $picked[0]['section_id'] === '2' && $picked[0]['se
 check($picked[0]['current_term_id'] === 8, 'keeps the term id for the member fetch');
 check(LoginSections::pickedSections($choices, []) === [], 'empty selection picks nothing');
 
+$dash = LoginSections::dashboardChoices([
+    ['section_id' => '2', 'section_name' => 'Troop', 'section_type' => 'scouts', 'group_name' => 'B Group'],
+    ['section_id' => '1', 'section_name' => 'Colony', 'section_type' => 'beavers', 'group_name' => 'A Group'],
+    ['section_id' => '9', 'section_name' => 'Wait', 'section_type' => 'waiting', 'group_name' => 'A Group'],
+    ['section_id' => '5', 'section_name' => 'Unit', 'section_type' => 'explorers', 'group_name' => 'A Group'],
+    ['section_id' => '4', 'section_name' => 'Leaders', 'section_type' => 'adults', 'group_name' => 'A Group'],
+    ['section_id' => '6', 'section_name' => 'Dreys', 'section_type' => 'earlyyears', 'group_name' => 'A Group'],
+    ['section_id' => '8', 'section_name' => 'Mystery', 'section_type' => 'unknown', 'group_name' => 'A Group'],
+]);
+check(array_column($dash, 'id') === ['6', '1', '2'], 'group numbers skips waiting, explorers, adults and unknown');
+
 $_SESSION = [];
 check(LoginSections::fromSession() === null, 'missing session key means the list was not stored yet');
 $stored = LoginSections::remember($normalised);

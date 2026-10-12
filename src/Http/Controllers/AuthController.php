@@ -105,7 +105,7 @@ final class AuthController
             } else {
                 unset($_SESSION['accessTokenExpiresAt']);
             }
-            unset($_SESSION['membersListResult']);
+            unset($_SESSION['membersListResult'], $_SESSION['membershipDashboardResult']);
 
             $api = new OsmApi();
             $resource = $api->get($accessToken, '/oauth/resource');

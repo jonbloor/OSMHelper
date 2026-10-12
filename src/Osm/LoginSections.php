@@ -114,6 +114,21 @@ final class LoginSections
     }
 
     /**
+     * Sections Group numbers can chart. Same list as the member picker, without
+     * Explorers and Adults, which that page has never counted.
+     *
+     * @param list<array<string, mixed>> $sections
+     * @return list<array{id:string,name:string,type:string,typeLabel:string,groupName:string,termId:mixed}>
+     */
+    public static function dashboardChoices(array $sections): array
+    {
+        return array_values(array_filter(
+            self::memberListChoices($sections),
+            static fn (array $choice): bool => $choice['type'] !== 'explorers' && $choice['type'] !== 'adults'
+        ));
+    }
+
+    /**
      * @param list<array{id:string,name:string,type:string,typeLabel:string,groupName:string,termId:mixed}> $choices
      * @return list<array{name:string,sections:list<array{id:string,name:string,type:string,typeLabel:string,groupName:string,termId:mixed}>}>
      */

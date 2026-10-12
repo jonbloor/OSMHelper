@@ -2,8 +2,40 @@
 {% block body %}
 <div class="card">
   <h2>Group numbers — {{ groupName }}</h2>
+  <p class="muted">Tick the sections you need, then load the numbers. These are the sections from when you signed in. Explorers, Adults, waiting lists, and sections switched off in Settings are left out. OSM is only asked for the ones you tick, plus the waiting list so the age bands can be filled in.</p>
+  {% if sectionError %}<div class="alert alert-error">{{ sectionError }}</div>{% endif %}
+
+  {% if choiceCount == 0 and not sectionError %}
+  <p class="alert">No sections on this login that Group numbers can use. Sign out and connect again, or check Settings and your OSM role.</p>
+  {% elseif choiceCount > 0 %}
+  <form method="post" action="/membership-dashboard/" class="member-section-pick" data-member-sections>
+    {% include '_csrf.twig' %}
+    {% for g in groups %}
+    <div class="member-section-group">
+      {% if multiGroup %}<h3>{{ g.name }}</h3>{% endif %}
+      <div class="filter-chips">
+        {% for s in g.sections %}
+        <label class="filter-chip">
+          <input type="checkbox" name="section_ids[]" value="{{ s.id }}" {% if s.id in selectedIds %}checked{% endif %}>
+          {{ s.name }} <span class="muted">{{ s.typeLabel }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+    <p class="member-section-actions">
+      <button type="button" class="btn btn-secondary" data-sections-all>Select all</button>
+      <button type="button" class="btn btn-secondary" data-sections-none>Clear</button>
+      <button class="btn" type="submit">Load numbers</button>
+    </p>
+  </form>
+  {% endif %}
+</div>
+
+{% if loaded %}
+<div class="card">
   <p class="muted">Updated {{ dataUpdated }} · Waiting of age {{ totalWaiting }} · Squirrels {{ squirrelsWaiting|default(0) }} · Too young {{ tooYoungWaiting }} · Explorers / too old {{ explorersWaiting|default(0) }} · All waiting {{ totalWaitingFull|default(0) }}</p>
-  <p class="muted chart-snapshot">Charts: snapshot as of page load (same data as the tables below — no extra OSM calls).</p>
+  <p class="muted chart-snapshot">Charts: snapshot as of this load (same data as the tables below — no extra OSM calls). Only the ticked sections were loaded.</p>
 
   {% set maxMembersSpaces = chartMaxMembersSpaces|default(1) %}
   {% set maxWaiting = chartMaxWaiting|default(1) %}
@@ -114,4 +146,18 @@
   {% endfor %}
   <p><strong>Totals</strong> — members {{ totalMembers }}, leaders {{ totalLeaders }}, YLs {{ totalYLs }}, capacity {{ totalCapacity }}, spaces {{ totalSpaces }}</p>
 </div>
+{% endif %}
+<script>
+(function () {
+  var form = document.querySelector('[data-member-sections]');
+  if (!form) return;
+  function boxes() {
+    return Array.prototype.slice.call(form.querySelectorAll('input[name="section_ids[]"]'));
+  }
+  var allBtn = form.querySelector('[data-sections-all]');
+  var noneBtn = form.querySelector('[data-sections-none]');
+  if (allBtn) allBtn.addEventListener('click', function () { boxes().forEach(function (cb) { cb.checked = true; }); });
+  if (noneBtn) noneBtn.addEventListener('click', function () { boxes().forEach(function (cb) { cb.checked = false; }); });
+})();
+</script>
 {% endblock %}
