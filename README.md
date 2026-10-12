@@ -51,7 +51,7 @@ Also sends `access_type=offline` (same as Node) if OSM issues refresh tokens.
 
 ### Session privacy
 
-Server session stores only: `accessToken`, `email`, `groupName`, `fullName`. No long-term scout PII.
+The server session stores your OSM access token (and refresh token when OSM sends one), your name, email, group, and the section list from sign-in. A member list you load stays in that session until you sign out. The WordPress joining form also keeps that leader's OSM tokens in the database until the form is turned off. Scout names and dates of birth are not stored long-term.
 
 ## Routes (P0)
 
@@ -62,6 +62,12 @@ Server session stores only: `accessToken`, `email`, `groupName`, `fullName`. No 
 | GET | `/callback` | Token exchange → `/dashboard` |
 | GET | `/dashboard` | Auth required; profile + “P0 OAuth OK” |
 | GET | `/logout` | Destroy session |
+| GET | `/members` | Auth required; tick sections from the sign-in list, then load |
+| POST | `/members` | Auth + CSRF; fetch members for the ticked sections only |
+| GET | `/wordpress-form` | Auth required; WordPress joining form: plugin download, site key, setup steps |
+| GET | `/wordpress-form/download` | Auth required; streams `downloads/osm-for-wordpress.zip` (refresh with `deploy/refresh-wordpress-plugin.sh`) |
+| POST | `/wordpress-form/save` | Auth + CSRF; save waiting list, create/regenerate/remove site key, clear OSM block (old `/settings/update-wordpress-waiting-list` still works) |
+| POST | `/api/waiting-list/submit` | WordPress plugin intake; `X-Osmhelper-Site-Key` header required (401 without) |
 
 ## CloudPanel deploy
 

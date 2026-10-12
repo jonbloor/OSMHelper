@@ -86,7 +86,18 @@ final class OsmApi
     /** @return list<array<string, mixed>> */
     public function getDynamicSections(string $accessToken): array
     {
-        $response = $this->get($accessToken, '/oauth/resource');
+        return self::sectionsFromResource($this->get($accessToken, '/oauth/resource'));
+    }
+
+    /**
+     * Sections on an /oauth/resource payload, with current_term_id resolved from term dates.
+     * Same extraction as getDynamicSections, so login and later tools share one list.
+     *
+     * @param array<string, mixed> $response
+     * @return list<array<string, mixed>>
+     */
+    public static function sectionsFromResource(array $response): array
+    {
         $raw = $response['sections']
             ?? ($response['data']['sections'] ?? null)
             ?? $response['roles']
@@ -95,6 +106,15 @@ final class OsmApi
         if (!is_array($raw)) {
             $raw = [];
         }
+        return self::normalizeSections($raw);
+    }
+
+    /**
+     * @param array<mixed> $raw
+     * @return list<array<string, mixed>>
+     */
+    public static function normalizeSections(array $raw): array
+    {
         $now = time();
         $sections = [];
         foreach ($raw as $sec) {
@@ -167,9 +187,52 @@ final class OsmApi
             ]);
             throw new \RuntimeException('OSM transport error for /' . ltrim(explode('?', $path, 2)[0], '/') . ' — ' . $e->getMessage(), 0, $e);
         }
-        $this->captureRateLimit($response->getHeaders());
+        $headers = $response->getHeaders();
+        $this->captureRateLimit($headers);
         $status = $response->getStatusCode();
         $body = (string) $response->getBody();
+
+        $blocked = self::headerFirst($headers, 'X-Blocked', 'x-blocked');
+        if ($blocked !== null) {
+            $detail = ($blocked !== '' && $blocked !== '1' && strtolower($blocked) !== 'true') ? (': ' . $blocked) : '';
+            OsmErrorLog::log([
+                'method' => $method,
+                'endpoint' => $path,
+                'action' => $ctx['action'],
+                'http_status' => $status,
+                'osm_code' => null,
+                'osm_message' => 'X-Blocked' . $detail,
+                'kind' => 'blocked',
+                'section_id' => $ctx['section_id'],
+                'badge_id' => $ctx['badge_id'],
+                'scoutid' => $ctx['scoutid'],
+                'detail' => null,
+            ]);
+            throw new \RuntimeException('OSM_BLOCKED: OSM blocked this application (X-Blocked' . $detail . '). Further OSM requests must stop.', 403);
+        }
+
+        $deprecated = self::headerFirst($headers, 'X-Deprecated', 'x-deprecated');
+        if ($deprecated !== null && $deprecated !== '') {
+            error_log('OSM API X-Deprecated: ' . $deprecated . ' endpoint: ' . $path);
+            $ts = strtotime($deprecated);
+            if ($ts !== false && $ts <= time()) {
+                OsmErrorLog::log([
+                    'method' => $method,
+                    'endpoint' => $path,
+                    'action' => $ctx['action'],
+                    'http_status' => $status,
+                    'osm_code' => null,
+                    'osm_message' => 'X-Deprecated: ' . $deprecated,
+                    'kind' => 'deprecated-removed',
+                    'section_id' => $ctx['section_id'],
+                    'badge_id' => $ctx['badge_id'],
+                    'scoutid' => $ctx['scoutid'],
+                    'detail' => null,
+                ]);
+                throw new \RuntimeException('OSM marked this endpoint removed (X-Deprecated: ' . $deprecated . '). It will not be called again.', 410);
+            }
+        }
+
         if ($status >= 400) {
             $errHint = '';
             $osmMsg = null;
@@ -204,6 +267,10 @@ final class OsmApi
                 $kind = '429';
             } elseif ($status === 403) {
                 $kind = '403';
+            }
+            if (OsmTokens::isNotLoggedInError($status, $osmCode, $osmMsg)) {
+                // Expired/revoked session token: renew it on the next page instead of failing every page.
+                OsmTokens::markRejected($accessToken);
             }
             OsmErrorLog::log([
                 'method' => $method,
@@ -251,7 +318,7 @@ final class OsmApi
             'action' => $pick($params, 'action'),
             'section_id' => $pick($params, 'section_id', 'sectionid'),
             'badge_id' => $pick($params, 'badge_id', 'badgeid'),
-            'scoutid' => $pick($params, 'scoutid', 'member_id', 'id'),
+            'scoutid' => $pick($params, 'scoutid', 'associated_id', 'member_id', 'id'),
         ];
     }
 
@@ -303,6 +370,20 @@ final class OsmApi
             return false;
         }
         return $snap['remaining'] <= $minRemaining;
+    }
+
+
+    /** @param array<string, list<string>> $headers */
+    private static function headerFirst(array $headers, string ...$names): ?string
+    {
+        foreach ($names as $name) {
+            foreach ($headers as $key => $values) {
+                if (strcasecmp((string) $key, $name) === 0 && isset($values[0])) {
+                    return (string) $values[0];
+                }
+            }
+        }
+        return null;
     }
 
     /** @param array<string, list<string>> $headers */

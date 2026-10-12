@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\App;
 use App\Config;
 use App\Http\OAuthState;
+use App\Osm\LoginSections;
 use App\Osm\OsmApi;
 use App\Osm\OsmOAuth;
 use Throwable;
@@ -92,6 +93,19 @@ final class AuthController
             $accessToken = $token->getToken();
 
             $_SESSION['accessToken'] = $accessToken;
+            $refresh = $token->getRefreshToken();
+            if (is_string($refresh) && $refresh !== '') {
+                $_SESSION['refreshToken'] = $refresh;
+            } else {
+                unset($_SESSION['refreshToken']);
+            }
+            $expires = $token->getExpires();
+            if (is_int($expires) && $expires > 0) {
+                $_SESSION['accessTokenExpiresAt'] = $expires;
+            } else {
+                unset($_SESSION['accessTokenExpiresAt']);
+            }
+            unset($_SESSION['membersListResult']);
 
             $api = new OsmApi();
             $resource = $api->get($accessToken, '/oauth/resource');
@@ -134,13 +148,12 @@ final class AuthController
             }
             unset($_SESSION['memberWriteDenied']);
 
-            $sections = $data['sections'] ?? [];
+            $stored = LoginSections::remember(
+                OsmApi::sectionsFromResource(is_array($resource) ? $resource : [])
+            );
             $groupName = 'OSM Helper';
-            if (is_array($sections) && isset($sections[0]) && is_array($sections[0])) {
-                $groupName = (string) ($sections[0]['group_name'] ?? $groupName);
-                $_SESSION['_sections_count'] = count($sections);
-            } else {
-                $_SESSION['_sections_count'] = 0;
+            if (isset($stored[0]['group_name']) && (string) $stored[0]['group_name'] !== '') {
+                $groupName = (string) $stored[0]['group_name'];
             }
             $_SESSION['groupName'] = $groupName;
 

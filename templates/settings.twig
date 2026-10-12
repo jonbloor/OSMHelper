@@ -3,6 +3,17 @@
 {% if saved %}
 <p class="muted">Settings are saved on the server (survive logout).</p>
 {% endif %}
+
+<div class="card">
+  <h2>WordPress joining form</h2>
+  <p class="muted">The waiting-list form for your group website (plugin download, site key, waiting-list section and setup steps) now has its own page.</p>
+  <p>
+    {% if wpBlocked %}<span class="badge-warn">OSM block: action needed</span>
+    {% elseif wpConfigured %}<span class="badge">Set up{% if wpSectionName %}: {{ wpSectionName }}{% endif %}</span>
+    {% else %}<span class="muted">Not set up yet.</span>{% endif %}
+  </p>
+  <p><a class="btn btn-secondary" href="/wordpress-form/">Open WordPress joining form</a></p>
+</div>
 <div class="card">
   <h2>Age cutoffs</h2>
   <form method="post" action="/settings/update-cutoffs/">

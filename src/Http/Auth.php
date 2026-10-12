@@ -3,13 +3,19 @@ declare(strict_types=1);
 namespace App\Http;
 use App\App;
 use App\Osm\OsmApi;
+use App\Osm\OsmTokens;
 use Throwable;
 final class Auth
 {
+    /**
+     * The session's OSM access token, refreshed first if it has expired (OSM tokens last about an hour)
+     * or OSM said it isn't logged in. If it can't be renewed, send the leader to sign in again rather
+     * than letting every page fail with "Could not load sections".
+     */
     public static function requireLogin(): string
     {
-        $token = $_SESSION['accessToken'] ?? '';
-        if (!is_string($token) || $token === '') {
+        $token = OsmTokens::sessionToken();
+        if ($token === null) {
             header('Location: /auth/');
             exit;
         }
@@ -44,7 +50,7 @@ final class Auth
     /** @return array{rateLimit: array<string, mixed>, rateResetText: string} */
     public static function ensureRateLimit(): array
     {
-        $token = (string) ($_SESSION['accessToken'] ?? '');
+        $token = !empty($_SESSION['accessToken']) ? (string) (OsmTokens::sessionToken() ?? '') : '';
         $rate = OsmApi::sessionSnapshot();
         if ($rate === null && $token !== '') {
             try {

@@ -2,7 +2,41 @@
 {% block body %}
 <div class="card">
   <h2>Members — {{ groupName }}</h2>
-  <p class="muted">Fetched {{ fetchedAt }}. For Young Leaders / Leaders / multi-section checks see <a href="/member-checks/">Member checks</a>. Overnight camps: <a href="/nights-away/">Nights away</a>.</p>
+  <p class="muted">Tick the sections you need, then load the list. These are the sections from when you signed in. OSM is only asked for the ones you tick.</p>
+  {% if sectionError %}<div class="alert alert-error">{{ sectionError }}</div>{% endif %}
+
+  {% if choiceCount == 0 and not sectionError %}
+  <p class="alert">No sections on this login that a member list can use. Sign out and connect again, or check your OSM role.</p>
+  {% elseif choiceCount > 0 %}
+  <form method="post" action="/members/" class="member-section-pick" data-member-sections>
+    {% include '_csrf.twig' %}
+    {% for g in groups %}
+    <div class="member-section-group">
+      {% if multiGroup %}<h3>{{ g.name }}</h3>{% endif %}
+      <div class="filter-chips">
+        {% for s in g.sections %}
+        <label class="filter-chip">
+          <input type="checkbox" name="section_ids[]" value="{{ s.id }}" {% if s.id in selectedIds %}checked{% endif %}>
+          {{ s.name }} <span class="muted">{{ s.typeLabel }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+    <p class="member-section-actions">
+      <button type="button" class="btn btn-secondary" data-sections-all>Select all</button>
+      <button type="button" class="btn btn-secondary" data-sections-none>Clear</button>
+      <button class="btn" type="submit">Load members</button>
+    </p>
+    <p class="muted">Loading fetches each ticked section from OSM and can take a moment. Leaders in a Leaders patrol are left off the list.</p>
+  </form>
+  {% endif %}
+</div>
+
+{% if loaded %}
+<div class="card">
+  <h3>Member list</h3>
+  <p class="muted">Fetched {{ fetchedAt }}. Only the ticked sections were loaded. For Young Leaders / Leaders / multi-section checks see <a href="/member-checks/">Member checks</a>. Overnight camps: <a href="/nights-away/">Nights away</a>.</p>
   {% if errorMessage %}<div class="alert alert-error">{{ errorMessage }}</div>{% endif %}
 
   {% if sectionNames %}
@@ -71,6 +105,20 @@
     cb.addEventListener('change', apply);
   });
   apply();
+})();
+</script>
+{% endif %}
+<script>
+(function () {
+  var form = document.querySelector('[data-member-sections]');
+  if (!form) return;
+  function boxes() {
+    return Array.prototype.slice.call(form.querySelectorAll('input[name="section_ids[]"]'));
+  }
+  var allBtn = form.querySelector('[data-sections-all]');
+  var noneBtn = form.querySelector('[data-sections-none]');
+  if (allBtn) allBtn.addEventListener('click', function () { boxes().forEach(function (cb) { cb.checked = true; }); });
+  if (noneBtn) noneBtn.addEventListener('click', function () { boxes().forEach(function (cb) { cb.checked = false; }); });
 })();
 </script>
 {% endblock %}

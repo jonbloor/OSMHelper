@@ -3,6 +3,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 use App\App;
 use App\Http\Auth;
+use App\Http\Csrf;
+use App\Osm\LoginSections;
 use App\Osm\OsmApi;
 use App\Osm\OsmLists;
 use Throwable;
@@ -45,6 +47,9 @@ final class MembersController
 
     /**
      * Shared OSM membership load (list + checks).
+     * Pass login sections to query only those; null loads every section (member checks).
+     *
+     * @param list<array<string, mixed>>|null $sections
      * @return array{
      *   groupName: string,
      *   flatMembers: list<array<string, mixed>>,
@@ -56,7 +61,7 @@ final class MembersController
      *   fetchedAt: string
      * }
      */
-    private static function loadData(string $token): array
+    private static function loadData(string $token, ?array $sections = null): array
     {
         $api = new OsmApi();
         $groupName = (string) ($_SESSION['groupName'] ?? 'OSM Helper');
@@ -64,7 +69,9 @@ final class MembersController
         $errorMessage = null;
         $sectionNames = [];
         try {
-            $sections = $api->getDynamicSections($token);
+            if ($sections === null) {
+                $sections = $api->getDynamicSections($token);
+            }
             foreach ($sections as $sec) {
                 if (!is_array($sec)) {
                     continue;
@@ -305,14 +312,97 @@ final class MembersController
     public function index(): void
     {
         $token = Auth::requireLogin();
-        $data = self::loadData($token);
-        App::render('members.twig', Auth::baseContext([
-            'title' => 'Members',
+        [$choices, $sectionError] = self::choices($token);
+        $result = $_SESSION['membersListResult'] ?? null;
+        if (!is_array($result)) {
+            $result = null;
+        }
+        $selected = [];
+        if (is_array($result['sectionIds'] ?? null)) {
+            foreach ($result['sectionIds'] as $id) {
+                if (is_scalar($id)) {
+                    $selected[] = (string) $id;
+                }
+            }
+        }
+        self::renderMembers($choices, $selected, $sectionError, $result);
+    }
+
+    public function run(): void
+    {
+        $token = Auth::requireLogin();
+        Csrf::requireValid();
+        [$choices, $sectionError] = self::choices($token);
+        if ($sectionError !== null) {
+            self::renderMembers($choices, [], $sectionError, null);
+            return;
+        }
+        $raw = $_POST['section_ids'] ?? [];
+        if (!is_array($raw)) {
+            $raw = [];
+        }
+        $picked = LoginSections::pickedSections($choices, $raw);
+        $selected = [];
+        foreach ($raw as $id) {
+            if (is_scalar($id)) {
+                $selected[] = trim((string) $id);
+            }
+        }
+        if ($picked === []) {
+            self::renderMembers($choices, $selected, 'Tick at least one section, then load the list.', null);
+            return;
+        }
+        $data = self::loadData($token, $picked);
+        $selectedIds = array_map(static fn (array $sec): string => (string) $sec['section_id'], $picked);
+        $_SESSION['membersListResult'] = [
+            'sectionIds' => $selectedIds,
             'groupName' => $data['groupName'],
-            'members' => $data['flatMembers'],
+            'flatMembers' => $data['flatMembers'],
             'sectionNames' => $data['sectionNames'],
             'errorMessage' => $data['errorMessage'],
             'fetchedAt' => $data['fetchedAt'],
+        ];
+        header('Location: /members/');
+        exit;
+    }
+
+    /**
+     * @return array{0: list<array{id:string,name:string,type:string,typeLabel:string,groupName:string,termId:mixed}>, 1: ?string}
+     */
+    private static function choices(string $token): array
+    {
+        try {
+            return [LoginSections::memberListChoices(LoginSections::ensure($token)), null];
+        } catch (Throwable) {
+            return [[], 'Could not read the sections from this login. Sign out and connect again.'];
+        }
+    }
+
+    /**
+     * @param list<array{id:string,name:string,type:string,typeLabel:string,groupName:string,termId:mixed}> $choices
+     * @param list<string> $selectedIds
+     * @param array<string, mixed>|null $result
+     */
+    private static function renderMembers(array $choices, array $selectedIds, ?string $sectionError, ?array $result): void
+    {
+        $loaded = is_array($result);
+        $groupName = $loaded
+            ? (string) ($result['groupName'] ?? ($_SESSION['groupName'] ?? 'OSM Helper'))
+            : (string) ($_SESSION['groupName'] ?? 'OSM Helper');
+        $groups = LoginSections::groupChoices($choices);
+        App::render('members.twig', Auth::baseContext([
+            'title' => 'Members',
+            'groupName' => $groupName,
+            'groups' => $groups,
+            'choiceCount' => count($choices),
+            'multiGroup' => count($groups) > 1,
+            'selectedIds' => $selectedIds,
+            'sectionError' => $sectionError,
+            'loaded' => $loaded,
+            'members' => $loaded && is_array($result['flatMembers'] ?? null) ? $result['flatMembers'] : [],
+            'sectionNames' => $loaded && is_array($result['sectionNames'] ?? null) ? $result['sectionNames'] : [],
+            'errorMessage' => $loaded ? ($result['errorMessage'] ?? null) : null,
+            'fetchedAt' => $loaded ? (string) ($result['fetchedAt'] ?? '') : '',
         ]));
     }
 

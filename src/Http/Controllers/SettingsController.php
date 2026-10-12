@@ -7,6 +7,7 @@ use App\Config;
 use App\Http\Auth;
 use App\Osm\OsmApi;
 use App\Store\SettingsStore;
+use App\Store\WordpressSiteKeyStore;
 use Throwable;
 final class SettingsController
 {
@@ -62,6 +63,9 @@ final class SettingsController
             }
         }
 
+        $osmUserId = (string) ($_SESSION['osmUserId'] ?? '');
+        $wpRow = $osmUserId !== '' ? WordpressSiteKeyStore::findByOsmUserId($osmUserId) : null;
+
         App::render('settings.twig', Auth::baseContext([
             'title' => 'Settings',
             'displayCutoffs' => $displayCutoffs,
@@ -73,6 +77,9 @@ final class SettingsController
             'financeSectionType' => $financeSectionType,
             'equipmentLocations' => $equipmentLocations,
             'saved' => !empty($saved),
+            'wpConfigured' => is_array($wpRow) && (string) ($wpRow['site_key'] ?? '') !== '',
+            'wpSectionName' => is_array($wpRow) ? (string) ($wpRow['section_name'] ?? '') : '',
+            'wpBlocked' => is_array($wpRow) && !empty($wpRow['blocked_at']),
         ]));
     }
 
@@ -167,6 +174,13 @@ final class SettingsController
         SettingsStore::merge(['equipmentLocations' => $locations]);
         header('Location: /settings/');
         exit;
+    }
+
+
+    /** Old route kept working: the WordPress form settings now live on /wordpress-form/. */
+    public function updateWordpressWaitingList(): void
+    {
+        (new WordpressFormController())->save();
     }
 
     /**

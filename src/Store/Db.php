@@ -97,5 +97,27 @@ final class Db
                 $pdo->exec('ALTER TABLE waiting_field_maps ADD COLUMN ' . $col . ' TEXT');
             }
         }
+
+        // WordPress waiting-list intake: site key + OSM tokens for the configuring leader.
+        $pdo->exec(
+            'CREATE TABLE IF NOT EXISTS wordpress_site_keys (
+                id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+                osm_user_id         TEXT NOT NULL,
+                site_key            TEXT NOT NULL UNIQUE,
+                section_id          TEXT NOT NULL,
+                section_name        TEXT,
+                access_token        TEXT NOT NULL,
+                refresh_token       TEXT,
+                token_expires_at    INTEGER,
+                blocked_at          INTEGER,
+                blocked_header      TEXT,
+                created_at          TEXT NOT NULL,
+                updated_at          TEXT NOT NULL
+            )'
+        );
+        $pdo->exec(
+            'CREATE UNIQUE INDEX IF NOT EXISTS wordpress_site_keys_user
+             ON wordpress_site_keys (osm_user_id)'
+        );
     }
 }
