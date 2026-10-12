@@ -30,6 +30,11 @@
       <p class="muted">Newest first. The <a href="#history">Changelog</a> below has the details.</p>
       <ul class="rm-list">
         <li class="rm-item rm-shipped">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-12">12 Oct 2026</time> <span class="rm-area">Equipment</span></div>
+          <h4 class="rm-title">Add an equipment item</h4>
+          <p>Create a quartermaster item from the Equipment page. You review the fields, then OSMHelper saves one new row. Editing an existing item is still planned.</p>
+        </li>
+        <li class="rm-item rm-shipped">
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-12">12 Oct 2026</time> <span class="rm-area">Group numbers</span></div>
           <h4 class="rm-title">Choose sections before loading group numbers</h4>
           <p>Group numbers lists the sections from your OSM sign-in. Tick the ones you need, then load. OSMHelper only fetches those sections, plus the waiting list for the age bands. Explorers, Adults, and sections switched off in Settings are left out.</p>
@@ -91,6 +96,14 @@
       <h3 id="history-h">Changelog</h3>
       <p class="muted">What changed, newest first. Each entry went live on the date shown.</p>
       <ul class="rm-list">
+        <li class="rm-item rm-shipped rm-history" id="2026-10-12-equipment-add">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-12">12 Oct 2026</time></div>
+          <h4 class="rm-title">Add an equipment item</h4>
+          <ul>
+            <li><strong>Equipment:</strong> add a row to one of your quartermaster lists. Name is required. Quantity, description, condition, broken, location, purchase date, notes and renewal price match the OSM columns.</li>
+            <li>You review the fields, then Confirm creates one row. Cancel writes nothing. Editing an existing item is still planned.</li>
+          </ul>
+        </li>
         <li class="rm-item rm-shipped rm-history" id="2026-10-12-numbers">
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-12">12 Oct 2026</time></div>
           <h4 class="rm-title">Choose sections before loading group numbers</h4>
@@ -167,8 +180,8 @@
       <ul class="rm-list">
         <li class="rm-item rm-planned">
           <div class="rm-head">{{ rm.status('planned') }} <span class="rm-area">Equipment</span></div>
-          <h4 class="rm-title">Add and edit equipment items</h4>
-          <p>Create and update quartermaster items in OSM from OSMHelper.</p>
+          <h4 class="rm-title">Edit equipment items</h4>
+          <p>Update an existing quartermaster item in OSM from OSMHelper.</p>
         </li>
         <li class="rm-item rm-planned">
           <div class="rm-head">{{ rm.status('planned') }} <span class="rm-area">Badges</span></div>

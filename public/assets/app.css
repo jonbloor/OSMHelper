@@ -892,6 +892,45 @@ td.cell-broken {
   border-radius: 6px;
   border: 1px solid var(--border);
 }
+.equipment-add {
+  margin: 0 0 1.25rem;
+  padding: 0.75rem 0.85rem 0.35rem;
+  background: #f7faf8;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.equipment-add h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+}
+.equipment-add-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.75rem 1rem;
+  margin: 0.75rem 0;
+}
+.equipment-add-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-weight: 500;
+  margin: 0;
+}
+.equipment-add-grid input,
+.equipment-add-grid select,
+.equipment-add-grid textarea {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+.equipment-add-grid textarea {
+  min-height: 4.5rem;
+  resize: vertical;
+}
 .col-check {
   width: 2.5rem;
   text-align: center;

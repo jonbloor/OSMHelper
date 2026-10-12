@@ -66,6 +66,9 @@ The server session stores your OSM access token (and refresh token when OSM send
 | POST | `/members` | Auth + CSRF; fetch members for the ticked sections only |
 | GET | `/membership-dashboard` | Auth required; tick sections from the sign-in list, then load |
 | POST | `/membership-dashboard` | Auth + CSRF; fetch counts for the ticked sections, plus the waiting list |
+| GET | `/equipment` | Auth required; quartermaster lists for the Equipment section, with a form to add an item |
+| POST | `/equipment/move` | Auth + CSRF; review, then update Location for the ticked items |
+| POST | `/equipment/add` | Auth + CSRF; review, then create one quartermaster item |
 | GET | `/wordpress-form` | Auth required; WordPress joining form: plugin download, site key, setup steps |
 | GET | `/wordpress-form/download` | Auth required; streams `downloads/osm-for-wordpress.zip` (refresh with `deploy/refresh-wordpress-plugin.sh`) |
 | POST | `/wordpress-form/save` | Auth + CSRF; save waiting list, create/regenerate/remove site key, clear OSM block (old `/settings/update-wordpress-waiting-list` still works) |

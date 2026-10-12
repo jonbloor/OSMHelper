@@ -13,6 +13,58 @@
   {% endif %}
   {% if parseHint %}<div class="alert alert-error">{{ parseHint }}</div>{% endif %}
 
+  {% if equipmentLists is defined and equipmentLists|length > 0 %}
+  <form method="post" action="/equipment/add/" class="equipment-add">
+    {% include '_csrf.twig' %}
+    <input type="hidden" name="step" value="review">
+    <h3>Add an item</h3>
+    <p class="muted">Creates one new row in this section. You review the fields before anything is written to OSM. Name is required. Leave the other fields blank if you do not have them. Broken is 0 unless you set it.</p>
+    <div class="equipment-add-grid">
+      <label>List
+        <select name="listId" required>
+          <option value="">— choose list —</option>
+          {% for list in equipmentLists %}
+          <option value="{{ list.id }}">{{ list.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Name
+        <input type="text" name="name" required maxlength="200" autocomplete="off">
+      </label>
+      <label>Quantity
+        <input type="number" name="quantity" min="0" step="any" inputmode="decimal">
+      </label>
+      <label>Description
+        <textarea name="description" maxlength="500" rows="2"></textarea>
+      </label>
+      <label>Condition
+        <input type="text" name="condition" maxlength="500" autocomplete="off">
+      </label>
+      <label>Broken
+        <input type="number" name="broken" min="0" step="1" value="0" inputmode="numeric">
+      </label>
+      <label>Location
+        <input type="text" name="location" maxlength="200" list="equipment-location-options" autocomplete="off">
+      </label>
+      <label>Purchase date
+        <input type="date" name="purchaseDate">
+      </label>
+      <label>Notes
+        <textarea name="notes" maxlength="500" rows="2"></textarea>
+      </label>
+      <label>Renewal price
+        <input type="text" name="renewalPrice" maxlength="10" inputmode="decimal" autocomplete="off">
+      </label>
+    </div>
+    <datalist id="equipment-location-options">
+      {% for loc in equipmentLocations|default([]) %}
+      <option value="{{ loc }}"></option>
+      {% endfor %}
+    </datalist>
+    <button class="btn" type="submit">Review item…</button>
+  </form>
+  {% endif %}
+
   {% if equipmentLocations is defined and equipmentLocations|length > 0 %}
   <form method="post" action="/equipment/move/" id="equipment-move-form" class="equipment-bulk">
     {% include '_csrf.twig' %}

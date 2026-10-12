@@ -65,6 +65,7 @@ final class App
         $router->post('/membership-dashboard', [$md, 'run']);
         $router->get('/equipment', [$eq, 'index']);
         $router->post('/equipment/move', [$eq, 'move']);
+        $router->post('/equipment/add', [$eq, 'add']);
         $router->get('/waiting-list', [$wl, 'index']);
         $router->get('/waiting-list/fields', [$wl, 'fields']);
         $router->post('/waiting-list/fields', [$wl, 'saveFields']);

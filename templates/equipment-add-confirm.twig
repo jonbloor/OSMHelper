@@ -1,0 +1,40 @@
+{% extends 'layout.twig' %}
+{% block body %}
+<div class="card">
+  <h2>Confirm new item</h2>
+  <p>You are about to create <strong>{{ item.name }}</strong> in {{ listName }}{% if sectionName %} ({{ sectionName }}){% endif %}.</p>
+  <div class="alert">Confirm writes one new quartermaster row in OSM. Cancel writes nothing.</div>
+  <div class="table-wrap">
+  <table class="data">
+    <tbody>
+      <tr><th>List</th><td>{{ listName }}</td></tr>
+      <tr><th>Name</th><td>{{ item.name }}</td></tr>
+      <tr><th>Quantity</th><td>{{ item.quantity != '' ? item.quantity : '—' }}</td></tr>
+      <tr><th>Description</th><td style="white-space:pre-wrap">{{ item.description != '' ? item.description : '—' }}</td></tr>
+      <tr><th>Condition</th><td>{{ item.condition != '' ? item.condition : '—' }}</td></tr>
+      <tr><th>Broken</th><td>{{ item.broken }}</td></tr>
+      <tr><th>Location</th><td>{{ item.location != '' ? item.location : '—' }}</td></tr>
+      <tr><th>Purchase date</th><td>{{ item.purchaseDate != '' ? item.purchaseDate : '—' }}</td></tr>
+      <tr><th>Notes</th><td style="white-space:pre-wrap">{{ item.notes != '' ? item.notes : '—' }}</td></tr>
+      <tr><th>Renewal price</th><td>{{ item.renewalPrice != '' ? item.renewalPrice : '—' }}</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <form method="post" action="/equipment/add/" class="row" style="margin-top:1rem">
+    {% include '_csrf.twig' %}
+    <input type="hidden" name="step" value="commit">
+    <input type="hidden" name="listId" value="{{ listId|e('html_attr') }}">
+    <input type="hidden" name="name" value="{{ item.name|e('html_attr') }}">
+    <input type="hidden" name="quantity" value="{{ item.quantity|e('html_attr') }}">
+    <input type="hidden" name="description" value="{{ item.description|e('html_attr') }}">
+    <input type="hidden" name="condition" value="{{ item.condition|e('html_attr') }}">
+    <input type="hidden" name="broken" value="{{ item.broken|e('html_attr') }}">
+    <input type="hidden" name="location" value="{{ item.location|e('html_attr') }}">
+    <input type="hidden" name="purchaseDate" value="{{ item.purchaseDate|e('html_attr') }}">
+    <input type="hidden" name="notes" value="{{ item.notes|e('html_attr') }}">
+    <input type="hidden" name="renewalPrice" value="{{ item.renewalPrice|e('html_attr') }}">
+    <button class="btn" type="submit">Confirm add</button>
+    <a class="btn btn-secondary" href="/equipment/">Cancel</a>
+  </form>
+</div>
+{% endblock %}
