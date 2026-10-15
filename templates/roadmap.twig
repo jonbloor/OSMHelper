@@ -172,7 +172,13 @@
 
     <section class="help-section" id="in-progress" aria-labelledby="in-progress-h">
       <h3 id="in-progress-h">In progress</h3>
-      <p class="muted">Nothing is being built right now. The next job will come from the Planned list below.</p>
+      <ul class="rm-list">
+        <li class="rm-item rm-progress">
+          <div class="rm-head">{{ rm.status('progress') }} <span class="rm-area">Members</span></div>
+          <h4 class="rm-title">Find a member</h4>
+          <p>Built and in review. Search by postcode, phone number or parent/contact name across the sections you load. Results show the member, their section and which contact matched. Searching uses a copy held for your sign-in, so it doesn’t use your OSM allowance.</p>
+        </li>
+      </ul>
     </section>
 
     <section class="help-section" id="planned" aria-labelledby="planned-h">

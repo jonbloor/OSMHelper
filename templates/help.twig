@@ -22,6 +22,11 @@
       <p>Tick the sections you need, then load the list. The ticks are the sections from when you signed in to OSM, so opening the page does not fetch members. OSMHelper only asks OSM for the sections you ticked. Age and date of birth are filled in where OSM needs an extra lookup. After the list loads, the section checkboxes above the table show or hide rows without another fetch. The table is sortable, searchable, and exportable (CSV / Excel / PDF). Leaders are not listed here. Each row has a <strong>Nights</strong> link into Nights away for that member. The list stays until you load again or sign out. If a section is missing, sign out and connect again.</p>
     </section>
 
+    <section class="help-section" id="find-member">
+      <h3>Find a member</h3>
+      <p>Find who a postcode, phone number or parent belongs to. First tick the sections and choose <strong>Load contacts</strong>. That uses one OSM request per section and keeps a copy for this sign-in only. It is cleared when you sign out. Then search as often as you like: searching never calls OSM. It looks at the member’s own contact details, Primary contacts 1 and 2 and the Emergency contact: postcodes, phone numbers and contact names. Part of a value is enough. Postcodes ignore spaces and capitals. Phone numbers ignore spaces, dashes and brackets, and +44, 0044 and a leading 0 count as the same. Each result shows the member, their section, and which contact and field matched, with a <strong>Nights</strong> link into Nights away. Refresh is limited to once every 5 minutes, and stops straight away if OSM returns an error or your allowance runs low. Leaders in a Leaders patrol are left out, as on Members.</p>
+    </section>
+
     <section class="help-section" id="checks">
       <h3>Checks</h3>
       <p>Troubleshooting tables: youth in more than one section (excluding Leaders and Young Leaders patrols), Young Leaders checks, and Leaders checks. Status cells use green for OK and amber for issues. Each table supports sort, search and export. Checks still reads every section on this login, because a young person in two sections only shows up when both are loaded.</p>

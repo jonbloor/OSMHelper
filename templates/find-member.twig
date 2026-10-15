@@ -1,0 +1,96 @@
+{% extends 'layout.twig' %}
+{% block body %}
+<div class="card">
+  <h2>Find a member — {{ groupName }}</h2>
+  <p class="muted">Search by postcode, phone number or parent/contact name. Searching uses a copy of your contacts held for this sign-in only, so it never calls OSM. Load or refresh that copy below.</p>
+  {% if flash %}<div class="alert{% if flash.kind == 'error' %} alert-error{% endif %}" role="status">{{ flash.message }}</div>{% endif %}
+
+  {% if indexed %}
+  <form method="get" action="/find-member/" class="find-member-form" role="search">
+    <p>
+      <label for="fm-q">Search for</label>
+      <input type="search" id="fm-q" name="q" value="{{ q }}" maxlength="100" required autocomplete="off" aria-describedby="fm-q-help">
+      <label for="fm-type" class="visually-hidden">Search in</label>
+      <select id="fm-type" name="type">
+        <option value="any" {% if type == 'any' %}selected{% endif %}>Anything</option>
+        <option value="postcode" {% if type == 'postcode' %}selected{% endif %}>Postcode</option>
+        <option value="phone" {% if type == 'phone' %}selected{% endif %}>Phone number</option>
+        <option value="name" {% if type == 'name' %}selected{% endif %}>Contact name</option>
+      </select>
+      <button class="btn" type="submit">Search</button>
+    </p>
+    <p class="muted" id="fm-q-help">Part of a value is enough. Spaces and capitals in postcodes are ignored. Phone numbers ignore spaces, dashes and brackets, and +44, 0044 and a leading 0 count as the same.</p>
+  </form>
+  {% endif %}
+</div>
+
+{% if results is not null %}
+<div class="card">
+  <h3>Results for “{{ q }}”</h3>
+  <div class="table-wrap">
+  <table class="data" id="find-member-table" data-table-tools data-export-name="find-member">
+    <caption class="visually-hidden">Members matching your search</caption>
+    <thead><tr><th scope="col">Member</th><th scope="col">Section</th><th scope="col">Matched contact</th><th scope="col">Field</th><th scope="col">Value</th><th scope="col">Member view</th></tr></thead>
+    <tbody>
+    {% for r in results %}
+      <tr>
+        <td>{{ r.name }}</td><td>{{ r.section }}</td>
+        <td>{{ r.contactGroup }}{% if r.contactName %}: {{ r.contactName }}{% endif %}</td>
+        <td>{{ r.field }}</td><td>{{ r.value }}</td>
+        <td><a href="/nights-away/?scoutid={{ r.scoutid|url_encode }}">Nights</a></td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6" class="muted">No matches in the loaded sections.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="muted">{{ results|length }} match{% if results|length != 1 %}es{% endif %}.</p>
+</div>
+{% endif %}
+
+<div class="card">
+  <h3>{% if indexed %}Refresh contacts{% else %}Load contacts{% endif %}</h3>
+  {% if indexInfo %}
+  <p class="muted">Loaded {{ indexInfo.builtAt }}: {{ indexInfo.memberCount }} members from {{ indexInfo.loaded|join(', ') ?: 'no sections' }}.{% if indexInfo.skipped %} Not loaded: {{ indexInfo.skipped|join(', ') }}.{% endif %}</p>
+  {% endif %}
+  {% if sectionError %}<div class="alert alert-error">{{ sectionError }}</div>{% endif %}
+  {% if choiceCount > 0 %}
+  <form method="post" action="/find-member/refresh/" class="member-section-pick" data-member-sections>
+    {% include '_csrf.twig' %}
+    {% for g in groups %}
+    <fieldset class="member-section-group">
+      <legend{% if not multiGroup %} class="visually-hidden"{% endif %}>{{ multiGroup ? g.name : 'Sections' }}</legend>
+      <div class="filter-chips">
+        {% for s in g.sections %}
+        <label class="filter-chip">
+          <input type="checkbox" name="section_ids[]" value="{{ s.id }}" {% if s.id in selectedIds %}checked{% endif %}>
+          {{ s.name }} <span class="muted">{{ s.typeLabel }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+    {% endfor %}
+    <p class="member-section-actions">
+      <button type="button" class="btn btn-secondary" data-sections-all>Select all</button>
+      <button type="button" class="btn btn-secondary" data-sections-none>Clear</button>
+      <button class="btn" type="submit">{% if indexed %}Refresh contacts{% else %}Load contacts{% endif %}</button>
+    </p>
+    <p class="muted">Uses one OSM request per ticked section. It stops straight away if OSM reports an error or your allowance runs low, and can be run once every {{ cooldownMinutes }} minutes. The copy is cleared when you sign out.</p>
+  </form>
+  {% elseif not sectionError %}
+  <p class="alert">No sections on this login that a member search can use. Sign out and connect again, or check your OSM role.</p>
+  {% endif %}
+</div>
+<script>
+(function () {
+  var form = document.querySelector('[data-member-sections]');
+  if (!form) return;
+  function boxes() { return Array.prototype.slice.call(form.querySelectorAll('input[name="section_ids[]"]')); }
+  var allBtn = form.querySelector('[data-sections-all]');
+  var noneBtn = form.querySelector('[data-sections-none]');
+  if (allBtn) allBtn.addEventListener('click', function () { boxes().forEach(function (cb) { cb.checked = true; }); });
+  if (noneBtn) noneBtn.addEventListener('click', function () { boxes().forEach(function (cb) { cb.checked = false; }); });
+})();
+</script>
+{% endblock %}
