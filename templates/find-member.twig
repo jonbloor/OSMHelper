@@ -52,7 +52,7 @@
 <div class="card">
   <h3>{% if indexed %}Refresh contacts{% else %}Load contacts{% endif %}</h3>
   {% if indexInfo %}
-  <p class="muted">Loaded {{ indexInfo.builtAt }}: {{ indexInfo.memberCount }} members from {{ indexInfo.loaded|join(', ') ?: 'no sections' }}.{% if indexInfo.skipped %} Not loaded: {{ indexInfo.skipped|join(', ') }}.{% endif %}</p>
+  <p class="muted">Loaded {{ indexInfo.builtAt }}: {{ indexInfo.memberCount }} members from {{ indexInfo.loaded|join(', ') ?: 'no sections' }}.{% if indexInfo.skipped %} Not loaded: {{ indexInfo.skipped|join(', ') }}.{% endif %} This copy is cleared about 2 hours after loading, or when you sign out.</p>
   {% endif %}
   {% if sectionError %}<div class="alert alert-error">{{ sectionError }}</div>{% endif %}
   {% if choiceCount > 0 %}

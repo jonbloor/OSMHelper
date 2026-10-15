@@ -21,6 +21,10 @@ final class ContactIndex
     public const RATE_LOW_REMAINING = 60;
     /** Pause between section calls. */
     private const CALL_DELAY_US = 300000;
+    /** Longer pause when OSM sent no X-RateLimit headers (allowance unknown). */
+    private const CALL_DELAY_UNKNOWN_US = 1500000;
+    /** Contact details are held in the session for at most this long. */
+    public const INDEX_TTL_SEC = 7200;
 
     /** OSM contact groups searched (group_id => label). Doctor (4) and custom data (5) are not searched. */
     public const GROUPS = [
@@ -234,6 +238,7 @@ final class ContactIndex
         $loaded = $skipped = [];
         $stop = null;
         $calls = 0;
+        $rateUnknown = false;
         foreach ($sections as $sec) {
             $name = (string) $sec['section_name'];
             if ($stop !== null) {
@@ -250,7 +255,7 @@ final class ContactIndex
                 continue;
             }
             if ($calls > 0) {
-                usleep(self::CALL_DELAY_US);
+                usleep($rateUnknown ? self::CALL_DELAY_UNKNOWN_US : self::CALL_DELAY_US);
             }
             try {
                 $calls++;
@@ -259,9 +264,22 @@ final class ContactIndex
                     'term_id' => (string) ($sec['current_term_id'] ?? -1),
                 ]);
             } catch (Throwable $e) {
-                $stop = $e->getCode() === 429
-                    ? 'OSM said too many requests, so OSMHelper stopped. Wait for your allowance to reset.'
-                    : 'OSM returned an error for ' . $name . ', so OSMHelper stopped without trying again.';
+                if ($e->getCode() === 429) {
+                    $ra = $api->getRetryAfterSeconds();
+                    $stop = 'OSM said too many requests, so OSMHelper stopped. '
+                        . ($ra !== null ? 'Try again in about ' . self::humanWait($ra) . '.' : 'Wait for your allowance to reset.');
+                } else {
+                    $stop = 'OSM returned an error for ' . $name . ', so OSMHelper stopped without trying again.';
+                }
+                $skipped[] = $name;
+                continue;
+            }
+            if (!$api->lastResponseHadRateHeaders()) {
+                $rateUnknown = true;
+            }
+            $bad = self::badResponseReason($res);
+            if ($bad !== null) {
+                $stop = 'OSM sent an unexpected reply for ' . $name . ' (' . $bad . '), so OSMHelper stopped without trying again.';
                 $skipped[] = $name;
                 continue;
             }
@@ -270,6 +288,59 @@ final class ContactIndex
             }
             $loaded[] = $name;
         }
-        return ['rows' => $rows, 'loaded' => $loaded, 'skipped' => $skipped, 'stopReason' => $stop, 'calls' => $calls];
+        return ['rows' => $rows, 'loaded' => $loaded, 'skipped' => $skipped, 'stopReason' => $stop, 'calls' => $calls, 'rateUnknown' => $rateUnknown];
+    }
+
+    /**
+     * Why a 200 grid response cannot be used, or null if it looks fine.
+     * @param array<string, mixed> $res
+     */
+    public static function badResponseReason(array $res): ?string
+    {
+        if (array_key_exists('_raw', $res)) {
+            return 'not JSON';
+        }
+        if (array_key_exists('error', $res) && $res['error'] !== null && $res['error'] !== false && $res['error'] !== '') {
+            $e = $res['error'];
+            $msg = is_array($e) ? ($e['message'] ?? null) : $e;
+            return 'error' . (is_string($msg) && $msg !== '' ? ': ' . mb_substr($msg, 0, 120) : '');
+        }
+        if (array_key_exists('status', $res) && $res['status'] === false) {
+            return 'status false';
+        }
+        if (!array_key_exists('data', $res) || !is_array($res['data'])) {
+            return 'no member data';
+        }
+        return null;
+    }
+
+    /** Replace a stored index only if this build loaded something useful. */
+    public static function shouldReplace(array $built): bool
+    {
+        return $built['stopReason'] === null || ($built['loaded'] ?? []) !== [];
+    }
+
+    /** Stored index, or null if absent or older than INDEX_TTL_SEC (expired ones are cleared). */
+    public static function load(?int $now = null): ?array
+    {
+        $now ??= time();
+        $i = $_SESSION[self::SESSION_KEY] ?? null;
+        if (!is_array($i) || !is_array($i['rows'] ?? null)) {
+            return null;
+        }
+        $ts = $i['builtAtTs'] ?? null;
+        if (!is_int($ts) || $now - $ts >= self::INDEX_TTL_SEC || $ts > $now + 60) {
+            unset($_SESSION[self::SESSION_KEY]);
+            return null;
+        }
+        return $i;
+    }
+
+    public static function humanWait(int $sec): string
+    {
+        if ($sec < 90) {
+            return $sec . ' seconds';
+        }
+        return (int) ceil($sec / 60) . ' minutes';
     }
 }

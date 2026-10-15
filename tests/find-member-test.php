@@ -97,5 +97,51 @@ $stack2->push(\GuzzleHttp\Middleware::history($history));
 $b = ContactIndex::build(new OsmApi(new Client(['handler' => $stack2, 'http_errors' => false, 'base_uri' => 'https://osm.test/'])), 'tok', $secs);
 check($b['calls'] === 0 && $history === [], 'low allowance: no OSM call');
 
+// 200 responses that are not usable must stop the build before the next section.
+unset($_SESSION['osmRateLimit']);
+$hdr = ['X-RateLimit-Limit' => '1000', 'X-RateLimit-Remaining' => '900', 'X-RateLimit-Reset' => '3000'];
+$cases = [
+    'not JSON' => '<html>Oops</html>',
+    'error key' => json_encode(['error' => 'Access denied']),
+    'status false' => json_encode(['status' => false, 'data' => []]),
+    'data not array' => json_encode(['status' => true, 'data' => 'nope']),
+];
+foreach ($cases as $label => $body) {
+    $history = [];
+    $m = new MockHandler([new Response(200, $hdr, $body), new Response(200, $hdr, json_encode($grid))]);
+    $st = HandlerStack::create($m);
+    $st->push(\GuzzleHttp\Middleware::history($history));
+    $b = ContactIndex::build(new OsmApi(new Client(['handler' => $st, 'http_errors' => false, 'base_uri' => 'https://osm.test/'])), 'tok', $secs);
+    check($b['calls'] === 1 && count($history) === 1 && $b['loaded'] === [] && $b['skipped'] === ['Beavers', 'Cubs', 'Scouts']
+        && is_string($b['stopReason']) && str_contains($b['stopReason'], 'unexpected reply'), "200 $label: stops, next section not called");
+    check(ContactIndex::shouldReplace($b) === false, "200 $label: existing index not replaced");
+}
+check(ContactIndex::badResponseReason(['status' => true, 'data' => []]) === null, 'valid empty grid accepted');
+
+// Replace rule
+check(ContactIndex::shouldReplace(['stopReason' => null, 'loaded' => []]), 'clean build replaces');
+check(ContactIndex::shouldReplace(['stopReason' => 'x', 'loaded' => ['Beavers']]), 'partial build with a section replaces');
+check(!ContactIndex::shouldReplace(['stopReason' => 'x', 'loaded' => []]), 'failed build keeps old index');
+
+// 429 message surfaces Retry-After
+$m = new MockHandler([new Response(429, ['Retry-After' => '120'], '{"error":"Too many"}')]);
+$b = ContactIndex::build(new OsmApi(new Client(['handler' => HandlerStack::create($m), 'http_errors' => false, 'base_uri' => 'https://osm.test/'])), 'tok', [$secs[0]]);
+check(str_contains((string) $b['stopReason'], 'about 2 minutes'), '429 Retry-After shown to user');
+
+// Missing rate headers flagged
+unset($_SESSION['osmRateLimit']);
+$m = new MockHandler([new Response(200, [], json_encode($grid))]);
+$b = ContactIndex::build(new OsmApi(new Client(['handler' => HandlerStack::create($m), 'http_errors' => false, 'base_uri' => 'https://osm.test/'])), 'tok', [$secs[0]]);
+check($b['rateUnknown'] === true && $b['loaded'] === ['Beavers'], 'missing X-RateLimit headers flagged');
+
+// Session index expiry (~2h)
+$now = time();
+$_SESSION[ContactIndex::SESSION_KEY] = ['rows' => [], 'builtAtTs' => $now - 7000];
+check(ContactIndex::load($now) !== null, 'index kept under 2h');
+$_SESSION[ContactIndex::SESSION_KEY] = ['rows' => [], 'builtAtTs' => $now - 7200];
+check(ContactIndex::load($now) === null && !isset($_SESSION[ContactIndex::SESSION_KEY]), 'index cleared at 2h');
+$_SESSION[ContactIndex::SESSION_KEY] = ['rows' => []];
+check(ContactIndex::load($now) === null && !isset($_SESSION[ContactIndex::SESSION_KEY]), 'index without timestamp cleared');
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

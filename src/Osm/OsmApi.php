@@ -11,6 +11,8 @@ final class OsmApi
     private Client $http;
     /** @var array{limit?: int|null, remaining?: int|null, resetInSec?: int|null, lastUpdatedMs?: int} */
     private array $lastRateLimit = [];
+    /** Whether the most recent response carried any X-RateLimit-* header. */
+    private bool $lastHadRateHeaders = false;
 
     public function __construct(?Client $http = null)
     {
@@ -352,6 +354,12 @@ final class OsmApi
         return $decoded;
     }
 
+    /** False when the last OSM response had no X-RateLimit-* headers (allowance unknown). */
+    public function lastResponseHadRateHeaders(): bool
+    {
+        return $this->lastHadRateHeaders;
+    }
+
     /** Seconds to wait after a 429, if OSM sent Retry-After. */
     public function getRetryAfterSeconds(): ?int
     {
@@ -403,6 +411,7 @@ final class OsmApi
         $remaining = $pick($headers, 'X-RateLimit-Remaining', 'X-Ratelimit-Remaining', 'x-ratelimit-remaining');
         $reset = $pick($headers, 'X-RateLimit-Reset', 'X-Ratelimit-Reset', 'x-ratelimit-reset');
         $retryAfter = $pick($headers, 'Retry-After', 'retry-after');
+        $this->lastHadRateHeaders = $limit !== null || $remaining !== null || $reset !== null;
         if ($limit === null && $remaining === null && $reset === null && $retryAfter === null) {
             return;
         }

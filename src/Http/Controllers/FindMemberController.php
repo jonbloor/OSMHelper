@@ -86,24 +86,32 @@ final class FindMemberController
         }
         $_SESSION['findMemberLastRefresh'] = time();
         $built = ContactIndex::build(new OsmApi(), $token, $picked);
-        $_SESSION[ContactIndex::SESSION_KEY] = [
-            'builtAt' => (new \DateTimeImmutable('now', new \DateTimeZone('Europe/London')))->format('d/m/y H:i'),
-            'sectionIds' => array_map(static fn ($s) => (string) $s['section_id'], $picked),
-            'rows' => $built['rows'],
-            'loaded' => $built['loaded'],
-            'skipped' => $built['skipped'],
-        ];
-        if ($built['stopReason'] !== null) {
-            $back('error', $built['stopReason'] . ' Sections loaded: ' . (implode(', ', $built['loaded']) ?: 'none') . '.');
+        $now = time();
+        $kept = false;
+        if (ContactIndex::shouldReplace($built)) {
+            $_SESSION[ContactIndex::SESSION_KEY] = [
+                'builtAt' => (new \DateTimeImmutable('@' . $now))->setTimezone(new \DateTimeZone('Europe/London'))->format('d/m/y H:i'),
+                'builtAtTs' => $now,
+                'sectionIds' => array_map(static fn ($s) => (string) $s['section_id'], $picked),
+                'rows' => $built['rows'],
+                'loaded' => $built['loaded'],
+                'skipped' => $built['skipped'],
+            ];
+        } else {
+            $kept = ContactIndex::load($now) !== null; // earlier good index is left untouched
         }
-        $back('ok', 'Contacts loaded for ' . count($built['loaded']) . ' section(s) using ' . $built['calls'] . ' OSM request(s). Searching uses this copy and does not call OSM.');
+        $note = !empty($built['rateUnknown']) ? ' OSM did not report your remaining allowance, so OSMHelper paused longer between sections.' : '';
+        if ($built['stopReason'] !== null) {
+            $back('error', $built['stopReason'] . ' Sections loaded: ' . (implode(', ', $built['loaded']) ?: 'none') . '.'
+                . ($kept ? ' Your earlier contacts are still available for searching.' : '') . $note);
+        }
+        $back('ok', 'Contacts loaded for ' . count($built['loaded']) . ' section(s) using ' . $built['calls'] . ' OSM request(s). Searching uses this copy and does not call OSM.' . $note);
     }
 
     /** @return array<string, mixed>|null */
     private static function index_(): ?array
     {
-        $i = $_SESSION[ContactIndex::SESSION_KEY] ?? null;
-        return is_array($i) && is_array($i['rows'] ?? null) ? $i : null;
+        return ContactIndex::load();
     }
 
     /** @return array{0: list<array<string,mixed>>, 1: ?string} */
