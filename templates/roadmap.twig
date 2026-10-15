@@ -30,6 +30,11 @@
       <p class="muted">Newest first. The <a href="#history">Changelog</a> below has the details.</p>
       <ul class="rm-list">
         <li class="rm-item rm-shipped">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-15">15 Oct 2026</time> <span class="rm-area">Members</span></div>
+          <h4 class="rm-title">Find a member</h4>
+          <p>Search by postcode, phone number or parent/contact name across the sections you load. Results show the member, their section and which contact matched. Searching doesn’t use your OSM allowance.</p>
+        </li>
+        <li class="rm-item rm-shipped">
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-12">12 Oct 2026</time> <span class="rm-area">Equipment</span></div>
           <h4 class="rm-title">Add an equipment item</h4>
           <p>Create a quartermaster item from the Equipment page. You review the fields, then OSMHelper saves one new row. Editing an existing item is still planned.</p>
@@ -96,6 +101,15 @@
       <h3 id="history-h">Changelog</h3>
       <p class="muted">What changed, newest first. Each entry went live on the date shown.</p>
       <ul class="rm-list">
+        <li class="rm-item rm-shipped rm-history" id="2026-10-15-find-member">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-15">15 Oct 2026</time></div>
+          <h4 class="rm-title">Find a member</h4>
+          <ul>
+            <li><strong>Members → Find a member:</strong> find who a postcode, phone number or parent/contact name belongs to. Searches the member’s own details, Primary contacts 1 and 2 and the Emergency contact. Part of a value is enough; phone numbers match with or without +44 and spaces.</li>
+            <li>Tick sections and choose Load contacts: one OSM request per section, at most once every 5 minutes, stopping straight away on any error or if your allowance runs low. Searching never calls OSM.</li>
+            <li>The contact details are held temporarily in your session on our server for up to about 2 hours, and cleared when they expire or when you sign out.</li>
+          </ul>
+        </li>
         <li class="rm-item rm-shipped rm-history" id="2026-10-12-equipment-add">
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-12">12 Oct 2026</time></div>
           <h4 class="rm-title">Add an equipment item</h4>
@@ -173,11 +187,7 @@
     <section class="help-section" id="in-progress" aria-labelledby="in-progress-h">
       <h3 id="in-progress-h">In progress</h3>
       <ul class="rm-list">
-        <li class="rm-item rm-progress">
-          <div class="rm-head">{{ rm.status('progress') }} <span class="rm-area">Members</span></div>
-          <h4 class="rm-title">Find a member</h4>
-          <p>Built and in review. Search by postcode, phone number or parent/contact name across the sections you load. Results show the member, their section and which contact matched. Searching uses a copy held for your sign-in, so it doesn’t use your OSM allowance.</p>
-        </li>
+        <li class="rm-item muted">Nothing in progress right now.</li>
       </ul>
     </section>
 
