@@ -324,7 +324,6 @@ final class EventList
                 'action' => 'getEvents',
                 'http_status' => 200,
                 'osm_code' => $code,
-                'osm_message' => null,
                 'kind' => 'bad-200',
                 'section_id' => $sid,
                 'badge_id' => null,

@@ -61,71 +61,81 @@ final class NightsAwayController
         'earlyyears' => 1,
     ];
 
+    /** Selected members are kept in the session, never in the URL (member IDs stay out of the access log). */
+    public const SELECTION_KEY = 'nightsAwaySelection';
+
     public function index(): void
     {
         $token = Auth::requireLogin();
-        $scoutIds = self::requestedScoutIds();
+        // Old links/bookmarks (?scoutid= / ?scoutids=): move the IDs into the session, then show a clean URL.
+        $legacy = self::idsFromQuery($_GET);
+        if ($legacy !== []) {
+            self::storeSelection($legacy);
+            header('Location: /nights-away/', true, 303);
+            exit;
+        }
+        $scoutIds = self::selectedScoutIds();
         $forceRefresh = isset($_GET['refresh']) && (string) $_GET['refresh'] === '1';
         $this->renderPage($token, $scoutIds, $forceRefresh);
     }
 
+    /** POST (CSRF-checked) from the picker or a "Nights" button: remember the members, then show them. */
     public function select(): void
     {
         Auth::requireLogin();
         Csrf::requireValid();
-        $ids = [];
         $raw = $_POST['scoutids'] ?? $_POST['scoutid'] ?? [];
-        if (!is_array($raw)) {
-            $raw = [$raw];
-        }
-        foreach ($raw as $id) {
-            $id = trim((string) $id);
-            if ($id !== '') {
-                $ids[] = $id;
-            }
-        }
-        $ids = array_values(array_unique($ids));
-        $qs = $ids === [] ? '' : ('?scoutids=' . rawurlencode(implode(',', $ids)));
-        header('Location: /nights-away/' . $qs, true, 303);
+        self::storeSelection(self::cleanIds(is_array($raw) ? $raw : [$raw]));
+        header('Location: /nights-away/', true, 303);
         exit;
     }
 
+    /** @param list<string> $ids */
+    public static function storeSelection(array $ids): void
+    {
+        if ($ids === []) {
+            unset($_SESSION[self::SELECTION_KEY]);
+            return;
+        }
+        $_SESSION[self::SELECTION_KEY] = array_slice($ids, 0, 500);
+    }
+
     /** @return list<string> */
-    private static function requestedScoutIds(): array
+    public static function selectedScoutIds(): array
+    {
+        $raw = $_SESSION[self::SELECTION_KEY] ?? [];
+        return self::cleanIds(is_array($raw) ? $raw : []);
+    }
+
+    /**
+     * @param array<string, mixed> $query
+     * @return list<string>
+     */
+    public static function idsFromQuery(array $query): array
     {
         $ids = [];
-        if (isset($_GET['scoutids'])) {
-            $raw = $_GET['scoutids'];
-            if (is_array($raw)) {
-                foreach ($raw as $id) {
-                    $id = trim((string) $id);
-                    if ($id !== '') {
-                        $ids[] = $id;
-                    }
-                }
-            } else {
-                foreach (explode(',', (string) $raw) as $id) {
-                    $id = trim($id);
-                    if ($id !== '') {
-                        $ids[] = $id;
-                    }
-                }
+        foreach (['scoutids', 'scoutid'] as $k) {
+            if (!isset($query[$k])) {
+                continue;
             }
+            $raw = $query[$k];
+            $ids = array_merge($ids, is_array($raw) ? $raw : explode(',', (string) $raw));
         }
-        if (isset($_GET['scoutid'])) {
-            $raw = $_GET['scoutid'];
-            if (is_array($raw)) {
-                foreach ($raw as $id) {
-                    $id = trim((string) $id);
-                    if ($id !== '') {
-                        $ids[] = $id;
-                    }
-                }
-            } else {
-                $id = trim((string) $raw);
-                if ($id !== '') {
-                    $ids[] = $id;
-                }
+        return self::cleanIds($ids);
+    }
+
+    /**
+     * OSM member IDs are numbers; anything else is dropped.
+     * @param array<mixed> $raw
+     * @return list<string>
+     */
+    private static function cleanIds(array $raw): array
+    {
+        $ids = [];
+        foreach ($raw as $id) {
+            $id = is_scalar($id) ? trim((string) $id) : '';
+            if ($id !== '' && ctype_digit($id)) {
+                $ids[] = $id;
             }
         }
         return array_values(array_unique($ids));

@@ -633,7 +633,6 @@ final class TopAwardsController
             'action' => 'updateSingleRecord',
             'http_status' => null,
             'osm_code' => null,
-            'osm_message' => 'unexpected response',
             'kind' => 'write',
             'section_id' => $sectionId,
             'badge_id' => $badgeId,
@@ -683,8 +682,10 @@ final class TopAwardsController
         foreach (array_slice($res, 0, 12, true) as $k => $v) {
             if (is_bool($v) || $v === null) {
                 $parts[] = $k . '=' . var_export($v, true);
-            } elseif (in_array((string) $k, ['ok', 'status', 'error'], true) && is_scalar($v)) {
-                $parts[] = $k . '=' . substr((string) $v, 0, 40);
+            } elseif (in_array((string) $k, ['ok', 'status', 'error'], true) && is_scalar($v)
+                && preg_match('/^[A-Za-z0-9_\-]{1,32}$/', (string) $v) === 1) {
+                // Code-like values only (e.g. status=403); OSM's message text is never logged.
+                $parts[] = $k . '=' . (string) $v;
             } else {
                 $parts[] = $k . ':' . gettype($v);
             }

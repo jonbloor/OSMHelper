@@ -77,4 +77,10 @@ echo "==> storage writable (after general perms)"
 # storage/sessions is created by PHP itself (owner osmhelper, 0700) and is deliberately left alone here.
 "${SSH[@]}" 'umask 002; mkdir -p /home/osmhelper/app/storage; chgrp osmhelper /home/osmhelper/app/storage; chmod 2770 /home/osmhelper/app/storage; find /home/osmhelper/app/storage -path /home/osmhelper/app/storage/sessions -prune -o -exec chmod g+rwX {} + 2>/dev/null || true; for f in /home/osmhelper/app/storage/osmhelper.sqlite /home/osmhelper/app/storage/osmhelper.sqlite-wal /home/osmhelper/app/storage/osmhelper.sqlite-shm; do if [ -f "$f" ]; then chgrp osmhelper "$f" 2>/dev/null || true; chmod 660 "$f" 2>/dev/null || true; fi; done; if [ -f /home/osmhelper/app/storage/settings.json ]; then chgrp osmhelper /home/osmhelper/app/storage/settings.json 2>/dev/null || true; chmod 660 /home/osmhelper/app/storage/settings.json 2>/dev/null || true; fi'
 
+echo "==> Privacy migrations (prints counts only, never tokens or the key)"
+# Encrypt any WordPress form tokens still stored as plaintext (needs OSMHELPER_TOKEN_KEY, added above),
+# and strip OSM message text / scoutid from older error-log entries. Both are safe to re-run.
+# umask 007 so any sqlite sidecar files bungle creates stay group-writable for PHP-FPM.
+"${SSH[@]}" 'cd /home/osmhelper/app && (umask 007; php bin/encrypt-site-tokens.php) && (umask 007; php bin/scrub-error-log.php)'
+
 echo "==> Done"

@@ -2,12 +2,15 @@
 declare(strict_types=1);
 namespace App\Http\Controllers;
 use App\App;
+use App\Config;
 use App\Http\Auth;
 use App\Http\Csrf;
 use App\Osm\OsmApi;
 use App\Store\WaitingFieldMapStore;
 use App\Store\WordpressSiteKeyStore;
 use App\Waiting\WaitingListService as WL;
+use App\Store\TokenCrypto;
+use App\Store\TokenKeyUnavailable;
 use Throwable;
 use App\Support\LogSafe;
 
@@ -23,6 +26,8 @@ final class WordpressFormController
     public const PAGE = '/wordpress-form/';
     public const ENDPOINT = 'https://osmhelper.co.uk/api/waiting-list/submit';
     public const BASE_URL = 'https://osmhelper.co.uk';
+
+    public const KEY_MISSING_MESSAGE = 'Saving the joining form is switched off for now because a server security setting is missing. Nothing was saved. Email hello@jonbloor.co.uk.';
 
     public function index(): void
     {
@@ -70,6 +75,9 @@ final class WordpressFormController
             'wpBaseUrl' => self::BASE_URL,
             'notesLabel' => $notesLabel,
             'plugin' => self::pluginInfo(),
+            // Production without a usable OSMHELPER_TOKEN_KEY: saving is refused (fail closed).
+            'tokenWritesBlocked' => TokenCrypto::writesBlocked(),
+            'tokenKeyProblem' => Config::isAdmin($osmUserId) ? TokenCrypto::problem() : null,
         ]));
     }
 
@@ -171,6 +179,9 @@ final class WordpressFormController
                 $expires,
                 $regenerate
             );
+        } catch (TokenKeyUnavailable) {
+            // Fail closed: never save the token unencrypted. TokenCrypto has logged the reason code.
+            self::back('error', self::KEY_MISSING_MESSAGE);
         } catch (Throwable $e) {
             error_log('OSMHelper WordPress site key save failed: ' . LogSafe::reason($e));
             self::back('error', 'Could not save the WordPress site key.');

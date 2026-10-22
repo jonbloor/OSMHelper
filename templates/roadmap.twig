@@ -110,10 +110,11 @@
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-22">22 Oct 2026</time></div>
           <h4 class="rm-title">Privacy tightening</h4>
           <ul>
-            <li><strong>Sessions end after 2 hours:</strong> you are signed out 2 hours after signing in (or after 2 hours idle), and the session and anything it held is deleted from the server. Everyone is signed out once when this goes live.</li>
-            <li><strong>Find a member:</strong> searches are sent privately, so postcodes, phone numbers and names you search for no longer appear in web addresses, browser history or server logs.</li>
-            <li><strong>WordPress joining form:</strong> the OSM access key kept for the form is now encrypted on the server.</li>
-            <li><strong>Error logs:</strong> no member IDs or OSM reply text, only what failed and which section. OSMHelper’s error log entries are deleted after 30 days.</li>
+            <li><strong>Sessions end after 2 hours:</strong> every session ends 2 hours after you sign in, even while you’re using it, or when you sign out, and its file on the server is cleaned up shortly after. Each page shows when your session ends, and after signing in again you go back to the page you were on. Everyone is signed out once when this goes live.</li>
+            <li><strong>Find a member and Nights away:</strong> searches, and the members you pick in Nights away, are sent privately, so postcodes, phone numbers, names and member numbers no longer appear in web addresses, browser history or server logs.</li>
+            <li><strong>WordPress joining form:</strong> the OSM access key kept for the form is now encrypted on the server, including keys saved before this change.</li>
+            <li><strong>Error logs:</strong> only what failed, the error code and which section; never OSM’s message text, names, contact details or member numbers (older entries were cleaned the same way). Entries are deleted after 30 days.</li>
+            <li><strong>What’s saved:</strong> your group settings, with your OSM user number so we know whose settings are whose.</li>
             <li>Leftover debug files that could hold member data have been removed from the code entirely. See <a href="/help/#privacy">Help → Your data and privacy</a>.</li>
           </ul>
         </li>

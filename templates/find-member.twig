@@ -40,7 +40,7 @@
         <td>{{ r.name }}</td><td>{{ r.section }}</td>
         <td>{{ r.contactGroup }}{% if r.contactName %}: {{ r.contactName }}{% endif %}</td>
         <td>{{ r.field }}</td><td>{{ r.value }}</td>
-        <td><a href="/nights-away/?scoutid={{ r.scoutid|url_encode }}">Nights</a></td>
+        <td><form method="post" action="/nights-away/select/" class="inline-form">{% include '_csrf.twig' %}<input type="hidden" name="scoutid" value="{{ r.scoutid }}"><button type="submit" class="link-button">Nights</button></form></td>
       </tr>
     {% else %}
       <tr><td colspan="6" class="muted">No matches in the loaded sections.</td></tr>

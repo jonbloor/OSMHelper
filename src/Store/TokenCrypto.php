@@ -12,9 +12,12 @@ use App\Config;
  * Stored format: "sb1:" . base64(nonce . ciphertext). Anything without that prefix is a legacy
  * plaintext value: it is still read as-is, and WordpressSiteKeyStore re-saves it encrypted.
  *
- * Fail safe: if the key is missing/invalid (or sodium is unavailable) the site keeps working —
- * encrypt() returns the value unchanged and logs a reason code; decrypt() of an encrypted value then
- * returns null (the form shows "sign in and save the form again"). Values and keys are never logged.
+ * If the key is missing/invalid (or sodium is unavailable) a reason code is logged and:
+ *  - in production (Config::isProduction()) encrypt() fails closed: it throws TokenKeyUnavailable,
+ *    so no new token is ever saved as plaintext (the Joining form page shows a warning instead);
+ *  - elsewhere (development) encrypt() returns the value unchanged.
+ * Reading always works for legacy plaintext rows; decrypt() of an encrypted value without the right
+ * key returns null (the form asks the leader to sign in and save again). Values and keys are never logged.
  */
 final class TokenCrypto
 {
@@ -30,6 +33,34 @@ final class TokenCrypto
     {
         self::$keyOverride = $base64Key;
         self::$logged = [];
+    }
+
+    /** Test helper: force production (true/false) or use Config (null). */
+    private static ?bool $productionOverride = null;
+
+    public static function setProductionForTests(?bool $production): void
+    {
+        self::$productionOverride = $production;
+    }
+
+    /** True when new tokens can't be saved here (production without a usable key). */
+    public static function writesBlocked(): bool
+    {
+        return !self::available() && (self::$productionOverride ?? Config::isProduction());
+    }
+
+    /** Short reason code for the admin warning (never the key): token_key_missing etc., or null if fine. */
+    public static function problem(): ?string
+    {
+        if (!function_exists('sodium_crypto_secretbox')) {
+            return 'token_sodium_missing';
+        }
+        $b64 = self::$keyOverride ?? Config::tokenKey();
+        if ($b64 === null || $b64 === '') {
+            return 'token_key_missing';
+        }
+        $key = base64_decode($b64, true);
+        return (!is_string($key) || strlen($key) !== SODIUM_CRYPTO_SECRETBOX_KEYBYTES) ? 'token_key_invalid' : null;
     }
 
     public static function isEncrypted(?string $value): bool
@@ -50,6 +81,10 @@ final class TokenCrypto
         }
         $key = self::key();
         if ($key === null) {
+            if (self::$productionOverride ?? Config::isProduction()) {
+                self::logOnce('token_write_refused_no_key');
+                throw new TokenKeyUnavailable('Token encryption key unavailable; token not saved.');
+            }
             return $plain;
         }
         $nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);

@@ -32,7 +32,7 @@
   <div class="card">
     <details>
       <summary class="muted">Recent OSM API errors, all groups ({{ osmRecentErrors|length }})</summary>
-      <p class="muted">Admin only (ADMIN_OSM_USER_IDS). Redacted log for diagnosis (invalid-action, 403, 429, transport). Full file: <code>storage/osm-errors.jsonl</code> on the server.</p>
+      <p class="muted">Admin only (ADMIN_OSM_USER_IDS). Status codes only, no OSM message text or member details (invalid-action, 403, 429, transport). Full file: <code>storage/osm-errors.jsonl</code> on the server.</p>
       <ul class="muted" style="font-size:0.9rem">
       {% for e in osmRecentErrors|reverse %}
         <li><code>{{ e.at|default('—') }}</code>
@@ -40,7 +40,7 @@
           · {{ e.method|default('') }} {{ e.endpoint|default('') }}
           {% if e.action %} · action={{ e.action }}{% endif %}
           {% if e.http_status %} · HTTP {{ e.http_status }}{% endif %}
-          {% if e.osm_message %} — {{ e.osm_message }}{% endif %}
+          {% if e.osm_code %} · code {{ e.osm_code }}{% endif %}
           {% if e.section_id %} · section {{ e.section_id }}{% endif %}
           {% if e.badge_id %} · badge {{ e.badge_id }}{% endif %}
         </li>
@@ -168,12 +168,17 @@
         <h4>It doesn't</h4>
         <ul>
           <li>Replace OSM. OSM stays the record, and anything OSMHelper saves goes into OSM.</li>
-          {# Privacy wording updated 22 Oct (privacy-hardening). Each claim is backed by code:
-             sessions end after 2 hours (App::SESSION_MAX_AGE_SEC, app-owned storage/sessions with 2-hour GC);
+          {# Privacy wording (privacy-hardening). Each claim is backed by code:
+             sessions end 2 hours after sign-in even while in use (Config::sessionAbsoluteSeconds(), enforced in
+             App::enforceSessionMaxAge(); logout calls session_destroy()); session files live in storage/sessions/
+             with gc_maxlifetime 7200, so PHP's session GC deletes them shortly after;
              Top awards caches are deleted after 2 hours and at logout (TopAwardsController::sweepExpiredCaches);
-             no debug dumps exist any more; osm-errors.jsonl is redacted (LogSafe), has no member IDs and is
-             pruned after 30 days; the WordPress form's OSM tokens are encrypted at rest (TokenCrypto). #}
-          <li>Keep copies of member data. Your OSM access token is held only in your server session, and most pages fetch fresh data from OSM when you open them. Anything a page holds for you while you work (a member list, group numbers, events, or the contact details Find a member searches) stays in that session only, and every session ends after 2 hours or when you sign out. Find a member searches are sent privately, so what you search for is not saved in web addresses or server logs. Top awards results are kept for up to 2 hours so the page loads faster, then deleted. The only things saved on our server are your group settings (age cut-offs, capacity, which sections each tool uses, kit locations and your chosen waiting list fields) and, if you turn on the WordPress joining form, an encrypted OSM access key for that form. We also keep a short error log to fix problems, with personal details removed.</li>
+             OSM user ids are stored with settings (waiting_field_maps.updated_by, wordpress_site_keys.osm_user_id);
+             osm-errors.jsonl never stores OSM message text or member IDs and is pruned after 30 days on every
+             request (deploy runs bin/scrub-error-log.php for older lines); the WordPress form's OSM tokens are
+             encrypted (TokenCrypto; deploy runs bin/encrypt-site-tokens.php, and production refuses to save
+             them unencrypted). #}
+          <li>Keep copies of member data. Your OSM access token is held only in your server session, and most pages fetch fresh data from OSM when you open them. Anything a page holds for you while you work (a member list, group numbers, events, or the contact details Find a member searches) stays in that session only. Every session ends 2 hours after you sign in, or when you sign out, and its file on our server is cleaned up shortly after. Find a member searches, and the members you pick in Nights away, are sent privately, so they are not saved in web addresses or server logs. Top awards results are kept for up to 2 hours so the page loads faster, then deleted. The only things saved on our server are your group settings (age cut-offs, capacity, which sections each tool uses, kit locations and your chosen waiting list fields), saved with your OSM user number so we know whose settings are whose, and, if you turn on the WordPress joining form, an encrypted OSM access key for that form. We also keep a short error log to fix problems. It records what failed, the error code and which section, never OSM’s message text, names, contact details or member numbers, and entries are deleted after 30 days.</li>
           <li>Keep the forms parents send. If you use the WordPress joining form, each form is passed straight to OSM and not kept. To do that, OSMHelper keeps an encrypted OSM access key for the form (not your password) on the server until you turn the form off.</li>
           <li>Change your bank accounts. Finance pages are read-only.</li>
         </ul>

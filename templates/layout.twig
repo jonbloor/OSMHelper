@@ -142,6 +142,9 @@
         })();
       </script>
     </header>
+    {% if authed is defined and authed and sessionEndsText|default(null) %}
+      <p class="session-ends" title="For privacy, every session ends 2 hours after you sign in, even while you’re using it.">Signed in until {{ sessionEndsText }} (UK time)</p>
+    {% endif %}
     {% if authed is defined and authed and rateLimit is defined %}
       {% if rateLimitCritical|default(false) %}
       <div class="alert alert-error rate-limit-banner" role="status">OSM API allowance critical: <strong>{{ rateLimit.remaining }}</strong> remaining{% if rateLimit.limit %} of {{ rateLimit.limit }}{% endif %}. Avoid heavy pages until it resets ({{ rateResetText|default('soon') }}).</div>

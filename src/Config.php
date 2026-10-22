@@ -133,4 +133,42 @@ final class Config
         $v = self::get('OSMHELPER_TOKEN_KEY');
         return ($v === null || trim($v) === '') ? null : trim($v);
     }
+
+    /**
+     * Production when APP_ENV=production, or (APP_ENV unset) when serving the live host.
+     * Used to fail closed on security settings that development can live without.
+     */
+    public static function isProduction(): bool
+    {
+        $env = self::get('APP_ENV');
+        if ($env !== null) {
+            return strtolower(trim($env)) === 'production';
+        }
+        return str_contains(strtolower((string) ($_SERVER['HTTP_HOST'] ?? '')), 'osmhelper.co.uk');
+    }
+
+    /** Session ends this long after sign-in, even while in use (SESSION_ABSOLUTE_SECONDS, default 2 hours). */
+    public const SESSION_ABSOLUTE_DEFAULT = 7200;
+    /** Session ends after this long without activity (SESSION_IDLE_SECONDS, default 2 hours). */
+    public const SESSION_IDLE_DEFAULT = 7200;
+
+    public static function sessionAbsoluteSeconds(): int
+    {
+        return self::boundedSeconds('SESSION_ABSOLUTE_SECONDS', self::SESSION_ABSOLUTE_DEFAULT);
+    }
+
+    public static function sessionIdleSeconds(): int
+    {
+        return min(self::boundedSeconds('SESSION_IDLE_SECONDS', self::SESSION_IDLE_DEFAULT), self::sessionAbsoluteSeconds());
+    }
+
+    /** Whole seconds from .env, clamped to 5 minutes .. 24 hours; default when unset or not a number. */
+    private static function boundedSeconds(string $key, int $default): int
+    {
+        $v = self::get($key);
+        if ($v === null || !ctype_digit(trim($v))) {
+            return $default;
+        }
+        return max(300, min(86400, (int) trim($v)));
+    }
 }

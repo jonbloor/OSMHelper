@@ -1179,3 +1179,24 @@ fieldset.member-section-group legend { font-weight: 600; padding: 0; margin-bott
 .events-range legend { font-weight: 600; margin-bottom: 0.25rem; }
 .events-range p { flex-basis: 100%; margin: 0.25rem 0 0; }
 .badge-archived { background: #e6e6e6; color: #333; }
+
+/* "Signed in until 23:40": plain text, no script (CSP-safe). */
+.session-ends {
+  margin: 0 0 0.75rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-align: right;
+}
+
+/* "Nights" buttons in member tables: a POST form (member ID stays out of the URL) that looks like a link. */
+form.inline-form { display: inline; margin: 0; }
+button.link-button {
+  background: none;
+  border: 0;
+  padding: 0;
+  min-height: 0;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+button.link-button:hover { text-decoration: underline; }

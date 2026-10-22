@@ -93,9 +93,10 @@ final class AuthController
             $token = $oauth->getAccessToken($code);
             $accessToken = $token->getToken();
 
+            // New session ID on sign-in (no session fixation; cookie re-sent so it counts from now),
+            // and the session limit (2 hours by default) runs from here. See App::enforceSessionMaxAge().
+            App::beginAuthenticatedSession();
             $_SESSION['accessToken'] = $accessToken;
-            // The 2-hour session limit runs from sign-in (see App::enforceSessionMaxAge()).
-            $_SESSION['_startedAt'] = time();
             $refresh = $token->getRefreshToken();
             if (is_string($refresh) && $refresh !== '') {
                 $_SESSION['refreshToken'] = $refresh;
@@ -160,7 +161,8 @@ final class AuthController
             }
             $_SESSION['groupName'] = $groupName;
 
-            header('Location: /');
+            // Back to the page that needed sign-in (same-site GET path only), else home.
+            header('Location: ' . App::takeReturnPath());
             exit;
         } catch (Throwable $e) {
             error_log('OAuth callback failed: ' . LogSafe::reason($e));

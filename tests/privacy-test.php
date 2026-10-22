@@ -163,8 +163,47 @@ $kept = file(OsmErrorLog::path(), FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES)
 check(count($kept) === 2 && str_contains($kept[0], '"n":29') && str_contains($kept[1], '"n":1'), 'errorlog: recent entries kept in order');
 check(OsmErrorLog::pruneOld($now) === 0, 'errorlog: nothing to prune when first entry is recent');
 file_put_contents(OsmErrorLog::path(), json_encode(['at' => gmdate('c', $now - 60 * 86400)]) . "\n");
-check(OsmErrorLog::pruneOld($now) === 1 && !is_file(OsmErrorLog::path()), 'errorlog: all-old file removed');
+check(OsmErrorLog::pruneOld($now) === 1 && is_file(OsmErrorLog::path()) && filesize(OsmErrorLog::path()) === 0, 'errorlog: all-old file emptied in place (0 bytes)');
+@unlink(OsmErrorLog::path());
 check(OsmErrorLog::pruneOld($now) === 0, 'errorlog: missing file is fine');
+check(!str_contains($logText, 'Bad member') && !str_contains($logText, 'osm_message'), 'errorlog: OSM message text never stored');
+
+// Legacy lines (written before this change) are scrubbed by bin/scrub-error-log.php
+file_put_contents(OsmErrorLog::path(), implode("\n", [
+    json_encode(['at' => gmdate('c', $now - 60), 'kind' => 'http', 'osm_message' => 'Jane Doe not found', 'scoutid' => '551122', 'osm_code' => 'Some text here']),
+    json_encode(['at' => gmdate('c', $now - 50), 'kind' => 'write', 'detail' => 'response keys: ok=false, error=Jane Doe has no badge, status=403']),
+    json_encode(['at' => gmdate('c', $now - 40), 'kind' => 'http', 'http_status' => 429, 'section_id' => '123', 'osm_code' => 'rate-limited']),
+    'garbage line',
+]) . "\n");
+$changed = OsmErrorLog::scrubLegacyFields();
+$logText = (string) file_get_contents(OsmErrorLog::path());
+check($changed === 3, "errorlog scrub: 2 legacy lines changed + 1 unreadable dropped (changed $changed)");
+check(!str_contains($logText, 'Jane') && !str_contains($logText, '551122') && !str_contains($logText, 'osm_message') && !str_contains($logText, 'Some text'), 'errorlog scrub: OSM text, scoutid gone');
+check(str_contains($logText, 'error:text') && str_contains($logText, 'status=403') && str_contains($logText, '"osm_code":"rate-limited"') && str_contains($logText, '"section_id":"123"'), 'errorlog scrub: codes and section ids kept');
+check(count(file(OsmErrorLog::path(), FILE_SKIP_EMPTY_LINES)) === 3, 'errorlog scrub: line count right');
+check(OsmErrorLog::scrubLegacyFields() === 0, 'errorlog scrub: safe to re-run');
+$recent = OsmErrorLog::recent(10);
+check(count($recent) === 3 && !array_key_exists('osm_message', $recent[0]), 'errorlog: recent() never returns osm_message');
+$cli = (string) shell_exec('OSMHELPER_ERRORLOG_DIR=' . escapeshellarg($tmp) . ' ' . escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/bin/scrub-error-log.php') . ' 2>&1');
+check(!str_contains($cli, 'Jane') && preg_match('/^osm-errors.jsonl entries scrubbed: 0, older than 30 days removed: 0$/', trim($cli)) === 1, 'errorlog scrub CLI (temp dir) prints counts only');
+
+// Concurrency: appends racing with prune/rotate rewrites must not lose or corrupt lines.
+@unlink(OsmErrorLog::path());
+file_put_contents(OsmErrorLog::path(), json_encode(['at' => gmdate('c', $now - 40 * 86400), 'old' => 1]) . "\n");
+$worker = $tmp . '/worker.php';
+file_put_contents($worker, '<?php require ' . var_export(dirname(__DIR__) . '/vendor/autoload.php', true) . ';'
+    . '\App\Osm\OsmErrorLog::setDirForTests(' . var_export($tmp, true) . ');'
+    . 'for ($i = 0; $i < 40; $i++) { \App\Osm\OsmErrorLog::log(["method" => "GET", "endpoint" => "/x", "http_status" => 500, "kind" => "http", "section_id" => (string) $argv[1]]); \App\Osm\OsmErrorLog::pruneOld(); }');
+$procs = [];
+for ($w = 1; $w <= 4; $w++) {
+    $procs[] = proc_open([PHP_BINARY, $worker, (string) $w], [], $pipes);
+}
+foreach ($procs as $p) { proc_close($p); }
+$all = file(OsmErrorLog::path(), FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+$valid = array_filter($all, static fn ($l) => is_array(json_decode($l, true)));
+check(count($all) === 160 && count($valid) === 160, 'errorlog: 4 concurrent writers + pruning keep all 160 lines intact (got ' . count($all) . ')');
+check(!str_contains(implode("\n", $all), '"old":1'), 'errorlog: old entry pruned during concurrent writes');
+@unlink($worker);
 OsmErrorLog::setDirForTests(null);
 
 // ---------- 2-hour sessions ----------
@@ -203,6 +242,129 @@ check(trim((string) $src) === '', 'debug: no OsmDebug / dry-run references in sr
 // ---------- deploy.sh backups skip .env ----------
 $deploy = (string) file_get_contents(dirname(__DIR__) . '/deploy/deploy.sh');
 check(str_contains($deploy, '--exclude=app/.env ') && str_contains($deploy, "--exclude='app/.env.bak*'"), 'deploy: predeploy tar excludes .env and .env.bak*');
+
+
+// ---------- ensure-token-key.php ----------
+require_once dirname(__DIR__) . '/deploy/ensure-token-key.php';
+check(!osmhelper_token_key_present("A=1\nOSMHELPER_TOKEN_KEY=\nB=2\n"), 'tokenkey: empty value is not present (does not borrow next line)');
+check(!osmhelper_token_key_present("OSMHELPER_TOKEN_KEY=\nNEXT=value\n"), 'tokenkey: empty value then another line');
+check(!osmhelper_token_key_present("OSMHELPER_TOKEN_KEY=   \n"), 'tokenkey: blanks only');
+check(!osmhelper_token_key_present("OSMHELPER_TOKEN_KEY=\"\"\n"), 'tokenkey: "" is empty');
+check(!osmhelper_token_key_present("OSMHELPER_TOKEN_KEY=''\n"), "tokenkey: '' is empty");
+check(!osmhelper_token_key_present("OSMHELPER_TOKEN_KEY=\r\nB=2\r\n"), 'tokenkey: CRLF empty value');
+check(!osmhelper_token_key_present("# OSMHELPER_TOKEN_KEY=abc\n"), 'tokenkey: commented line ignored');
+check(!osmhelper_token_key_present("A=1\n"), 'tokenkey: missing');
+check(osmhelper_token_key_present("OSMHELPER_TOKEN_KEY=abc123=\n"), 'tokenkey: real value present');
+check(osmhelper_token_key_present("OSMHELPER_TOKEN_KEY=\"abc123=\"\n"), 'tokenkey: quoted real value present');
+check(!osmhelper_token_key_present("OSMHELPER_TOKEN_KEY=\nOSMHELPER_TOKEN_KEY=abc\n"), 'tokenkey: first definition decides (Dotenv keeps the first)');
+$fakeKey = 'FAKEKEYfakekeyFAKEKEYfakekeyFAKEKEY12345678=';
+$out = osmhelper_with_token_key("A=1\nOSMHELPER_TOKEN_KEY=\"\"\nB=2\n", $fakeKey);
+check(substr_count($out, 'OSMHELPER_TOKEN_KEY=') === 1 && str_contains($out, "OSMHELPER_TOKEN_KEY=$fakeKey\n") && str_contains($out, "A=1\n") && str_contains($out, "B=2\n"), 'tokenkey: quoted-empty line replaced, others kept');
+check(osmhelper_token_key_present($out), 'tokenkey: present after fill');
+$out = osmhelper_with_token_key("A=1\nOSMHELPER_TOKEN_KEY=\nOSMHELPER_TOKEN_KEY=''\n", $fakeKey);
+check(substr_count($out, 'OSMHELPER_TOKEN_KEY=') === 1, 'tokenkey: every empty duplicate removed');
+check(osmhelper_with_token_key("A=1", $fakeKey) === "A=1\nOSMHELPER_TOKEN_KEY=$fakeKey\n", 'tokenkey: appended with newline');
+// CLI run in a temp app dir: never prints the key, never replaces a real one.
+$envDir = $tmp . '/envtest';
+mkdir($envDir, 0700);
+file_put_contents($envDir . '/.env', "SESSION_SECRET=x\nOSMHELPER_TOKEN_KEY=\nCLIENT_ID=y\n");
+$cmd = 'cd ' . escapeshellarg($envDir) . ' && ' . escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/deploy/ensure-token-key.php') . ' 2>&1';
+$o1 = trim((string) shell_exec($cmd));
+$envAfter = (string) file_get_contents($envDir . '/.env');
+preg_match('/^OSMHELPER_TOKEN_KEY=(\S+)$/m', $envAfter, $km);
+$newKey = $km[1] ?? '';
+check($o1 === 'OSMHELPER_TOKEN_KEY set' && strlen((string) base64_decode($newKey, true)) === 32, 'tokenkey CLI: empty value filled with a 32-byte key');
+check($newKey !== '' && !str_contains($o1, $newKey), 'tokenkey CLI: key not printed');
+check(str_contains($envAfter, "CLIENT_ID=y\n") && substr_count($envAfter, 'OSMHELPER_TOKEN_KEY=') === 1, 'tokenkey CLI: other lines kept, one key line');
+$o2 = trim((string) shell_exec($cmd));
+check($o2 === 'OSMHELPER_TOKEN_KEY already set' && (string) file_get_contents($envDir . '/.env') === $envAfter, 'tokenkey CLI: second run changes nothing');
+// Runbook grep: counts real values only
+$grep = static function (string $env) use ($envDir): string {
+    file_put_contents($envDir . '/.env', $env);
+    return trim((string) shell_exec('cd ' . escapeshellarg($envDir) . ' && grep -E \'^OSMHELPER_TOKEN_KEY=\' .env | grep -cvE "^OSMHELPER_TOKEN_KEY=[[:blank:]]*(\\"\\"|\'\')?[[:blank:]]*\\$"'));
+};
+check($grep("OSMHELPER_TOKEN_KEY=\nB=2\n") === '0' && $grep("OSMHELPER_TOKEN_KEY=\"\"\n") === '0' && $grep("OSMHELPER_TOKEN_KEY=''\n") === '0' && $grep("OSMHELPER_TOKEN_KEY=abc\n") === '1', 'runbook grep: empty / quoted-empty → 0, real → 1');
+$runbook = (string) file_get_contents(dirname(__DIR__) . '/docs/DEPLOY-RUNBOOK.md');
+check(str_contains($runbook, "grep -cvE \"^OSMHELPER_TOKEN_KEY=[[:blank:]]*(\\\"\\\"|'')?[[:blank:]]*\\$\"") && !str_contains($runbook, "'^OSMHELPER_TOKEN_KEY=.'"), 'runbook: uses the tested grep, old one gone');
+check(str_contains($runbook, 'intentionally excluded from every backup') && str_contains($runbook, 'off the server'), 'runbook: .env/key excluded from backups, off-server copy');
+foreach (glob($envDir . '/{,.}*', GLOB_BRACE) ?: [] as $f) { if (is_file($f)) { @unlink($f); } }
+@rmdir($envDir);
+
+// ---------- Production fails closed without a token key ----------
+TokenCrypto::setKeyForTests('');
+TokenCrypto::setProductionForTests(true);
+check(TokenCrypto::writesBlocked() && TokenCrypto::problem() === 'token_key_missing', 'prod: no key → writes blocked, reason token_key_missing');
+$threw = false;
+try { TokenCrypto::encrypt('fake-prod-token'); } catch (\App\Store\TokenKeyUnavailable) { $threw = true; }
+check($threw, 'prod: encrypt refuses (no plaintext save)');
+check(TokenCrypto::encrypt(null) === null, 'prod: null still fine');
+check(str_contains(phpLog(), 'token_write_refused_no_key'), 'prod: refusal logged as reason code');
+$_ENV['OSMHELPER_DB_PATH'] = $tmp . '/prod.sqlite';
+Db::reset();
+$threw = false;
+try { WordpressSiteKeyStore::upsertForUser('9100', '123', 'Beavers', 'fake-prod-acc', 'fake-prod-ref', time() + 3600); } catch (\App\Store\TokenKeyUnavailable) { $threw = true; }
+$cnt = (int) Db::pdo()->query("SELECT COUNT(*) FROM wordpress_site_keys")->fetchColumn();
+check($threw && $cnt === 0, 'prod: upsert saves nothing without a key');
+$ins = Db::pdo()->prepare('INSERT INTO wordpress_site_keys (osm_user_id, site_key, section_id, section_name, access_token, refresh_token, token_expires_at, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)');
+$ins->execute(['9101', 'sk-prod-legacy', '123', 'Beavers', 'legacy-prod-acc', null, time() + 3600, gmdate('c'), gmdate('c')]);
+check((WordpressSiteKeyStore::findBySiteKey('sk-prod-legacy')['access_token'] ?? null) === 'legacy-prod-acc', 'prod: existing plaintext row still readable');
+$id = (int) Db::pdo()->query("SELECT id FROM wordpress_site_keys WHERE osm_user_id='9101'")->fetchColumn();
+$threw = false;
+try { WordpressSiteKeyStore::updateTokens($id, 'fake-new-acc', null, null); } catch (\App\Store\TokenKeyUnavailable) { $threw = true; }
+check($threw && Db::pdo()->query("SELECT access_token FROM wordpress_site_keys WHERE id=$id")->fetchColumn() === 'legacy-prod-acc', 'prod: token refresh not saved as plaintext');
+TokenCrypto::setProductionForTests(false);
+check(!TokenCrypto::writesBlocked() && TokenCrypto::encrypt('fake-dev') === 'fake-dev', 'dev: no key → still plaintext (development only)');
+TokenCrypto::setProductionForTests(null);
+$_ENV['APP_ENV'] = 'production';
+check(\App\Config::isProduction() && TokenCrypto::writesBlocked(), 'prod: APP_ENV=production detected');
+$_ENV['APP_ENV'] = 'development';
+$_SERVER['HTTP_HOST'] = 'osmhelper.co.uk';
+check(!\App\Config::isProduction(), 'prod: explicit APP_ENV wins over host');
+unset($_ENV['APP_ENV']);
+check(\App\Config::isProduction(), 'prod: live host counts as production when APP_ENV unset');
+unset($_SERVER['HTTP_HOST']);
+TokenCrypto::setKeyForTests($key);
+check(!TokenCrypto::writesBlocked() && TokenCrypto::problem() === null, 'prod: with key → not blocked');
+Db::reset();
+$wpTpl = (string) file_get_contents(dirname(__DIR__) . '/templates/wordpress-form.twig');
+check(str_contains($wpTpl, 'tokenWritesBlocked') && str_contains($wpTpl, 'tokenKeyProblem'), 'prod: Joining form page shows the warning (admin sees reason)');
+$wpCtl = (string) file_get_contents(dirname(__DIR__) . '/src/Http/Controllers/WordpressFormController.php');
+check(str_contains($wpCtl, 'catch (TokenKeyUnavailable)') && str_contains($wpCtl, 'Config::isAdmin($osmUserId) ? TokenCrypto::problem()'), 'prod: save shows a message; reason code for admins only');
+
+// ---------- Nights away: member IDs kept out of URLs ----------
+use App\Http\Controllers\NightsAwayController;
+$_SESSION = [];
+NightsAwayController::storeSelection(['551122', '551133']);
+check(NightsAwayController::selectedScoutIds() === ['551122', '551133'], 'nights: selection held in session');
+check(NightsAwayController::idsFromQuery(['scoutid' => '551122']) === ['551122'] && NightsAwayController::idsFromQuery(['scoutids' => '1,2,x,2']) === ['1', '2'], 'nights: legacy ?scoutid(s)= parsed (numbers only)');
+NightsAwayController::storeSelection([]);
+check(NightsAwayController::selectedScoutIds() === [], 'nights: empty selection clears');
+foreach (['find-member.twig', 'members.twig', 'nights-away.twig'] as $t) {
+    $tt = (string) file_get_contents(dirname(__DIR__) . '/templates/' . $t);
+    check(!preg_match('/nights-away\/\?scoutids?=/', $tt), "nights: no ?scoutid links in $t");
+}
+foreach (['find-member.twig', 'members.twig'] as $t) {
+    $tt = (string) file_get_contents(dirname(__DIR__) . '/templates/' . $t);
+    check(str_contains($tt, 'action="/nights-away/select/"') && str_contains($tt, 'name="scoutid"'), "nights: $t posts to /nights-away/select/");
+}
+$naCtl = (string) file_get_contents(dirname(__DIR__) . '/src/Http/Controllers/NightsAwayController.php');
+check(!str_contains($naCtl, "'?scoutids='") && str_contains($naCtl, "header('Location: /nights-away/', true, 303)"), 'nights: select redirects to a clean URL');
+check(is_file(dirname(__DIR__) . '/deploy/route-stubs/nights-away/select/index.php'), 'nights: select route stub exists');
+
+// ---------- Error log callers + copy ----------
+$srcAll = (string) shell_exec('grep -rn "osm_message" ' . escapeshellarg(dirname(__DIR__) . '/src'));
+check(!preg_match("/'osm_message'\s*=>/", $srcAll), 'errorlog: no caller passes osm_message');
+$wls = (string) file_get_contents(dirname(__DIR__) . '/src/Http/Controllers/WaitingListSubmitController.php');
+check(!str_contains($wls, '$e->getMessage()') || str_contains($wls, 'LogSafe::reasonCode($e->getMessage())'), 'intake: error_log keeps reason code only');
+check(!str_contains((string) file_get_contents(dirname(__DIR__) . '/templates/equipment-move-result.twig'), 'osm-debug'), 'equipment: no osm-debug mention');
+$copy = (string) file_get_contents(dirname(__DIR__) . '/templates/home.twig') . file_get_contents(dirname(__DIR__) . '/templates/help.twig');
+check(substr_count($copy, 'Every session ends 2 hours after you sign in, or when you sign out') >= 2, 'copy: 2-hour wording on home + help');
+check(substr_count($copy, 'OSM user number so we know whose settings are whose') >= 2, 'copy: OSM user number mentioned on home + help');
+check(substr_count($copy, 'cleaned up shortly after') >= 2 && str_contains($copy, 'never OSM’s message text'), 'copy: file cleanup + no OSM message text');
+$deploy2 = (string) file_get_contents(dirname(__DIR__) . '/deploy/deploy.sh');
+$posKey = strpos($deploy2, 'ensure-token-key.php');
+$posEnc = strpos($deploy2, '(umask 007; php bin/encrypt-site-tokens.php)');
+check($posKey !== false && $posEnc !== false && $posEnc > $posKey && str_contains($deploy2, '(umask 007; php bin/scrub-error-log.php)'), 'deploy: encrypt + scrub migrations run after ensure-token-key, umask 007');
 
 // cleanup
 foreach (glob($tmp . '/*') ?: [] as $f) { @unlink($f); }

@@ -35,8 +35,8 @@ final class WaitingListSubmitController
             self::json(200, self::successBody($result));
         } catch (WaitingListIntakeException $e) {
             // Do not echo child data or tokens.
-            error_log('OSMHelper waiting-list intake: HTTP ' . $e->status() . ' ' . LogSafe::reasonCode($e->getMessage())
-                . ' — ' . mb_substr((string) LogSafe::redact($e->getMessage()), 0, 160));
+            // Status and reason code only: the message can quote OSM's reply.
+            error_log('OSMHelper waiting-list intake: HTTP ' . $e->status() . ' ' . LogSafe::reasonCode($e->getMessage()));
             self::json($e->status(), ['ok' => false, 'error' => $e->getMessage()]);
         } catch (Throwable $e) {
             error_log('OSMHelper waiting-list intake failed: ' . LogSafe::reason($e));

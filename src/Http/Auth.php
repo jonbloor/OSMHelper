@@ -16,6 +16,7 @@ final class Auth
     {
         $token = OsmTokens::sessionToken();
         if ($token === null) {
+            App::rememberReturnPath(); // GET pages only; checked again after sign-in
             header('Location: /auth/');
             exit;
         }

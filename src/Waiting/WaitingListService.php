@@ -634,7 +634,6 @@ final class WaitingListService
             'action' => 'updateColumn',
             'http_status' => null,
             'osm_code' => null,
-            'osm_message' => 'status not true',
             'kind' => 'write',
             'section_id' => $sectionId,
             'badge_id' => null,

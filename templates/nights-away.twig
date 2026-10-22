@@ -98,10 +98,10 @@
   {% if fromCache and cacheAt %}
   <p class="muted">Showing cached badge records from {{ cacheAt }}
     {% if cacheTtlMinutes %} · cache lasts about {{ cacheTtlMinutes }} minutes{% endif %}.
-    <a href="/nights-away/?scoutids={{ scoutIdsQuery|url_encode }}&amp;refresh=1">Refresh now</a> (uses OSM quota).
+    <a href="/nights-away/?refresh=1">Refresh now</a> (uses OSM quota).
   </p>
   {% else %}
-  <p class="muted"><a href="/nights-away/?scoutids={{ scoutIdsQuery|url_encode }}&amp;refresh=1">Refresh now</a> (uses OSM quota — skip while rate-limited).{% if apiCalls %} · {{ apiCalls }} OSM calls this load.{% endif %}</p>
+  <p class="muted"><a href="/nights-away/?refresh=1">Refresh now</a> (uses OSM quota — skip while rate-limited).{% if apiCalls %} · {{ apiCalls }} OSM calls this load.{% endif %}</p>
   {% endif %}
 
   {% if yearKeys %}

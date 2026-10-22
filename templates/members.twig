@@ -58,7 +58,7 @@
     {% for m in members %}
       <tr data-section="{{ m.section_name }}">
         <td>{{ m.section_name }}</td><td>{{ m.section_type }}</td><td>{{ m.firstname }} {{ m.lastname }}</td><td>{{ m.patrol }}</td><td>{{ m.age }}</td><td>{{ m.dob }}</td>
-        <td>{% if m.scoutid %}<a href="/nights-away/?scoutid={{ m.scoutid|url_encode }}">Nights</a>{% endif %}</td>
+        <td>{% if m.scoutid %}<form method="post" action="/nights-away/select/" class="inline-form">{% include '_csrf.twig' %}<input type="hidden" name="scoutid" value="{{ m.scoutid }}"><button type="submit" class="link-button">Nights</button></form>{% endif %}</td>
       </tr>
     {% else %}
       <tr><td colspan="7" class="muted">No members loaded.</td></tr>

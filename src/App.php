@@ -126,6 +126,11 @@ final class App
         if (!isset($context['csrfToken'])) {
             $context['csrfToken'] = \App\Http\Csrf::token();
         }
+        if (!empty($context['authed']) && !array_key_exists('sessionEndsText', $context)) {
+            $ends = self::sessionEndsAt();
+            $context['sessionEndsText'] = $ends === null ? null
+                : (new \DateTimeImmutable('@' . $ends))->setTimezone(new \DateTimeZone('Europe/London'))->format('H:i');
+        }
         if (!empty($context['authed']) && !array_key_exists('rateLimit', $context)) {
             $context = array_merge(Auth::rateLimitContext(), $context);
         }
@@ -153,7 +158,8 @@ final class App
             $https = true;
         }
         session_set_cookie_params([
-            'lifetime' => self::SESSION_MAX_AGE_SEC,
+            // Never shorter than the in-app limit (both default to 2 hours; see Config::sessionAbsoluteSeconds()).
+            'lifetime' => self::sessionLifetimeSeconds(),
             'path' => '/',
             'secure' => $https,
             'httponly' => true,
@@ -164,7 +170,7 @@ final class App
         // Files live in the app's own storage/sessions (0700, outside the docroot) so PHP's own
         // garbage collection with our 2-hour limit applies (the system-wide cleaner uses 24 hours).
         self::useAppSessionDir($this->root . '/storage/sessions');
-        ini_set('session.gc_maxlifetime', (string) self::SESSION_MAX_AGE_SEC);
+        ini_set('session.gc_maxlifetime', (string) self::sessionLifetimeSeconds());
         ini_set('session.gc_probability', '1');
         ini_set('session.gc_divisor', '50');
         session_start();
@@ -172,8 +178,14 @@ final class App
         if (!isset($_SESSION['_init'])) $_SESSION['_init'] = hash('sha256', $secret);
     }
 
-    /** Sessions end 2 hours after sign-in (absolute) or after 2 hours idle, whichever comes first. */
-    public const SESSION_MAX_AGE_SEC = 7200;
+    /** Default session limit (2 hours); the live values come from Config (SESSION_ABSOLUTE_SECONDS / SESSION_IDLE_SECONDS). */
+    public const SESSION_MAX_AGE_SEC = Config::SESSION_ABSOLUTE_DEFAULT;
+
+    /** Cookie lifetime and file GC age: at least as long as the longest in-app limit. */
+    public static function sessionLifetimeSeconds(): int
+    {
+        return max(Config::sessionAbsoluteSeconds(), Config::sessionIdleSeconds());
+    }
 
     private static function useAppSessionDir(string $dir): void
     {
@@ -197,7 +209,8 @@ final class App
     }
 
     /**
-     * Absolute + idle 2-hour limit enforced in the app (the cookie and file GC are only best effort).
+     * Absolute + idle limit enforced in the app (the cookie and file GC are only best effort).
+     * Defaults: 2 hours after sign-in, even while in use (Config::sessionAbsoluteSeconds()), or 2 hours idle.
      * An expired session is emptied (Top awards caches cleared too) and given a new ID.
      */
     public static function enforceSessionMaxAge(?int $now = null): bool
@@ -205,8 +218,8 @@ final class App
         $now ??= time();
         $started = $_SESSION['_startedAt'] ?? null;
         $seen = $_SESSION['_lastSeen'] ?? null;
-        $expired = (is_int($started) && $now - $started > self::SESSION_MAX_AGE_SEC)
-            || (is_int($seen) && $now - $seen > self::SESSION_MAX_AGE_SEC);
+        $expired = (is_int($started) && $now - $started >= Config::sessionAbsoluteSeconds())
+            || (is_int($seen) && $now - $seen >= Config::sessionIdleSeconds());
         if ($expired) {
             TopAwardsController::clearSessionCaches();
             $_SESSION = [];
@@ -219,6 +232,84 @@ final class App
         }
         $_SESSION['_lastSeen'] = $now;
         return $expired;
+    }
+
+    /**
+     * Call after a successful sign-in: new session ID (stops session fixation, and re-sends the cookie
+     * so its lifetime counts from sign-in) and the session clock restarts.
+     */
+    public static function beginAuthenticatedSession(?int $now = null): void
+    {
+        $now ??= time();
+        // Start clean: nothing from before sign-in (or from a previous leader on this browser) carries over,
+        // except the page to return to.
+        $returnTo = $_SESSION['returnTo'] ?? null;
+        TopAwardsController::clearSessionCaches();
+        $_SESSION = [];
+        if ($returnTo !== null) {
+            $_SESSION['returnTo'] = $returnTo;
+        }
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_regenerate_id(true);
+        }
+        $_SESSION['_startedAt'] = $now;
+        $_SESSION['_lastSeen'] = $now;
+    }
+
+    /** Unix time this session will end (absolute or idle limit, whichever is sooner), or null if not signed in. */
+    public static function sessionEndsAt(): ?int
+    {
+        if (!self::isAuthenticated() || !is_int($_SESSION['_startedAt'] ?? null)) {
+            return null;
+        }
+        $end = $_SESSION['_startedAt'] + Config::sessionAbsoluteSeconds();
+        if (is_int($_SESSION['_lastSeen'] ?? null)) {
+            $end = min($end, $_SESSION['_lastSeen'] + Config::sessionIdleSeconds());
+        }
+        return $end;
+    }
+
+    /**
+     * Same-site path to go back to after signing in again, or null. Only plain paths ("/members/?x=1"):
+     * no scheme, host, "//" or "\\" tricks, control characters, or the sign-in/out pages themselves.
+     */
+    public static function safeReturnPath(mixed $path): ?string
+    {
+        if (!is_string($path) || $path === '' || strlen($path) > 512 || $path[0] !== '/') {
+            return null;
+        }
+        if (str_starts_with($path, '//') || str_contains($path, '\\') || preg_match('/[\x00-\x1F\x7F]/', $path) === 1) {
+            return null;
+        }
+        $parts = parse_url($path);
+        if ($parts === false || isset($parts['scheme']) || isset($parts['host']) || !isset($parts['path'])) {
+            return null;
+        }
+        $first = strtolower(explode('/', trim($parts['path'], '/'))[0]);
+        if (in_array($first, ['auth', 'callback', 'logout', 'login'], true)) {
+            return null;
+        }
+        return $path;
+    }
+
+    /** Remember the current GET page so sign-in can bring the leader back to it. */
+    public static function rememberReturnPath(): void
+    {
+        if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'GET') {
+            return;
+        }
+        $path = self::safeReturnPath($_SERVER['REQUEST_URI'] ?? null);
+        if ($path !== null && $path !== '/') {
+            $_SESSION['returnTo'] = $path;
+        }
+    }
+
+    /** The remembered page (validated again) and forget it; "/" when there is none. */
+    public static function takeReturnPath(): string
+    {
+        $path = self::safeReturnPath($_SESSION['returnTo'] ?? null);
+        unset($_SESSION['returnTo']);
+        return $path ?? '/';
     }
 
     /**

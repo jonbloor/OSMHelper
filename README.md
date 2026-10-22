@@ -52,7 +52,14 @@ Also sends `access_type=offline` (same as Node) if OSM issues refresh tokens.
 
 ### Session privacy
 
-The server session stores your OSM access token (and refresh token when OSM sends one), your name, email, group, and the section list from sign-in. Anything a page loads for you (member list, group numbers, events, Find a member contacts) stays in that session only. Sessions last at most 2 hours from sign-in (or 2 hours idle): files live in `storage/sessions/` (0700) with a 2-hour GC, and the app enforces the limit itself. Find a member search terms are POSTed and kept in the session, never in URLs. The WordPress joining form keeps that leader's OSM tokens in the database, encrypted with `OSMHELPER_TOKEN_KEY`, until the form is turned off. Error logs carry reason codes and section IDs only, never member IDs. Scout names and dates of birth are not stored long-term.
+The server session stores your OSM access token (and refresh token when OSM sends one), your name, email, OSM user number, group, and the section list from sign-in. Anything a page loads for you (member list, group numbers, events, Find a member contacts, the Nights away selection) stays in that session only.
+
+- **Session length:** every session ends `SESSION_ABSOLUTE_SECONDS` after sign-in (default 7200 = 2 hours), even while in use, or at sign-out (`session_destroy()`). `SESSION_IDLE_SECONDS` (default 7200) is an extra idle limit. Both are optional `.env` values (300 to 86400). Cookie lifetime and `session.gc_maxlifetime` are never shorter than the limit. Session files live in `storage/sessions/` (0700) and PHP's session GC removes them shortly after they expire. Sign-in gets a fresh session ID (`session_regenerate_id(true)`), and after re-signing in you go back to the GET page you were on (same-site paths only). Each page shows “Signed in until HH:MM (UK time)”.
+- **No member data in URLs:** Find a member search terms and Nights away member selections are POSTed and kept in the session, never in URLs or the access log.
+- **Stored on the server:** group settings, with the OSM user number of the leader who saved them (`waiting_field_maps.updated_by`, `wordpress_site_keys.osm_user_id`); and, for the WordPress joining form, that leader's OSM tokens, encrypted with `OSMHELPER_TOKEN_KEY` until the form is turned off. With `APP_ENV=production` (or on the live host) the app refuses to save those tokens if the key is missing. Deploy runs `bin/encrypt-site-tokens.php` for older rows.
+- **Error log** (`storage/osm-errors.jsonl`): reason codes, HTTP status, code-like OSM error codes and section/badge IDs only, never OSM message text or member IDs; entries older than 30 days are removed (atomically, under a file lock). Deploy runs `bin/scrub-error-log.php` to clean lines written before this change. PHP `error_log` lines carry reason codes only.
+
+Scout names and dates of birth are not stored long-term.
 
 ## Routes (P0)
 
