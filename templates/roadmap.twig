@@ -30,6 +30,11 @@
       <p class="muted">Newest first. The <a href="#history">Changelog</a> below has the details.</p>
       <ul class="rm-list">
         <li class="rm-item rm-shipped">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-22">22 Oct 2026</time> <span class="rm-area">Members</span></div>
+          <h4 class="rm-title">Events list</h4>
+          <p>List a section’s events by start date for a date range or all time, with archived events included and marked Archived. Sort, search, print or download as CSV. Changing the dates or downloading doesn’t use your OSM allowance.</p>
+        </li>
+        <li class="rm-item rm-shipped">
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-15">15 Oct 2026</time> <span class="rm-area">Members</span></div>
           <h4 class="rm-title">Find a member</h4>
           <p>Search by postcode, phone number or parent/contact name across the sections you load. Results show the member, their section and which contact matched. Searching doesn’t use your OSM allowance.</p>
@@ -101,6 +106,16 @@
       <h3 id="history-h">Changelog</h3>
       <p class="muted">What changed, newest first. Each entry went live on the date shown.</p>
       <ul class="rm-list">
+        <li class="rm-item rm-shipped rm-history" id="2026-10-22-events">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-22">22 Oct 2026</time></div>
+          <h4 class="rm-title">Events list</h4>
+          <ul>
+            <li><strong>Members → Events:</strong> choose a section to see its events by start date, oldest first, for a date range (dd/mm/yyyy) or all time. Archived events are included and marked Archived.</li>
+            <li><strong>Download CSV:</strong> Section, Start date, Event name and Archived (Yes/No) for the dates you chose, made from the loaded list.</li>
+            <li>Load events uses 2 OSM requests per section, never one per event, at most once every 5 minutes per section, stopping straight away on any error or if your allowance runs low. Changing the dates, sorting and the CSV don’t call OSM.</li>
+            <li>The list is held in your session for up to about 2 hours, and cleared when it expires or when you sign out.</li>
+          </ul>
+        </li>
         <li class="rm-item rm-shipped rm-history" id="2026-10-15-find-member">
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-15">15 Oct 2026</time></div>
           <h4 class="rm-title">Find a member</h4>
@@ -187,11 +202,7 @@
     <section class="help-section" id="in-progress" aria-labelledby="in-progress-h">
       <h3 id="in-progress-h">In progress</h3>
       <ul class="rm-list">
-        <li class="rm-item rm-progress">
-          <div class="rm-head">{{ rm.status('progress') }} <span class="rm-area">Members</span></div>
-          <h4 class="rm-title">Events list</h4>
-          <p>List a section’s events by start date for a date range or all time, including archived events (marked Archived). Sort, search, print and download as CSV. Loading a section uses two OSM requests; changing the dates or downloading uses the loaded copy.</p>
-        </li>
+        <li class="rm-item muted">Nothing in progress right now.</li>
       </ul>
     </section>
 
