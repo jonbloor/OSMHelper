@@ -16,8 +16,11 @@ final class Config
      * Re-login after changing scopes.
      * Member: section:member:write (replaces :read) so Waiting list rank/notes can be saved
      * to OSM custom fields; sessions from before this change stay read-only until re-login.
+     * Events: section:event:read for the Events list (/ext/events/summary/). Without it OSM
+     * answers 200 with "You do not have access to this resource."; sessions signed in before
+     * this scope was added must sign out and in again (EventList::scopeHint() checks this).
      */
-    public const OAUTH_SCOPES = 'section:member:write section:quartermaster:write section:finance:read section:badge:write';
+    public const OAUTH_SCOPES = 'section:member:write section:quartermaster:write section:finance:read section:badge:write section:event:read';
 
     /** @var list<string> */
     public const SECTION_TYPE_ORDER = [

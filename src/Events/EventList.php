@@ -35,6 +35,45 @@ final class EventList
     public const CACHE_TTL_SEC = 7200;
     /** At most this many sections cached per session (oldest dropped). */
     public const MAX_CACHED_SECTIONS = 12;
+    /** OAuth scope the events endpoint needs (see Config::OAUTH_SCOPES). */
+    public const SCOPE = 'section:event:read';
+    public const SCOPE_MESSAGE = 'OSM hasn\'t given OSMHelper permission to read events for this login. Sign out and sign in again, and allow Events when OSM asks.';
+    /** Session flag set when OSM refused events access (cleared at sign-in). */
+    public const SCOPE_DENIED_KEY = 'eventsScopeDenied';
+
+    /**
+     * SCOPE_MESSAGE when this session can't read events, without calling OSM: OSM already refused,
+     * or the granted scopes stored at sign-in (else the scopes requested then) lack section:event:read.
+     * null = fine to try.
+     */
+    public static function scopeHint(): ?string
+    {
+        if (!empty($_SESSION[self::SCOPE_DENIED_KEY])) {
+            return self::SCOPE_MESSAGE;
+        }
+        $granted = $_SESSION['grantedScopes'] ?? null;
+        if (is_string($granted) && trim($granted) !== '') {
+            return self::hasScope($granted) ? null : self::SCOPE_MESSAGE;
+        }
+        $requested = $_SESSION['requestedScopes'] ?? null;
+        if (is_string($requested) && trim($requested) !== '') {
+            return self::hasScope($requested) ? null : self::SCOPE_MESSAGE;
+        }
+        return self::SCOPE_MESSAGE; // signed in before scopes were recorded
+    }
+
+    private static function hasScope(string $scopes): bool
+    {
+        $list = preg_split('/[\s,]+/', strtolower($scopes)) ?: [];
+        return in_array(self::SCOPE, $list, true) || in_array('section:event:write', $list, true);
+    }
+
+    /** OSM text that means "this login may not read this" (scope or role). */
+    public static function looksLikeAccessRefusal(string $text): bool
+    {
+        $m = strtolower($text);
+        return str_contains($m, 'access to this resource') || str_contains($m, 'permission') || str_contains($m, 'scope');
+    }
 
     /**
      * Parse one getEvents / get response into event rows. 'archived' comes only from the row's own
@@ -240,6 +279,11 @@ final class EventList
                         . ($ra !== null ? 'Try again in about ' . self::humanWait($ra) . '.' : 'Wait for your allowance to reset.');
                 } elseif (str_starts_with($e->getMessage(), 'OSM_BLOCKED')) {
                     $msg = 'OSM has blocked requests from OSMHelper, so it stopped straight away. Do not retry; contact OSM support.';
+                } elseif (in_array($e->getCode(), [401, 403], true) || self::looksLikeAccessRefusal($e->getMessage())) {
+                    if ($e->getCode() !== 401) {
+                        $_SESSION[self::SCOPE_DENIED_KEY] = true; // 401 can just be an expired token
+                    }
+                    return ['scopeDenied' => true] + self::fail(self::SCOPE_MESSAGE, $calls, $rateUnknown);
                 } else {
                     $msg = 'OSM returned an error for ' . $name . ($archivedCall ? ' (archived events)' : '') . ', so OSMHelper stopped without trying again.';
                 }
@@ -251,12 +295,16 @@ final class EventList
             $bad = self::badResponseReason($res, $api->lastBodyKind());
             if ($bad !== null) {
                 self::logBadReply($sid, $archivedCall, $bad);
+                if (self::reasonCode($bad) === 'osm-error' && self::looksLikeAccessRefusal($bad)) {
+                    $_SESSION[self::SCOPE_DENIED_KEY] = true;
+                    return ['scopeDenied' => true] + self::fail(self::SCOPE_MESSAGE, $calls, $rateUnknown);
+                }
                 return self::fail('OSM sent an unexpected reply for ' . $name . ($archivedCall ? ' (archived events)' : '')
                     . ' (' . $bad . '), so OSMHelper stopped without trying again.', $calls, $rateUnknown);
             }
             $lists[] = self::parseItems($res);
         }
-        return ['events' => self::merge($lists[0], $lists[1]), 'stopReason' => null, 'calls' => $calls, 'rateUnknown' => $rateUnknown];
+        return ['events' => self::merge($lists[0], $lists[1]), 'stopReason' => null, 'calls' => $calls, 'rateUnknown' => $rateUnknown, 'scopeDenied' => false];
     }
 
     /**
@@ -302,10 +350,10 @@ final class EventList
         return $codes[$head] ?? 'other';
     }
 
-    /** @return array{events:null,stopReason:string,calls:int,rateUnknown:bool} */
+    /** @return array{events:null,stopReason:string,calls:int,rateUnknown:bool,scopeDenied:bool} */
     private static function fail(string $reason, int $calls, bool $rateUnknown): array
     {
-        return ['events' => null, 'stopReason' => $reason, 'calls' => $calls, 'rateUnknown' => $rateUnknown];
+        return ['events' => null, 'stopReason' => $reason, 'calls' => $calls, 'rateUnknown' => $rateUnknown, 'scopeDenied' => false];
     }
 
     /**

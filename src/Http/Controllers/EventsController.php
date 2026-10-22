@@ -72,6 +72,7 @@ final class EventsController
             'flash' => is_array($flash) ? $flash : null,
             'cooldownMinutes' => (int) (EventList::REFRESH_COOLDOWN_SEC / 60),
             'cooldownWait' => $wait > 0 ? (int) ceil($wait / 60) : 0,
+            'scopeHint' => EventList::scopeHint(),
         ]));
     }
 
@@ -80,6 +81,12 @@ final class EventsController
         $token = Auth::requireLogin();
         Csrf::requireValid();
         $postedId = is_string($_POST['section_id'] ?? null) ? trim($_POST['section_id']) : '';
+        // No events permission on this sign-in: say so without calling OSM at all.
+        if (EventList::scopeHint() !== null) {
+            $_SESSION['eventsFlash'] = ['kind' => 'error', 'message' => EventList::SCOPE_MESSAGE, 'scope' => true];
+            header('Location: /events/' . ($postedId !== '' && strlen($postedId) <= 20 ? '?' . http_build_query(['section' => $postedId]) : ''));
+            exit;
+        }
         // Cooldown first, before anything that could call OSM (an older session without stored
         // sections would otherwise read /oauth/resource just to be told to wait).
         $earlyWait = ($postedId !== '' && strlen($postedId) <= 20) ? EventList::cooldownRemaining($postedId) : 0;
@@ -126,6 +133,11 @@ final class EventsController
         $note = $res['rateUnknown'] ? ' OSM did not report your remaining allowance, so OSMHelper paused longer between requests.' : '';
         if ($res['events'] === null) {
             $kept = EventList::cached($sectionId) !== null;
+            if (!empty($res['scopeDenied'])) {
+                $_SESSION['eventsFlash'] = ['kind' => 'error', 'message' => EventList::SCOPE_MESSAGE . ($kept ? ' Your earlier copy of these events is still shown.' : ''), 'scope' => true];
+                header('Location: /events/?' . http_build_query(['section' => $sectionId]));
+                exit;
+            }
             $back('error', (string) $res['stopReason'] . ($kept ? ' Your earlier copy of these events is still shown.' : '') . $note);
         }
         EventList::store($sectionId, $name, $res['events'], $res['calls']);

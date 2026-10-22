@@ -162,6 +162,53 @@ $last = json_decode((string) end($lines), true);
 check(is_array($last) && $last['kind'] === 'bad-200' && $last['osm_code'] === 'osm-error' && $last['osm_message'] === null
     && $last['section_id'] === '55' && !str_contains((string) json_encode($last), 'Secret'), 'OSM error log bad-200: code + section only, no OSM text');
 
+// Events permission (OAuth scope section:event:read)
+check(str_contains(\App\Config::OAUTH_SCOPES, 'section:event:read'), 'OAuth scopes request section:event:read');
+$saved = [$_SESSION['grantedScopes'] ?? null, $_SESSION['requestedScopes'] ?? null];
+unset($_SESSION[EventList::SCOPE_DENIED_KEY], $_SESSION['grantedScopes'], $_SESSION['requestedScopes']);
+check(EventList::scopeHint() === EventList::SCOPE_MESSAGE, 'no scopes recorded (old session): hint');
+$_SESSION['requestedScopes'] = 'section:member:write section:badge:write';
+check(EventList::scopeHint() === EventList::SCOPE_MESSAGE, 'requested without events: hint');
+$_SESSION['requestedScopes'] = \App\Config::OAUTH_SCOPES;
+check(EventList::scopeHint() === null, 'requested with events, nothing granted recorded: ok');
+$_SESSION['grantedScopes'] = 'section:member:write section:quartermaster:write';
+check(EventList::scopeHint() === EventList::SCOPE_MESSAGE, 'granted lacks events: hint (granted wins over requested)');
+$_SESSION['grantedScopes'] = 'section:member:write section:event:read';
+check(EventList::scopeHint() === null, 'granted has events: ok');
+$_SESSION[EventList::SCOPE_DENIED_KEY] = true;
+check(EventList::scopeHint() === EventList::SCOPE_MESSAGE, 'OSM refused earlier: hint');
+unset($_SESSION[EventList::SCOPE_DENIED_KEY]);
+check(str_contains(EventList::SCOPE_MESSAGE, "permission to read events") && str_contains(EventList::SCOPE_MESSAGE, 'Sign out and sign in again'), 'friendly scope message');
+
+// Live case: 200 {"error":"You do not have access to this resource."} -> scope message, stop, no retry, cache kept
+EventList::store('55', 'Beavers', [['id' => '1', 'name' => 'Kept', 'date' => '2025-01-01', 'archived' => false]], 2);
+$api = mockApi([new Response(200, $hdr, json_encode(['error' => 'You do not have access to this resource.'])), new Response(200, $hdr, json_encode($arch))], $h);
+$r = EventList::load($api, 'tok', ['section_id' => '55', 'section_name' => 'Challenger Scouts (Tuesday)']);
+check($r['scopeDenied'] === true && $r['stopReason'] === EventList::SCOPE_MESSAGE && $r['calls'] === 1 && count($h) === 1, '200 access refusal: scope message, one call, no retry');
+check(!empty($_SESSION[EventList::SCOPE_DENIED_KEY]) && EventList::cached('55')['events'][0]['name'] === 'Kept', 'access refusal: flagged for this session, cache kept');
+unset($_SESSION[EventList::SCOPE_DENIED_KEY]);
+$api = mockApi([new Response(200, $hdr, json_encode(['error' => ['message' => 'Insufficient permission']]))], $h);
+$r = EventList::load($api, 'tok', ['section_id' => '55', 'section_name' => 'B']);
+check($r['scopeDenied'] === true && count($h) === 1, '200 error mentioning permission: scope message');
+unset($_SESSION[EventList::SCOPE_DENIED_KEY]);
+$api = mockApi([new Response(403, $hdr, '{"error":"Forbidden"}'), new Response(200, $hdr, json_encode($main))], $h);
+$r = EventList::load($api, 'tok', ['section_id' => '55', 'section_name' => 'B']);
+check($r['scopeDenied'] === true && count($h) === 1 && !empty($_SESSION[EventList::SCOPE_DENIED_KEY]), 'HTTP 403: scope message, flagged, no retry');
+unset($_SESSION[EventList::SCOPE_DENIED_KEY]);
+$api = mockApi([new Response(401, $hdr, '{"error":"Unauthorised"}'), new Response(200, $hdr, json_encode($main))], $h);
+$r = EventList::load($api, 'tok', ['section_id' => '55', 'section_name' => 'B']);
+check($r['scopeDenied'] === true && count($h) === 1 && empty($_SESSION[EventList::SCOPE_DENIED_KEY]), 'HTTP 401: scope message, not sticky (may be an expired token)');
+$api = mockApi([new Response(200, $hdr, json_encode(['error' => 'Access denied']))], $h);
+$r = EventList::load($api, 'tok', ['section_id' => '55', 'section_name' => 'B']);
+check($r['scopeDenied'] === false && str_contains((string) $r['stopReason'], 'unexpected reply'), 'other OSM errors keep the generic message');
+$api = mockApi([new Response(500, $hdr, 'err')], $h);
+$r = EventList::load($api, 'tok', ['section_id' => '55', 'section_name' => 'B']);
+check($r['scopeDenied'] === false, 'HTTP 500 is not a scope refusal');
+unset($_SESSION[EventList::SESSION_KEY], $_SESSION[EventList::SCOPE_DENIED_KEY]);
+[$g, $q] = $saved;
+if ($g === null) { unset($_SESSION['grantedScopes']); } else { $_SESSION['grantedScopes'] = $g; }
+if ($q === null) { unset($_SESSION['requestedScopes']); } else { $_SESSION['requestedScopes'] = $q; }
+
 // OsmApi body shapes
 foreach (['' => 'empty', ' ' => 'empty', '{}' => 'empty-object', '[]' => 'empty-list', ' [ ] ' => 'empty-list', '{"a":1}' => 'json',
     '<html>' => 'not-json', 'var x = [];' => 'empty-list', 'null' => 'not-json'] as $b => $kind) {

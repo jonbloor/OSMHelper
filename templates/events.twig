@@ -3,7 +3,8 @@
 <div class="card">
   <h2>Events — {{ groupName }}</h2>
   <p class="muted">List a section’s events, including archived ones, by start date. Choose a section and load its events once. Changing the dates, sorting, printing and the CSV download then use that copy and do not call OSM.</p>
-  {% if flash %}<div class="alert{% if flash.kind == 'error' %} alert-error{% endif %}" role="status">{{ flash.message }}</div>{% endif %}
+  {% if flash and not (flash.scope is defined and flash.scope and scopeHint) %}<div class="alert{% if flash.kind == 'error' %} alert-error{% endif %}" role="status">{{ flash.message }}</div>{% endif %}
+  {% if scopeHint %}<div class="alert alert-error" role="status">{{ scopeHint }} <a href="/logout/">Sign out</a>, then choose Connect with OSM on the home page.{% if cache %} Your earlier copy of these events is still shown.{% endif %}</div>{% endif %}
   {% if sectionError %}<div class="alert alert-error">{{ sectionError }}</div>{% endif %}
 
   {% if choiceCount > 0 %}
@@ -75,7 +76,7 @@
     <input type="hidden" name="from" value="{{ from }}">
     <input type="hidden" name="to" value="{{ to }}">
     <p>
-      <button class="btn" type="submit" {% if cooldownWait > 0 %}disabled{% endif %}>{% if cache %}Refresh events{% else %}Load events{% endif %}</button>
+      <button class="btn" type="submit" {% if cooldownWait > 0 or scopeHint %}disabled{% endif %}>{% if cache %}Refresh events{% else %}Load events{% endif %}</button>
       {% if cooldownWait > 0 %}<span class="muted">You can load this section again in {{ cooldownWait }} min.</span>{% endif %}
     </p>
     <p class="muted">Uses two OSM requests for this section (its events, then one asking OSM to include archived events), never one per event. It stops straight away if OSM reports an error or your allowance runs low, and each section can be loaded once every {{ cooldownMinutes }} minutes.</p>

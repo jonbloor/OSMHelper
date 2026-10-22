@@ -146,7 +146,7 @@ final class AuthController
             } else {
                 unset($_SESSION['grantedScopes']);
             }
-            unset($_SESSION['memberWriteDenied']);
+            unset($_SESSION['memberWriteDenied'], $_SESSION['eventsScopeDenied']);
 
             $stored = LoginSections::remember(
                 OsmApi::sectionsFromResource(is_array($resource) ? $resource : [])
