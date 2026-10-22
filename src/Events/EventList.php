@@ -259,27 +259,47 @@ final class EventList
         return ['events' => self::merge($lists[0], $lists[1]), 'stopReason' => null, 'calls' => $calls, 'rateUnknown' => $rateUnknown];
     }
 
-    /** Record an unusable 200 so it can be diagnosed later (no bodies or names logged). */
+    /**
+     * Record an unusable 200 so it can be diagnosed later. Logs only a fixed reason code and the
+     * section id: never OSM's own error text, reply bodies or names.
+     */
     private static function logBadReply(string $sectionId, bool $archivedCall, string $reason): void
     {
-        error_log('OSMHelper Events: unusable 200 from ' . self::ENDPOINT . ' (section ' . $sectionId
-            . ($archivedCall ? ', archived request' : '') . '): ' . $reason . '. Stopped, no retry.');
+        $code = self::reasonCode($reason);
+        $sid = ctype_digit($sectionId) ? $sectionId : '?';
+        error_log('OSMHelper Events: unusable 200 from ' . self::ENDPOINT . ' (section ' . $sid
+            . ($archivedCall ? ', archived request' : '') . '): ' . $code . '. Stopped, no retry.');
         try {
             OsmErrorLog::log([
                 'method' => 'GET',
                 'endpoint' => self::ENDPOINT,
                 'action' => 'getEvents',
                 'http_status' => 200,
-                'osm_code' => null,
-                'osm_message' => $reason,
+                'osm_code' => $code,
+                'osm_message' => null,
                 'kind' => 'bad-200',
-                'section_id' => $sectionId,
+                'section_id' => $sid,
                 'badge_id' => null,
                 'scoutid' => null,
                 'detail' => $archivedCall ? 'archived request' : 'events request',
             ]);
         } catch (Throwable) {
         }
+    }
+
+    /** Fixed log code for a badResponseReason() string (drops any OSM-supplied text). */
+    public static function reasonCode(string $reason): string
+    {
+        $head = strtolower(trim(explode(':', $reason, 2)[0]));
+        $codes = [
+            'not json' => 'not-json',
+            'error' => 'osm-error',
+            'status false' => 'status-false',
+            'empty reply' => 'empty-reply',
+            'empty object' => 'empty-object',
+            'no event list' => 'no-event-list',
+        ];
+        return $codes[$head] ?? 'other';
     }
 
     /** @return array{events:null,stopReason:string,calls:int,rateUnknown:bool} */

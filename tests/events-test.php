@@ -143,6 +143,25 @@ $r = EventList::load($api, 'tok', ['section_id' => '55', 'section_name' => 'Beav
 check($r['events'] === null && EventList::cached('55')['events'][0]['name'] === 'Kept', 'empty 200 does not wipe cached list');
 unset($_SESSION[EventList::SESSION_KEY]);
 
+// Logs carry only a reason code + section id, never OSM's error text
+foreach (['error: Secret OSM text' => 'osm-error', 'not JSON' => 'not-json', 'status false' => 'status-false', 'empty reply' => 'empty-reply',
+    'empty object' => 'empty-object', 'no event list' => 'no-event-list', 'weird: x' => 'other'] as $in => $code) {
+    check(EventList::reasonCode($in) === $code, "reasonCode $code");
+}
+$logFile = tempnam(sys_get_temp_dir(), 'evlog');
+$prevLog = ini_set('error_log', $logFile);
+$osmLog = dirname(__DIR__) . '/storage/osm-errors.jsonl';
+$api = mockApi([new Response(200, $hdr, json_encode(['error' => 'Secret OSM text for Jane Smith']))], $h);
+$r = EventList::load($api, 'tok', ['section_id' => '55', 'section_name' => 'Beavers']);
+ini_set('error_log', (string) $prevLog);
+$logged = (string) file_get_contents($logFile);
+@unlink($logFile);
+check(str_contains($logged, 'section 55') && str_contains($logged, 'osm-error') && !str_contains($logged, 'Secret') && !str_contains($logged, 'Jane'), 'error_log: code + section only, no OSM text');
+$lines = is_file($osmLog) ? file($osmLog, FILE_IGNORE_NEW_LINES) : [];
+$last = json_decode((string) end($lines), true);
+check(is_array($last) && $last['kind'] === 'bad-200' && $last['osm_code'] === 'osm-error' && $last['osm_message'] === null
+    && $last['section_id'] === '55' && !str_contains((string) json_encode($last), 'Secret'), 'OSM error log bad-200: code + section only, no OSM text');
+
 // OsmApi body shapes
 foreach (['' => 'empty', ' ' => 'empty', '{}' => 'empty-object', '[]' => 'empty-list', ' [ ] ' => 'empty-list', '{"a":1}' => 'json',
     '<html>' => 'not-json', 'var x = [];' => 'empty-list', 'null' => 'not-json'] as $b => $kind) {
