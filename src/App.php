@@ -6,6 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BankTransfersController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EquipmentController;
+use App\Http\Controllers\EventsController;
 use App\Http\Controllers\FindMemberController;
 use App\Http\Controllers\HelpController;
 use App\Http\Controllers\RoadmapController;
@@ -48,6 +49,7 @@ final class App
         $wl = new WaitingListController();
         $mem = new MembersController();
         $find = new FindMemberController();
+        $events = new EventsController();
         $bank = new BankTransfersController();
         $set = new SettingsController();
         $help = new HelpController();
@@ -83,6 +85,9 @@ final class App
         $router->get('/member-checks', [$mem, 'checks']);
         $router->get('/find-member', [$find, 'index']);
         $router->post('/find-member/refresh', [$find, 'refresh']);
+        $router->get('/events', [$events, 'index']);
+        $router->post('/events/refresh', [$events, 'refresh']);
+        $router->get('/events/csv', [$events, 'csv']);
         $router->get('/nights-away', [$nightsAway, 'index']);
         $router->post('/nights-away/select', [$nightsAway, 'select']);
         $router->get('/bank-transfers', [$bank, 'index']);

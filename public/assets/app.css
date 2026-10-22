@@ -1172,3 +1172,10 @@ fieldset.member-section-group { border: 0; padding: 0; margin: 0 0 0.75rem; min-
 fieldset.member-section-group legend { font-weight: 600; padding: 0; margin-bottom: 0.35rem; }
 .find-member-form p { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
 .find-member-form input[type="search"] { flex: 1 1 14rem; min-width: 0; }
+
+/* Events */
+.events-form p { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.events-range { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; border: 0; padding: 0; margin: 0 0 0.75rem; }
+.events-range legend { font-weight: 600; margin-bottom: 0.25rem; }
+.events-range p { flex-basis: 100%; margin: 0.25rem 0 0; }
+.badge-archived { background: #e6e6e6; color: #333; }

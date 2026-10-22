@@ -1,0 +1,84 @@
+{% extends 'layout.twig' %}
+{% block body %}
+<div class="card">
+  <h2>Events — {{ groupName }}</h2>
+  <p class="muted">List a section’s events, including archived ones, by start date. Choose a section and load its events once. Changing the dates, sorting, printing and the CSV download then use that copy and do not call OSM.</p>
+  {% if flash %}<div class="alert{% if flash.kind == 'error' %} alert-error{% endif %}" role="status">{{ flash.message }}</div>{% endif %}
+  {% if sectionError %}<div class="alert alert-error">{{ sectionError }}</div>{% endif %}
+
+  {% if choiceCount > 0 %}
+  <form method="get" action="/events/" class="events-form">
+    <p>
+      <label for="ev-section">Section</label>
+      <select id="ev-section" name="section" required>
+        <option value="">Choose a section…</option>
+        {% for g in groups %}
+          {% if multiGroup %}<optgroup label="{{ g.name }}">{% endif %}
+          {% for s in g.sections %}
+            <option value="{{ s.id }}" {% if s.id == sectionId %}selected{% endif %}>{{ s.name }} ({{ s.typeLabel }})</option>
+          {% endfor %}
+          {% if multiGroup %}</optgroup>{% endif %}
+        {% endfor %}
+      </select>
+    </p>
+    <fieldset class="events-range">
+      <legend>Dates</legend>
+      <label><input type="radio" name="range" value="all" {% if allTime %}checked{% endif %}> All time</label>
+      <label><input type="radio" name="range" value="dates" {% if not allTime %}checked{% endif %}> From</label>
+      <label for="ev-from" class="visually-hidden">From date (dd/mm/yyyy)</label>
+      <input type="text" id="ev-from" name="from" value="{{ fromRaw }}" placeholder="dd/mm/yyyy" inputmode="numeric" pattern="\d{1,2}/\d{1,2}/\d{4}" maxlength="10" size="10" aria-describedby="ev-date-help">
+      <label for="ev-to">to</label>
+      <input type="text" id="ev-to" name="to" value="{{ toRaw }}" placeholder="dd/mm/yyyy" inputmode="numeric" pattern="\d{1,2}/\d{1,2}/\d{4}" maxlength="10" size="10" aria-describedby="ev-date-help">
+      <p class="muted" id="ev-date-help">Dates are dd/mm/yyyy and include the start and end day. Leave one blank for “from” or “until” only.</p>
+    </fieldset>
+    {% if rangeError %}<div class="alert alert-error" role="status">{{ rangeError }}</div>{% endif %}
+    <p><button class="btn" type="submit">Show events</button></p>
+  </form>
+  {% elseif not sectionError %}
+  <p class="alert">No sections on this login that Events can use. Sign out and connect again, or check your OSM role.</p>
+  {% endif %}
+</div>
+
+{% if sectionId %}
+<div class="card">
+  <h3>{{ sectionName }}: {% if allTime %}all time{% else %}{{ from ?: 'start' }} to {{ to ?: 'now and later' }}{% endif %}</h3>
+  {% if cache %}
+  <p class="muted">Loaded {{ cache.builtAt }}: {{ cache.total }} event{% if cache.total != 1 %}s{% endif %}, {{ cache.archived }} archived. This copy is cleared about 2 hours after loading, or when you sign out.</p>
+  <div class="table-wrap">
+  <table class="data" id="events-table" data-table-tools data-export-name="events">
+    <caption class="visually-hidden">Events for {{ sectionName }}</caption>
+    <thead><tr><th scope="col">Start date</th><th scope="col">Event</th><th scope="col">Status</th></tr></thead>
+    <tbody>
+    {% for e in events %}
+      <tr>
+        <td data-sort="{{ e.date ?: '9999-99-99' }}">{{ e.uk ?: 'No date' }}</td>
+        <td>{{ e.name }}</td>
+        <td data-export="{{ e.archived ? 'Archived' : '' }}">{% if e.archived %}<span class="badge badge-archived">Archived</span>{% endif %}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="3" class="muted">No events {% if allTime %}for this section{% else %}between these dates{% endif %}.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="muted">{{ events|length }} event{% if events|length != 1 %}s{% endif %} shown, oldest first.</p>
+  <p><a class="btn btn-secondary" href="/events/csv/?{{ csvQuery }}" download>Download CSV</a> <span class="muted">Section, start date, event name and archived (Yes/No) for the dates shown. Made from the loaded copy, no OSM request.</span></p>
+  {% else %}
+  <p class="alert">Events for this section are not loaded yet.</p>
+  {% endif %}
+
+  <form method="post" action="/events/refresh/">
+    {% include '_csrf.twig' %}
+    <input type="hidden" name="section_id" value="{{ sectionId }}">
+    <input type="hidden" name="range" value="{{ allTime ? 'all' : 'dates' }}">
+    <input type="hidden" name="from" value="{{ from }}">
+    <input type="hidden" name="to" value="{{ to }}">
+    <p>
+      <button class="btn" type="submit" {% if cooldownWait > 0 %}disabled{% endif %}>{% if cache %}Refresh events{% else %}Load events{% endif %}</button>
+      {% if cooldownWait > 0 %}<span class="muted">You can load this section again in {{ cooldownWait }} min.</span>{% endif %}
+    </p>
+    <p class="muted">Uses two OSM requests for this section (its events, then its archived events), never one per event. It stops straight away if OSM reports an error or your allowance runs low, and each section can be loaded once every {{ cooldownMinutes }} minutes.</p>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

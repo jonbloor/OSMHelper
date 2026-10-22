@@ -187,7 +187,11 @@
     <section class="help-section" id="in-progress" aria-labelledby="in-progress-h">
       <h3 id="in-progress-h">In progress</h3>
       <ul class="rm-list">
-        <li class="rm-item muted">Nothing in progress right now.</li>
+        <li class="rm-item rm-progress">
+          <div class="rm-head">{{ rm.status('progress') }} <span class="rm-area">Members</span></div>
+          <h4 class="rm-title">Events list</h4>
+          <p>List a section’s events by start date for a date range or all time, including archived events (marked Archived). Sort, search, print and download as CSV. Loading a section uses two OSM requests; changing the dates or downloading uses the loaded copy.</p>
+        </li>
       </ul>
     </section>
 
