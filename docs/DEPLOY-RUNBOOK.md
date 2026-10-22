@@ -121,13 +121,20 @@ Adding the key (deploy.sh does this automatically via `deploy/ensure-token-key.p
 empty value and never prints it). By hand, on the server:
 
     cd /home/osmhelper/app
-    # prints how many lines set a real value (0 or 1), never the value; empty, "" and '' count as 0:
-    grep -E '^OSMHELPER_TOKEN_KEY=' .env | grep -cvE "^OSMHELPER_TOKEN_KEY=[[:blank:]]*(\"\"|'')?[[:blank:]]*\$"
-    # only if it printed 0:
+    # prints only "set" or "missing" (never the value). Reads the value the app sees (Dotenv::parse,
+    # last definition wins, trimmed); "set" only for a 32-byte base64 key:
+    php -r 'require "vendor/autoload.php"; try { $v = trim((string) (Dotenv\Dotenv::parse((string) file_get_contents(".env"))["OSMHELPER_TOKEN_KEY"] ?? "")); } catch (Throwable $e) { $v = ""; } $k = base64_decode($v, true); echo (is_string($k) && strlen($k) === 32) ? "set\n" : "missing\n";'
+    # if it printed "missing":
     php deploy/ensure-token-key.php             # prints "OSMHELPER_TOKEN_KEY set" (or "already set")
-    chmod 640 .env
 
-deploy.sh runs this after ensure-token-key on every deploy (`umask 007`), then `bin/scrub-error-log.php`.
+ensure-token-key.php appends a key only when `.env` has no `OSMHELPER_TOKEN_KEY` line at all (it writes a temp
+file and renames it, keeping the owner, group and mode). If a line exists (including `export`, leading spaces or
+`KEY = value`) but the value is empty or not a valid key, it changes nothing and exits 1 with a message: fix
+`.env` by hand (restore the original key from the off-server copy if tokens were saved with it).
+
+deploy.sh runs ensure-token-key against the live `.env` *before* unpacking the new code (so production never
+runs without a key), and again after `composer install` for a first install. After the code is in place it runs
+`bin/encrypt-site-tokens.php` and then `bin/scrub-error-log.php`, both under `umask 007`.
 Encrypting rows saved before the key existed by hand (safe to re-run; prints counts only):
 
     cd /home/osmhelper/app && (umask 007; php bin/encrypt-site-tokens.php)
@@ -137,10 +144,11 @@ Encrypting rows saved before the key existed by hand (safe to re-run; prints cou
 are still read normally and are encrypted the first time they are read (e.g. the next form submission) once the key
 is set. If the key is missing or invalid the PHP log shows `OSMHelper token encryption: token_key_missing` (or
 `token_key_invalid`, `token_sodium_missing`), and:
-- **In production** (`APP_ENV=production` in `.env`; if `APP_ENV` is unset, the `osmhelper.co.uk` host counts as
-  production) the app **fails closed**: it never saves a token unencrypted (`token_write_refused_no_key`). Saving
+- **In production** (any `APP_ENV` except `dev`, `local`, `development`, `test` or `testing`; if `APP_ENV` is
+  unset or empty, the `osmhelper.co.uk` host counts as production) the app **fails closed**: it never saves a token unencrypted (`token_write_refused_no_key`). Saving
   on the Joining form page shows an error, the page shows a warning (admins in `ADMIN_OSM_USER_IDS` also see the
-  reason code), and a token refresh during a form submission isn't saved, so the form may stop working once the
+  reason code; it says a form already set up keeps sending for now but may stop once its saved OSM access needs
+  renewing), and a token refresh during a form submission isn't saved, so the form may stop working once the
   stored token can no longer be refreshed. Fix the key promptly. Existing plaintext rows can still be read.
 - Elsewhere (development) new tokens are saved unencrypted.
 - An encrypted token that can't be opened logs `token_decrypt_failed` and the form asks the leader to save again.

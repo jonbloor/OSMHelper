@@ -10,7 +10,7 @@
 
   {% if tokenWritesBlocked %}
     <div class="alert alert-error" role="alert">
-      Saving the joining form is switched off for now because a server security setting is missing, so OSM Helper won’t store your OSM access key. A form that is already set up keeps working.
+      Saving the joining form is switched off for now because a server security setting is missing, so OSM Helper won’t store your OSM access key. A form that is already set up keeps sending children to OSM for now, but it may stop working once its saved OSM access needs renewing, until this is fixed.
       {% if tokenKeyProblem %}<br><strong>Admin:</strong> <code>{{ tokenKeyProblem }}</code>. Set <code>OSMHELPER_TOKEN_KEY</code> in <code>.env</code> (<code>php deploy/ensure-token-key.php</code>), then run <code>php bin/encrypt-site-tokens.php</code>. See docs/DEPLOY-RUNBOOK.md.{% endif %}
     </div>
   {% endif %}

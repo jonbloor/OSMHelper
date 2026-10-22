@@ -135,14 +135,15 @@ final class Config
     }
 
     /**
-     * Production when APP_ENV=production, or (APP_ENV unset) when serving the live host.
-     * Used to fail closed on security settings that development can live without.
+     * Production unless APP_ENV explicitly says development: dev, local, development, test or testing
+     * (case-insensitive). Any other value (production, prod, staging, a typo) counts as production, so
+     * security settings fail closed. APP_ENV unset or empty: production only when serving the live host.
      */
     public static function isProduction(): bool
     {
-        $env = self::get('APP_ENV');
-        if ($env !== null) {
-            return strtolower(trim($env)) === 'production';
+        $env = strtolower(trim((string) self::get('APP_ENV')));
+        if ($env !== '') {
+            return !in_array($env, ['dev', 'local', 'development', 'test', 'testing'], true);
         }
         return str_contains(strtolower((string) ($_SERVER['HTTP_HOST'] ?? '')), 'osmhelper.co.uk');
     }

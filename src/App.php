@@ -130,6 +130,7 @@ final class App
             $ends = self::sessionEndsAt();
             $context['sessionEndsText'] = $ends === null ? null
                 : (new \DateTimeImmutable('@' . $ends))->setTimezone(new \DateTimeZone('Europe/London'))->format('H:i');
+            $context['sessionLengthText'] = self::durationText(Config::sessionAbsoluteSeconds());
         }
         if (!empty($context['authed']) && !array_key_exists('rateLimit', $context)) {
             $context = array_merge(Auth::rateLimitContext(), $context);
@@ -257,6 +258,17 @@ final class App
     }
 
     /** Unix time this session will end (absolute or idle limit, whichever is sooner), or null if not signed in. */
+    /** "2 hours", "1 hour", "90 minutes": for the configured session length in page text. */
+    public static function durationText(int $seconds): string
+    {
+        if ($seconds >= 3600 && $seconds % 3600 === 0) {
+            $h = intdiv($seconds, 3600);
+            return $h . ($h === 1 ? ' hour' : ' hours');
+        }
+        $m = max(1, intdiv($seconds + 59, 60));
+        return $m . ($m === 1 ? ' minute' : ' minutes');
+    }
+
     public static function sessionEndsAt(): ?int
     {
         if (!self::isAuthenticated() || !is_int($_SESSION['_startedAt'] ?? null)) {

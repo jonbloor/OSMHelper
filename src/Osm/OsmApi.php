@@ -216,9 +216,9 @@ final class OsmApi
 
         $deprecated = self::headerFirst($headers, 'X-Deprecated', 'x-deprecated');
         if ($deprecated !== null && $deprecated !== '') {
-            // Path only: the query string can carry section/member IDs.
-            error_log('OSM API X-Deprecated: ' . LogSafe::redact($deprecated) . ' endpoint: ' . LogSafe::pathOnly($path));
             $ts = strtotime($deprecated);
+            // Reason code + path only: never OSM's header text; the query string can carry section/member IDs.
+            error_log('OSM API ' . (($ts !== false && $ts <= time()) ? 'osm_deprecated_removed' : 'osm_deprecated') . ' endpoint: ' . LogSafe::pathOnly($path));
             if ($ts !== false && $ts <= time()) {
                 OsmErrorLog::log([
                     'method' => $method,
@@ -231,7 +231,7 @@ final class OsmApi
                     'badge_id' => $ctx['badge_id'],
                     'detail' => null,
                 ]);
-                throw new \RuntimeException('OSM marked this endpoint removed (X-Deprecated: ' . $deprecated . '). It will not be called again.', 410);
+                throw new \RuntimeException('OSM marked this endpoint removed (X-Deprecated). It will not be called again.', 410);
             }
         }
 

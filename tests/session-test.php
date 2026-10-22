@@ -122,6 +122,9 @@ check(str_contains($layout, 'Signed in until {{ sessionEndsText }}') && str_cont
 $noticeBlock = substr($layout, (int) strpos($layout, 'session-ends'), 400);
 check(!str_contains($noticeBlock, '<script') && !str_contains($noticeBlock, 'style='), 'notice: plain text, no inline script/style (CSP-safe)');
 check(str_contains($appSrc, "'Europe/London'") && str_contains($appSrc, "'sessionEndsText'"), 'notice: time shown in UK time');
+check(App::durationText(7200) === '2 hours' && App::durationText(3600) === '1 hour' && App::durationText(5400) === '90 minutes' && App::durationText(300) === '5 minutes', 'notice: session length text');
+check(str_contains($layout, "every session ends {{ sessionLengthText|default('2 hours') }} after you sign in") && !str_contains($layout, 'every session ends 2 hours after you sign in'), 'notice: tooltip uses the configured length');
+check(str_contains($appSrc, "\$context['sessionLengthText'] = self::durationText(Config::sessionAbsoluteSeconds());"), 'notice: length comes from SESSION_ABSOLUTE_SECONDS');
 
 session_write_close();
 foreach (glob($tmp . '/*') ?: [] as $f) { @unlink($f); }

@@ -203,6 +203,28 @@ $all = file(OsmErrorLog::path(), FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) 
 $valid = array_filter($all, static fn ($l) => is_array(json_decode($l, true)));
 check(count($all) === 160 && count($valid) === 160, 'errorlog: 4 concurrent writers + pruning keep all 160 lines intact (got ' . count($all) . ')');
 check(!str_contains(implode("\n", $all), '"old":1'), 'errorlog: old entry pruned during concurrent writes');
+// Same race, but the file starts over the rotation thresholds (> 200 entries and > 32 KiB), so every
+// append also runs the locked rotate. Expect exactly the newest 200: all 160 new lines + 40 seed lines.
+$seed = '';
+for ($i = 0; $i < 250; $i++) {
+    $seed .= json_encode(['at' => gmdate('c', $now - 3600), 'kind' => 'seed', 'detail' => str_repeat('x', 150), 'n' => $i]) . "\n";
+}
+file_put_contents(OsmErrorLog::path(), $seed);
+check(filesize(OsmErrorLog::path()) > 32768, 'errorlog rotate test: seed file is over the 32 KiB rotate check');
+$procs = [];
+for ($w = 1; $w <= 4; $w++) {
+    $procs[] = proc_open([PHP_BINARY, $worker, (string) $w], [], $pipes);
+}
+foreach ($procs as $p) { proc_close($p); }
+$all = file(OsmErrorLog::path(), FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+$dec = array_values(array_filter(array_map(static fn ($l) => json_decode($l, true), $all), 'is_array'));
+$perWorker = [];
+foreach ($dec as $d) { if (($d['kind'] ?? '') === 'http') { $perWorker[$d['section_id']] = ($perWorker[$d['section_id']] ?? 0) + 1; } }
+ksort($perWorker);
+$seedLeft = array_column(array_filter($dec, static fn ($d) => ($d['kind'] ?? '') === 'seed'), 'n');
+check(count($all) === 200 && count($dec) === 200, 'errorlog: concurrent appends + rotation keep exactly 200 intact lines (got ' . count($all) . ')');
+check($perWorker === ['1' => 40, '2' => 40, '3' => 40, '4' => 40], 'errorlog: rotation under concurrency loses none of the 160 new lines');
+check($seedLeft === range(210, 249), 'errorlog: rotation drops the oldest lines first (seed 210..249 kept)');
 @unlink($worker);
 OsmErrorLog::setDirForTests(null);
 
@@ -246,47 +268,81 @@ check(str_contains($deploy, '--exclude=app/.env ') && str_contains($deploy, "--e
 
 // ---------- ensure-token-key.php ----------
 require_once dirname(__DIR__) . '/deploy/ensure-token-key.php';
-check(!osmhelper_token_key_present("A=1\nOSMHELPER_TOKEN_KEY=\nB=2\n"), 'tokenkey: empty value is not present (does not borrow next line)');
-check(!osmhelper_token_key_present("OSMHELPER_TOKEN_KEY=\nNEXT=value\n"), 'tokenkey: empty value then another line');
-check(!osmhelper_token_key_present("OSMHELPER_TOKEN_KEY=   \n"), 'tokenkey: blanks only');
-check(!osmhelper_token_key_present("OSMHELPER_TOKEN_KEY=\"\"\n"), 'tokenkey: "" is empty');
-check(!osmhelper_token_key_present("OSMHELPER_TOKEN_KEY=''\n"), "tokenkey: '' is empty");
-check(!osmhelper_token_key_present("OSMHELPER_TOKEN_KEY=\r\nB=2\r\n"), 'tokenkey: CRLF empty value');
-check(!osmhelper_token_key_present("# OSMHELPER_TOKEN_KEY=abc\n"), 'tokenkey: commented line ignored');
-check(!osmhelper_token_key_present("A=1\n"), 'tokenkey: missing');
-check(osmhelper_token_key_present("OSMHELPER_TOKEN_KEY=abc123=\n"), 'tokenkey: real value present');
-check(osmhelper_token_key_present("OSMHELPER_TOKEN_KEY=\"abc123=\"\n"), 'tokenkey: quoted real value present');
-check(!osmhelper_token_key_present("OSMHELPER_TOKEN_KEY=\nOSMHELPER_TOKEN_KEY=abc\n"), 'tokenkey: first definition decides (Dotenv keeps the first)');
-$fakeKey = 'FAKEKEYfakekeyFAKEKEYfakekeyFAKEKEY12345678=';
-$out = osmhelper_with_token_key("A=1\nOSMHELPER_TOKEN_KEY=\"\"\nB=2\n", $fakeKey);
-check(substr_count($out, 'OSMHELPER_TOKEN_KEY=') === 1 && str_contains($out, "OSMHELPER_TOKEN_KEY=$fakeKey\n") && str_contains($out, "A=1\n") && str_contains($out, "B=2\n"), 'tokenkey: quoted-empty line replaced, others kept');
-check(osmhelper_token_key_present($out), 'tokenkey: present after fill');
-$out = osmhelper_with_token_key("A=1\nOSMHELPER_TOKEN_KEY=\nOSMHELPER_TOKEN_KEY=''\n", $fakeKey);
-check(substr_count($out, 'OSMHELPER_TOKEN_KEY=') === 1, 'tokenkey: every empty duplicate removed');
-check(osmhelper_with_token_key("A=1", $fakeKey) === "A=1\nOSMHELPER_TOKEN_KEY=$fakeKey\n", 'tokenkey: appended with newline');
-// CLI run in a temp app dir: never prints the key, never replaces a real one.
+$fakeKey = base64_encode(str_repeat("\x01", 32)); // valid-shaped fake key, never a real one
+$K = 'OSMHELPER_TOKEN_KEY';
+$cases = [
+    // [env text, expected status, label]
+    ["A=1\n", 'missing', 'no definition'],
+    ["# $K=$fakeKey\n", 'missing', 'commented line is not a definition'],
+    ["$K=$fakeKey\n", 'set', 'valid key'],
+    ["$K=\"$fakeKey\"\n", 'set', 'quoted valid key'],
+    ["$K=\n$K=$fakeKey\n", 'set', 'empty then valid: last definition wins'],
+    ["$K=$fakeKey\n$K=\n", 'invalid', 'valid then empty: last (empty) wins'],
+    ["$K=\n$K=abc\n", 'invalid', 'empty then abc: defined, abc not a key'],
+    ["export $K=$fakeKey\n", 'set', 'export form'],
+    ["export $K=\n", 'invalid', 'export empty'],
+    ["  $K=$fakeKey\n", 'set', 'leading space'],
+    ["  $K=\n", 'invalid', 'leading space empty'],
+    ["$K = $fakeKey\n", 'set', 'KEY = value'],
+    ["$K = abc\n", 'invalid', 'KEY = abc'],
+    ["$K= # todo\n", 'invalid', '= # todo (comment only)'],
+    ["$K=\" \"\n", 'invalid', '" " (quoted blank)'],
+    ["$K=\"\"\n", 'invalid', '"" (quoted empty)'],
+    ["$K=''\n", 'invalid', "'' (quoted empty)"],
+    ["$K=\nB=2\n", 'invalid', 'empty does not borrow next line'],
+    ["A=1\r\n$K=$fakeKey\r\nB=2\r\n", 'set', 'CRLF valid'],
+    ["A=1\r\n$K=\r\nB=2\r\n", 'invalid', 'CRLF empty'],
+];
+foreach ($cases as [$env, $want, $label]) {
+    $got = osmhelper_token_key_status($env);
+    check($got === $want, "tokenkey: $label → $want" . ($got === $want ? '' : " (got $got)"));
+}
+check(osmhelper_with_token_key("A=1", $fakeKey) === "A=1\n$K=$fakeKey\n", 'tokenkey: appended with newline');
+check(osmhelper_with_token_key("A=1\r\nB=2\r\n", $fakeKey) === "A=1\r\nB=2\r\n$K=$fakeKey\r\n", 'tokenkey: CRLF file keeps CRLF');
+check(osmhelper_token_key_status(osmhelper_with_token_key("A=1\n", $fakeKey)) === 'set', 'tokenkey: set after append');
+// CLI runs in a temp app dir: never prints the key, never appends next to an existing definition.
 $envDir = $tmp . '/envtest';
 mkdir($envDir, 0700);
-file_put_contents($envDir . '/.env', "SESSION_SECRET=x\nOSMHELPER_TOKEN_KEY=\nCLIENT_ID=y\n");
-$cmd = 'cd ' . escapeshellarg($envDir) . ' && ' . escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/deploy/ensure-token-key.php') . ' 2>&1';
+$envFile = $envDir . '/.env';
+$cmd = 'cd ' . escapeshellarg($envDir) . ' && ' . escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/deploy/ensure-token-key.php') . ' 2>&1; echo "rc=$?"';
+file_put_contents($envFile, "SESSION_SECRET=x\nCLIENT_ID=y\n");
+chmod($envFile, 0640);
+$st0 = stat($envFile);
 $o1 = trim((string) shell_exec($cmd));
-$envAfter = (string) file_get_contents($envDir . '/.env');
+$envAfter = (string) file_get_contents($envFile);
 preg_match('/^OSMHELPER_TOKEN_KEY=(\S+)$/m', $envAfter, $km);
 $newKey = $km[1] ?? '';
-check($o1 === 'OSMHELPER_TOKEN_KEY set' && strlen((string) base64_decode($newKey, true)) === 32, 'tokenkey CLI: empty value filled with a 32-byte key');
+clearstatcache();
+$st1 = stat($envFile);
+check($o1 === "OSMHELPER_TOKEN_KEY set\nrc=0" && strlen((string) base64_decode($newKey, true)) === 32, 'tokenkey CLI: missing → 32-byte key appended');
 check($newKey !== '' && !str_contains($o1, $newKey), 'tokenkey CLI: key not printed');
-check(str_contains($envAfter, "CLIENT_ID=y\n") && substr_count($envAfter, 'OSMHELPER_TOKEN_KEY=') === 1, 'tokenkey CLI: other lines kept, one key line');
+check(str_starts_with($envAfter, "SESSION_SECRET=x\nCLIENT_ID=y\n") && substr_count($envAfter, 'OSMHELPER_TOKEN_KEY=') === 1, 'tokenkey CLI: other lines kept, one key line');
+check(($st1['mode'] & 07777) === 0640 && $st1['uid'] === $st0['uid'] && $st1['gid'] === $st0['gid'] && $st1['ino'] !== $st0['ino'], 'tokenkey CLI: temp+rename keeps owner, group, mode 0640');
+check(glob($envDir . '/.env.tmp-*') === [], 'tokenkey CLI: no temp file left');
 $o2 = trim((string) shell_exec($cmd));
-check($o2 === 'OSMHELPER_TOKEN_KEY already set' && (string) file_get_contents($envDir . '/.env') === $envAfter, 'tokenkey CLI: second run changes nothing');
-// Runbook grep: counts real values only
-$grep = static function (string $env) use ($envDir): string {
-    file_put_contents($envDir . '/.env', $env);
-    return trim((string) shell_exec('cd ' . escapeshellarg($envDir) . ' && grep -E \'^OSMHELPER_TOKEN_KEY=\' .env | grep -cvE "^OSMHELPER_TOKEN_KEY=[[:blank:]]*(\\"\\"|\'\')?[[:blank:]]*\\$"'));
-};
-check($grep("OSMHELPER_TOKEN_KEY=\nB=2\n") === '0' && $grep("OSMHELPER_TOKEN_KEY=\"\"\n") === '0' && $grep("OSMHELPER_TOKEN_KEY=''\n") === '0' && $grep("OSMHELPER_TOKEN_KEY=abc\n") === '1', 'runbook grep: empty / quoted-empty → 0, real → 1');
+check($o2 === "OSMHELPER_TOKEN_KEY already set\nrc=0" && (string) file_get_contents($envFile) === $envAfter, 'tokenkey CLI: second run changes nothing');
+foreach (["$K=\n$K=abc\n", "export $K=\n", "  $K=\n", "$K = abc\n", "$K=$fakeKey\n$K=\n", "$K= # todo\n", "$K=\" \"\n", "A=1\r\n$K=\r\n"] as $bad) {
+    file_put_contents($envFile, $bad);
+    $ob = (string) shell_exec($cmd);
+    check(str_contains($ob, 'rc=1') && str_contains($ob, 'Nothing was changed') && (string) file_get_contents($envFile) === $bad && !str_contains($ob, 'abc'), 'tokenkey CLI: defined-but-invalid exits 1, file untouched: ' . json_encode($bad === "$K=$fakeKey\n$K=\n" ? 'valid then empty' : str_replace($fakeKey, 'KEY', $bad)));
+}
+// Runbook php -r check: prints only set/missing
 $runbook = (string) file_get_contents(dirname(__DIR__) . '/docs/DEPLOY-RUNBOOK.md');
-check(str_contains($runbook, "grep -cvE \"^OSMHELPER_TOKEN_KEY=[[:blank:]]*(\\\"\\\"|'')?[[:blank:]]*\\$\"") && !str_contains($runbook, "'^OSMHELPER_TOKEN_KEY=.'"), 'runbook: uses the tested grep, old one gone');
+preg_match("/^    (php -r 'require \"vendor\\/autoload.php\";.*)$/m", $runbook, $rm);
+$rbCmd = $rm[1] ?? '';
+check($rbCmd !== '' && str_contains($rbCmd, 'Dotenv\\Dotenv::parse'), 'runbook: php -r Dotenv::parse check present');
+check(!str_contains($runbook, "grep -E '^OSMHELPER_TOKEN_KEY=' .env") && !str_contains($runbook, "'^OSMHELPER_TOKEN_KEY=.'"), 'runbook: old grep checks gone');
+@symlink(dirname(__DIR__) . '/vendor', $envDir . '/vendor');
+$rb = static function (string $env) use ($envFile, $envDir, $rbCmd): string {
+    file_put_contents($envFile, $env);
+    $rbBin = str_replace('php -r', escapeshellarg(PHP_BINARY) . ' -r', $rbCmd);
+    return trim((string) shell_exec('cd ' . escapeshellarg($envDir) . ' && ' . $rbBin . ' 2>&1'));
+};
+check($rb("$K=$fakeKey\n") === 'set' && $rb("$K=\n$K=$fakeKey\n") === 'set' && $rb("export $K=$fakeKey\n") === 'set', 'runbook check: valid / last-wins / export → set');
+check($rb("A=1\n") === 'missing' && $rb("$K=\n") === 'missing' && $rb("$K=$fakeKey\n$K=\n") === 'missing' && $rb("$K=\" \"\n") === 'missing' && $rb("$K = abc\n") === 'missing', 'runbook check: missing / empty / last empty / blank / abc → missing');
+check($rb("A=\"unterminated\n$K=$fakeKey\n") === 'missing', 'runbook check: unparseable file → missing, no .env text printed');
 check(str_contains($runbook, 'intentionally excluded from every backup') && str_contains($runbook, 'off the server'), 'runbook: .env/key excluded from backups, off-server copy');
+@unlink($envDir . '/vendor');
 foreach (glob($envDir . '/{,.}*', GLOB_BRACE) ?: [] as $f) { if (is_file($f)) { @unlink($f); } }
 @rmdir($envDir);
 
@@ -322,6 +378,21 @@ $_SERVER['HTTP_HOST'] = 'osmhelper.co.uk';
 check(!\App\Config::isProduction(), 'prod: explicit APP_ENV wins over host');
 unset($_ENV['APP_ENV']);
 check(\App\Config::isProduction(), 'prod: live host counts as production when APP_ENV unset');
+foreach (['dev', 'local', 'Development', ' test ', 'testing'] as $v) {
+    $_ENV['APP_ENV'] = $v;
+    check(!\App\Config::isProduction(), 'prod: APP_ENV=' . json_encode($v) . ' is not production');
+}
+foreach (['production', 'prod', 'staging', 'Production ', 'prodution'] as $v) {
+    $_ENV['APP_ENV'] = $v;
+    check(\App\Config::isProduction(), 'prod: APP_ENV=' . json_encode($v) . ' counts as production (fail closed)');
+}
+$_ENV['APP_ENV'] = '';
+check(\App\Config::isProduction(), 'prod: empty APP_ENV falls back to the live host');
+$hostWas = $_SERVER['HTTP_HOST'] ?? null;
+$_SERVER['HTTP_HOST'] = 'localhost:8137';
+check(!\App\Config::isProduction(), 'prod: empty APP_ENV on another host is not production');
+if ($hostWas === null) { unset($_SERVER['HTTP_HOST']); } else { $_SERVER['HTTP_HOST'] = $hostWas; }
+unset($_ENV['APP_ENV']);
 unset($_SERVER['HTTP_HOST']);
 TokenCrypto::setKeyForTests($key);
 check(!TokenCrypto::writesBlocked() && TokenCrypto::problem() === null, 'prod: with key → not blocked');
@@ -365,6 +436,18 @@ $deploy2 = (string) file_get_contents(dirname(__DIR__) . '/deploy/deploy.sh');
 $posKey = strpos($deploy2, 'ensure-token-key.php');
 $posEnc = strpos($deploy2, '(umask 007; php bin/encrypt-site-tokens.php)');
 check($posKey !== false && $posEnc !== false && $posEnc > $posKey && str_contains($deploy2, '(umask 007; php bin/scrub-error-log.php)'), 'deploy: encrypt + scrub migrations run after ensure-token-key, umask 007');
+$osmApi = (string) file_get_contents(dirname(__DIR__) . '/src/Osm/OsmApi.php');
+check(!preg_match('/error_log\([^;]*\$deprecated/', $osmApi) && !preg_match('/RuntimeException\([^;]*\$deprecated/', $osmApi) && str_contains($osmApi, "'osm_deprecated'"), 'OsmApi: X-Deprecated logged as a code only, header text never logged or shown');
+$readme = (string) file_get_contents(dirname(__DIR__) . '/README.md');
+check(!str_contains(strtolower($readme), 'atomically') && str_contains($readme, 'exclusive file lock'), 'README: says locked, not atomic');
+$wpT = (string) file_get_contents(dirname(__DIR__) . '/templates/wordpress-form.twig');
+$rbT = (string) file_get_contents(dirname(__DIR__) . '/docs/DEPLOY-RUNBOOK.md');
+check(!str_contains($wpT, 'keeps working.') && str_contains($wpT, 'may stop working once its saved OSM access needs renewing') && str_contains($rbT, 'may stop once its saved OSM access needs') && str_contains($rbT, 'so the form may stop working'), 'WordPress alert and runbook agree: existing form may stop at token renewal');
+$posPreKey = strpos($deploy2, 'php /home/osmhelper/tmp/ensure-token-key.php');
+$posExtract = strpos($deploy2, 'tar -xzf tmp/osmhelper-app.tgz');
+check($posPreKey !== false && $posExtract !== false && $posPreKey < $posExtract, 'deploy: ensure-token-key runs against live .env before the code is unpacked');
+check($posExtract < $posEnc && $posExtract < (int) strpos($deploy2, 'php bin/scrub-error-log.php'), 'deploy: encrypt + scrub run after extraction');
+check(str_contains($deploy2, '|| rc=$?; fi; rm -f /home/osmhelper/tmp/ensure-token-key.php; exit $rc'), 'deploy: pre-extraction key failure stops the deploy, temp script removed');
 
 // cleanup
 foreach (glob($tmp . '/*') ?: [] as $f) { @unlink($f); }

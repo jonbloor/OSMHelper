@@ -29,6 +29,14 @@ if [ -f /home/osmhelper/app/storage/osmhelper.sqlite ]; then
 fi
 cd \$B; for k in 'app-predeploy-*.tgz' 'db-*.sqlite'; do ls -1t \$k 2>/dev/null | tail -n +11 | xargs -r rm -f --; done"
 
+echo "==> OSMHELPER_TOKEN_KEY in the live .env (before the new code goes in)"
+# The new code refuses to save WordPress form tokens in production without a key, so the key must be in
+# .env before the code is unpacked. Uses the live app's existing vendor/ (Dotenv); skipped on a first
+# install (no .env or vendor yet) and run again after composer install below. Only appends a key when
+# no definition exists; exits 1 (stopping the deploy) if one exists but is empty/invalid. Never prints it.
+scp -i "$SSH_KEY" -o IdentitiesOnly=yes "$ROOT/deploy/ensure-token-key.php" "${REMOTE}:/home/osmhelper/tmp/ensure-token-key.php"
+"${SSH[@]}" 'cd /home/osmhelper/app 2>/dev/null || exit 0; rc=0; if [ -f .env ] && [ -f vendor/autoload.php ]; then php /home/osmhelper/tmp/ensure-token-key.php || rc=$?; fi; rm -f /home/osmhelper/tmp/ensure-token-key.php; exit $rc'
+
 echo "==> Pack + upload app"
 TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
 mkdir -p "$TMP/app"
@@ -62,8 +70,8 @@ echo "==> .env + SESSION_SECRET"
 "${SSH[@]}" 'cd /home/osmhelper/app && if [ ! -f .env ]; then cp .env.example .env; fi'
 scp -i "$SSH_KEY" -o IdentitiesOnly=yes "$ROOT/deploy/ensure-session-secret.php" "${REMOTE}:/home/osmhelper/app/ensure-session-secret.php"
 "${SSH[@]}" 'cd /home/osmhelper/app && php ensure-session-secret.php && rm -f ensure-session-secret.php'
-# OSMHELPER_TOKEN_KEY (encrypts the WordPress form's saved OSM tokens): only added when missing,
-# never replaced, never printed. ensure-token-key.php ships with the app under deploy/.
+# OSMHELPER_TOKEN_KEY again (no-op if the step before the upload set it; covers a first install).
+# Only added when no definition exists, never replaced, never printed.
 "${SSH[@]}" 'cd /home/osmhelper/app && php deploy/ensure-token-key.php'
 
 
