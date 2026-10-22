@@ -105,6 +105,10 @@ $cases = [
     'error key' => json_encode(['error' => 'Access denied']),
     'status false' => json_encode(['status' => false, 'data' => []]),
     'data not array' => json_encode(['status' => true, 'data' => 'nope']),
+    // Empty bodies decode to [] in OsmApi; they must still stop and keep the old index.
+    'empty body' => '',
+    'empty object' => '{}',
+    'empty list' => '[]',
 ];
 foreach ($cases as $label => $body) {
     $history = [];

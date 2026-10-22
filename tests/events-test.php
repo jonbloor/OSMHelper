@@ -53,11 +53,12 @@ $p = EventList::parseItems($main);
 check(count($p) === 5, 'parses all items');
 check($p[0]['date'] === '2025-12-06' && $p[3]['date'] === '2024-06-19' && $p[4]['date'] === '2026-01-10', 'ISO, UK dd/mm/yyyy and startdate_g dates');
 check($p[2]['date'] === null, '0000-00-00 treated as no date');
-check($p[0]['archived'] === false && $p[3]['archived'] === true, 'archived field honoured in main list');
-check(array_column(EventList::parseItems($arch, true), 'archived') === [true, true], 'onlyArchived list marks all archived');
+check($p[0]['archived'] === null && $p[3]['archived'] === true, 'archived from the row field only (null when absent)');
+check(array_column(EventList::parseItems($arch), 'archived') === [null, null], 'archived-request rows are not forced archived');
 check(EventList::parseItems([]) === [] && EventList::parseItems(['items' => 'x']) === [], 'empty / odd payloads give no rows');
 check(EventList::parseItems(['data' => ['items' => [['eventid' => 9, 'name' => 'X', 'startdate' => '2024-01-01']]]])[0]['id'] === '9', 'items under data');
-foreach ([['archived' => 0], ['archived' => '0'], ['archived' => false], ['archived' => 'n'], []] as $f) {
+check(EventList::parseItems(['items' => [['eventid' => 1, 'name' => 'a']]])[0]['archived'] === null, 'no archived field: null');
+foreach ([['archived' => 0], ['archived' => '0'], ['archived' => false], ['archived' => 'n']] as $f) {
     check(EventList::parseItems(['items' => [['eventid' => 1, 'name' => 'a'] + $f]])[0]['archived'] === false, 'not archived: ' . json_encode($f));
 }
 foreach ([['archived' => 1], ['archived' => true], ['archived' => 'yes']] as $f) {
@@ -68,7 +69,19 @@ foreach ([['archived' => 1], ['archived' => true], ['archived' => 'yes']] as $f)
 $m = EventList::merge(EventList::parseItems($main), EventList::parseItems($arch, true));
 check(array_column($m, 'id') === ['2', '5', '1', '3', '6', '4'], 'merged, deduped, date ascending (same day by name), undated last');
 $byId = array_column($m, null, 'id');
-check($byId['1']['archived'] === true && $byId['2']['archived'] === true && $byId['3']['archived'] === false, 'archived from the archived call wins on merge');
+check($byId['1']['archived'] === false, 'in both lists, no field: not archived');
+check($byId['2']['archived'] === true, 'no field, only in archived reply: archived (fallback)');
+check($byId['3']['archived'] === false && $byId['5']['archived'] === true, 'own field used');
+// OSM ignores the archive params: second reply == first. Nothing is marked except by own field.
+$same = EventList::merge(EventList::parseItems($main), EventList::parseItems($main));
+check(array_column($same, 'archived', 'id') === ['5' => true, '1' => false, '3' => false, '6' => false, '4' => false], 'params ignored: only own-field archived');
+check(count($same) === 5, 'params ignored: deduped by id');
+// Own field beats the fallback both ways
+$own = EventList::merge(
+    EventList::parseItems(['items' => [['eventid' => '10', 'name' => 'A', 'startdate' => '2025-01-01', 'archived' => '1']]]),
+    EventList::parseItems(['items' => [['eventid' => '11', 'name' => 'B', 'startdate' => '2025-01-02', 'archived' => '0'], ['eventid' => '10', 'name' => 'A', 'startdate' => '2025-01-01']]])
+);
+check(array_column($own, 'archived', 'id') === ['10' => true, '11' => false], 'own field wins over list membership');
 $s = EventList::sort([
     ['id' => 'b', 'name' => 'beta', 'date' => '2025-01-01', 'archived' => false],
     ['id' => 'a', 'name' => 'Alpha', 'date' => '2025-01-01', 'archived' => false],
@@ -84,13 +97,13 @@ check(array_column(EventList::filter($m, '2026-01-01', null), 'id') === ['6'], '
 check(array_column(EventList::filter($m, null, '2024-12-31'), 'id') === ['2', '5'], 'to only');
 
 // Range parsing (UK display)
-check(EventsController::range([]) === [null, null, null, true], 'default is all time');
-check(EventsController::range(['range' => 'all', 'from' => '01/01/2025']) === [null, null, null, true], 'All time ignores dates');
-check(EventsController::range(['range' => 'dates', 'from' => '01/09/2025', 'to' => '31/08/2026']) === ['2025-09-01', '2026-08-31', null, false], 'dd/mm/yyyy parsed');
-check(EventsController::range(['range' => 'dates', 'from' => '31/12/2026', 'to' => '01/01/2026']) === ['2026-01-01', '2026-12-31', null, false], 'reversed dates swapped');
+check(EventsController::range([]) === [null, null, null, true, false], 'default is all time');
+check(EventsController::range(['range' => 'all', 'from' => '01/01/2025']) === [null, null, null, true, false], 'All time ignores dates');
+check(EventsController::range(['range' => 'dates', 'from' => '01/09/2025', 'to' => '31/08/2026']) === ['2025-09-01', '2026-08-31', null, false, false], 'dd/mm/yyyy parsed');
+check(EventsController::range(['range' => 'dates', 'from' => '31/12/2026', 'to' => '01/01/2026']) === ['2026-01-01', '2026-12-31', null, false, true], 'reversed dates swapped and flagged');
 $bad = EventsController::range(['range' => 'dates', 'from' => '31/02/2026']);
 check($bad[3] === true && is_string($bad[2]), 'invalid date: error and all time');
-check(EventsController::range(['range' => 'dates', 'from' => ['x']]) === [null, null, null, true], 'array param ignored');
+check(EventsController::range(['range' => 'dates', 'from' => ['x']]) === [null, null, null, true, false], 'array param ignored');
 check(EventList::ukDate('2026-03-07') === '07/03/2026' && EventList::ukDate(null) === '', 'UK display date');
 
 // Load: exactly two GETs, one list call + one archived call, no per-event calls
@@ -102,13 +115,42 @@ check(count($r['events']) === 6, 'load merges both lists');
 $u0 = (string) $h[0]['request']->getUri();
 $u1 = (string) $h[1]['request']->getUri();
 check($h[0]['request']->getMethod() === 'GET' && str_contains($u0, 'ext/events/summary/?action=getEvents&sectionid=55') && !str_contains($u0, 'onlyArchived') && !str_contains($u0, 'termid'), 'call 1: getEvents, no term, not archived-only');
-check(str_contains($u1, 'action=getEvents&sectionid=55&onlyArchived=1'), 'call 2: onlyArchived=1');
+check(str_contains($u1, 'action=getEvents&sectionid=55&onlyArchived=1&showArchived=true'), 'call 2: onlyArchived=1 and showArchived=true');
 check($r['rateUnknown'] === false, 'rate headers seen');
 
-// Empty lists ([] or items: []) are fine
+// Empty lists (literal [] or items: []) are fine
 $api = mockApi([new Response(200, $hdr, '[]'), new Response(200, $hdr, '{"identifier":"eventid","items":[]}')], $h);
 $r = EventList::load($api, 'tok', ['section_id' => '55', 'section_name' => 'Beavers']);
-check($r['stopReason'] === null && $r['events'] === [], 'empty lists accepted');
+check($r['stopReason'] === null && $r['events'] === [], 'literal [] and items:[] accepted as empty');
+// Empty body / {} / whitespace are unusable: stop, nothing returned to store (cached list kept)
+foreach (['empty body' => '', 'whitespace' => "  \n", 'empty object' => '{}'] as $label => $body) {
+    foreach ([0, 1] as $which) {
+        $resps = $which === 0
+            ? [new Response(200, $hdr, $body), new Response(200, $hdr, json_encode($arch))]
+            : [new Response(200, $hdr, json_encode($main)), new Response(200, $hdr, $body)];
+        $api = mockApi($resps, $h);
+        $r = EventList::load($api, 'tok', ['section_id' => '55', 'section_name' => 'Beavers']);
+        check($r['events'] === null && count($h) === $which + 1 && str_contains((string) $r['stopReason'], 'unexpected reply'), "200 $label on call " . ($which + 1) . ': stops, nothing to store');
+    }
+}
+check(EventList::badResponseReason([], 'empty-list') === null && EventList::badResponseReason([], 'empty') !== null
+    && EventList::badResponseReason([], 'empty-object') !== null && EventList::badResponseReason([]) !== null, 'badResponseReason: [] only ok as a literal list');
+// Controller-level rule: failed load leaves the stored copy alone
+unset($_SESSION[EventList::SESSION_KEY]);
+EventList::store('55', 'Beavers', [['id' => '1', 'name' => 'Kept', 'date' => '2025-01-01', 'archived' => false]], 2);
+$api = mockApi([new Response(200, $hdr, '')], $h);
+$r = EventList::load($api, 'tok', ['section_id' => '55', 'section_name' => 'Beavers']);
+check($r['events'] === null && EventList::cached('55')['events'][0]['name'] === 'Kept', 'empty 200 does not wipe cached list');
+unset($_SESSION[EventList::SESSION_KEY]);
+
+// OsmApi body shapes
+foreach (['' => 'empty', ' ' => 'empty', '{}' => 'empty-object', '[]' => 'empty-list', ' [ ] ' => 'empty-list', '{"a":1}' => 'json',
+    '<html>' => 'not-json', 'var x = [];' => 'empty-list', 'null' => 'not-json'] as $b => $kind) {
+    check(OsmApi::bodyKind((string) $b) === $kind, 'bodyKind ' . json_encode($b) . " = $kind");
+}
+$api = mockApi([new Response(200, $hdr, '{}')], $h);
+$api->get('tok', '/x');
+check($api->lastBodyKind() === 'empty-object', 'lastBodyKind recorded per request');
 
 // Bad 200 replies stop before the next call
 $cases = [
@@ -187,7 +229,7 @@ check(str_contains($csv, "Beavers,10/01/2026,\"'=HYPERLINK(\"\"http://x\"\")\",N
 check(str_contains($csv, "Beavers,,\"Undated idea\",No\n"), 'undated row has empty date');
 $csvRange = EventList::csv('Beavers', EventList::filter($m, '2025-01-01', '2025-12-31'));
 check(substr_count($csvRange, "\n") === 3, 'CSV respects date range (header + 2 rows)');
-foreach (['=1+1', '+1', '-1', '@SUM(A1)', "\tx"] as $v) {
+foreach (['=1+1', '+1', '-1', '@SUM(A1)', "\tx", ' =1+1', "  @x", "\u{00A0}=1", "\n-2", "\r=1"] as $v) {
     check(EventList::csvSafe($v) === "'" . $v, 'csvSafe guards ' . json_encode($v));
 }
 check(EventList::csvSafe('Camp - 2025') === 'Camp - 2025' && EventList::csvSafe('') === '', 'csvSafe leaves normal text');

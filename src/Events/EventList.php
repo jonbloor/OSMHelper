@@ -2,6 +2,7 @@
 declare(strict_types=1);
 namespace App\Events;
 use App\Osm\OsmApi;
+use App\Osm\OsmErrorLog;
 use DateTimeImmutable;
 use DateTimeZone;
 use Throwable;
@@ -11,7 +12,8 @@ use Throwable;
  *
  * Only load() calls OSM, and only two GET requests per section, never one per event:
  *   1. /ext/events/summary/?action=getEvents&sectionid=ID                 (events, no term filter)
- *   2. /ext/events/summary/?action=getEvents&sectionid=ID&onlyArchived=1  (archived events only)
+ *   2. /ext/events/summary/?action=getEvents&sectionid=ID&onlyArchived=1&showArchived=true
+ *      (asks for archived events; onlyArchived is in community docs, showArchived in the older API)
  * Changing the date range, sorting and the CSV download all use the cached copy (no OSM calls).
  * The load stops at the first error, 429, X-Blocked or unusable 200, and before each call if the
  * OSM allowance is low. There are no retries.
@@ -35,13 +37,13 @@ final class EventList
     public const MAX_CACHED_SECTIONS = 12;
 
     /**
-     * Parse one getEvents / get response into event rows.
-     * $forceArchived marks every row archived (the onlyArchived=1 call).
+     * Parse one getEvents / get response into event rows. 'archived' comes only from the row's own
+     * archived field: true/false, or null when the row has no such field.
      *
      * @param array<string, mixed> $res
-     * @return list<array{id:string,name:string,date:?string,archived:bool}>
+     * @return list<array{id:string,name:string,date:?string,archived:?bool}>
      */
-    public static function parseItems(array $res, bool $forceArchived = false): array
+    public static function parseItems(array $res): array
     {
         $items = $res['items'] ?? ($res['data']['items'] ?? null);
         if ($items === null && array_is_list($res)) {
@@ -73,35 +75,59 @@ final class EventList
                 'id' => $id,
                 'name' => $name !== '' ? $name : ('Event ' . $id),
                 'date' => $date,
-                'archived' => $forceArchived || self::truthy($it['archived'] ?? null),
+                'archived' => array_key_exists('archived', $it) && $it['archived'] !== null && $it['archived'] !== ''
+                    ? self::truthy($it['archived']) : null,
             ];
         }
         return $out;
     }
 
     /**
-     * Merge the main and archived lists: one row per event id, archived if either says so.
-     * @param list<array{id:string,name:string,date:?string,archived:bool}> $main
-     * @param list<array{id:string,name:string,date:?string,archived:bool}> $archived
+     * Merge the main list and the archived-request list: one row per event id.
+     *
+     * Archived = the row's own archived field (true if either copy says so). Only when OSM sent no
+     * archived field on any copy of that event do we fall back to: "returned by the archived request
+     * but NOT by the normal list". If OSM ignored the archive params, both replies are the same and
+     * nothing is marked from this fallback.
+     *
+     * @param list<array{id:string,name:string,date:?string,archived:?bool}> $main
+     * @param list<array{id:string,name:string,date:?string,archived:?bool}> $archived
      * @return list<array{id:string,name:string,date:?string,archived:bool}>
      */
     public static function merge(array $main, array $archived): array
     {
         $by = [];
         $noId = [];
+        $inMain = [];
+        foreach ($main as $e) {
+            if ($e['id'] !== '') {
+                $inMain[$e['id']] = true;
+            }
+        }
         foreach (array_merge($main, $archived) as $e) {
             if ($e['id'] === '') {
                 $noId[] = $e;
                 continue;
             }
             if (isset($by[$e['id']])) {
-                $by[$e['id']]['archived'] = $by[$e['id']]['archived'] || $e['archived'];
+                $prev = $by[$e['id']]['archived'];
+                if ($e['archived'] !== null) {
+                    $by[$e['id']]['archived'] = ($prev ?? false) || $e['archived'];
+                }
                 if ($by[$e['id']]['date'] === null) {
                     $by[$e['id']]['date'] = $e['date'];
                 }
                 continue;
             }
             $by[$e['id']] = $e;
+        }
+        foreach ($by as $id => $e) {
+            if ($e['archived'] === null) {
+                $by[$id]['archived'] = !isset($inMain[$id]); // only in the archived reply
+            }
+        }
+        foreach ($noId as $i => $e) {
+            $noId[$i]['archived'] = (bool) $e['archived'];
         }
         return self::sort(array_merge(array_values($by), $noId));
     }
@@ -202,6 +228,7 @@ final class EventList
             $query = ['action' => 'getEvents', 'sectionid' => $sid];
             if ($archivedCall) {
                 $query['onlyArchived'] = '1';
+                $query['showArchived'] = 'true';
             }
             try {
                 $calls++;
@@ -221,14 +248,38 @@ final class EventList
             if (!$api->lastResponseHadRateHeaders()) {
                 $rateUnknown = true;
             }
-            $bad = self::badResponseReason($res);
+            $bad = self::badResponseReason($res, $api->lastBodyKind());
             if ($bad !== null) {
+                self::logBadReply($sid, $archivedCall, $bad);
                 return self::fail('OSM sent an unexpected reply for ' . $name . ($archivedCall ? ' (archived events)' : '')
                     . ' (' . $bad . '), so OSMHelper stopped without trying again.', $calls, $rateUnknown);
             }
-            $lists[] = self::parseItems($res, $archivedCall);
+            $lists[] = self::parseItems($res);
         }
         return ['events' => self::merge($lists[0], $lists[1]), 'stopReason' => null, 'calls' => $calls, 'rateUnknown' => $rateUnknown];
+    }
+
+    /** Record an unusable 200 so it can be diagnosed later (no bodies or names logged). */
+    private static function logBadReply(string $sectionId, bool $archivedCall, string $reason): void
+    {
+        error_log('OSMHelper Events: unusable 200 from ' . self::ENDPOINT . ' (section ' . $sectionId
+            . ($archivedCall ? ', archived request' : '') . '): ' . $reason . '. Stopped, no retry.');
+        try {
+            OsmErrorLog::log([
+                'method' => 'GET',
+                'endpoint' => self::ENDPOINT,
+                'action' => 'getEvents',
+                'http_status' => 200,
+                'osm_code' => null,
+                'osm_message' => $reason,
+                'kind' => 'bad-200',
+                'section_id' => $sectionId,
+                'badge_id' => null,
+                'scoutid' => null,
+                'detail' => $archivedCall ? 'archived request' : 'events request',
+            ]);
+        } catch (Throwable) {
+        }
     }
 
     /** @return array{events:null,stopReason:string,calls:int,rateUnknown:bool} */
@@ -239,9 +290,11 @@ final class EventList
 
     /**
      * Why a 200 events response cannot be used, or null if it looks fine.
+     * $bodyKind is OsmApi::lastBodyKind(): an empty decoded reply is only accepted when the body
+     * was a literal [] (an empty list). '' or {} are unusable, so a cached list is never wiped.
      * @param array<string, mixed> $res
      */
-    public static function badResponseReason(array $res): ?string
+    public static function badResponseReason(array $res, ?string $bodyKind = null): ?string
     {
         if (array_key_exists('_raw', $res)) {
             return 'not JSON';
@@ -255,7 +308,12 @@ final class EventList
             return 'status false';
         }
         if ($res === []) {
-            return null; // OSM sends [] for an empty list
+            return match ($bodyKind) {
+                'empty-list' => null, // literal [] = no events
+                'empty' => 'empty reply',
+                'empty-object' => 'empty object',
+                default => 'empty reply',
+            };
         }
         $items = $res['items'] ?? ($res['data']['items'] ?? null);
         if (!is_array($items)) {
@@ -345,9 +403,10 @@ final class EventList
         return "\xEF\xBB\xBF" . $out; // BOM so Excel reads UTF-8 names correctly
     }
 
+    /** Leading quote for cells a spreadsheet could run as a formula, including after leading whitespace. */
     public static function csvSafe(string $v): string
     {
-        if ($v !== '' && in_array($v[0], ['=', '+', '-', '@', "\t", "\r"], true)) {
+        if (preg_match('/^[\s\x{00A0}]*[=+\-@]/u', $v) || preg_match('/^[\t\r]/', $v)) {
             return "'" . $v;
         }
         return $v;

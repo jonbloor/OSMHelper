@@ -21,7 +21,7 @@ final class EventsController
         $token = Auth::requireLogin();
         [$choices, $sectionError] = self::choices($token);
         $sectionId = self::pickSectionId($choices, (string) ($_GET['section'] ?? ''));
-        [$fromIso, $toIso, $rangeError, $allTime] = self::range($_GET);
+        [$fromIso, $toIso, $rangeError, $allTime, $swapped] = self::range($_GET);
         $cache = $sectionId !== null ? EventList::cached($sectionId) : null;
         $events = null;
         if ($cache !== null) {
@@ -62,6 +62,7 @@ final class EventsController
             'fromRaw' => $rangeError !== null ? (string) ($_GET['from'] ?? '') : EventList::ukDate($fromIso),
             'toRaw' => $rangeError !== null ? (string) ($_GET['to'] ?? '') : EventList::ukDate($toIso),
             'rangeError' => $rangeError,
+            'rangeNote' => $swapped ? 'The From date was after the To date, so they were swapped: showing ' . EventList::ukDate($fromIso) . ' to ' . EventList::ukDate($toIso) . '.' : null,
             'csvQuery' => http_build_query(array_filter([
                 'section' => $sectionId,
                 'range' => $allTime ? 'all' : 'dates',
@@ -78,8 +79,17 @@ final class EventsController
     {
         $token = Auth::requireLogin();
         Csrf::requireValid();
+        $postedId = is_string($_POST['section_id'] ?? null) ? trim($_POST['section_id']) : '';
+        // Cooldown first, before anything that could call OSM (an older session without stored
+        // sections would otherwise read /oauth/resource just to be told to wait).
+        $earlyWait = ($postedId !== '' && strlen($postedId) <= 20) ? EventList::cooldownRemaining($postedId) : 0;
+        if ($earlyWait > 0) {
+            $_SESSION['eventsFlash'] = ['kind' => 'error', 'message' => 'Events for this section were loaded a moment ago. To protect your OSM allowance you can load again in ' . (int) ceil($earlyWait / 60) . ' min.'];
+            header('Location: /events/?' . http_build_query(['section' => $postedId]));
+            exit;
+        }
         [$choices, $sectionError] = self::choices($token);
-        $sectionId = self::pickSectionId($choices, (string) ($_POST['section_id'] ?? ''));
+        $sectionId = self::pickSectionId($choices, $postedId);
         $back = static function (string $kind, string $msg) use (&$sectionId): never {
             $_SESSION['eventsFlash'] = ['kind' => $kind, 'message' => $msg];
             $q = [];
@@ -152,31 +162,33 @@ final class EventsController
     }
 
     /**
-     * From the query: [fromIso, toIso, error, allTime]. Default and range=all mean all time.
-     * Accepts dd/mm/yyyy (shown to users) and yyyy-mm-dd.
+     * From the query: [fromIso, toIso, error, allTime, swapped]. Default and range=all mean all time.
+     * Accepts dd/mm/yyyy (shown to users) and yyyy-mm-dd. swapped = From was after To.
      * @param array<string, mixed> $q
-     * @return array{0:?string,1:?string,2:?string,3:bool}
+     * @return array{0:?string,1:?string,2:?string,3:bool,4:bool}
      */
     public static function range(array $q): array
     {
         $range = is_string($q['range'] ?? null) ? $q['range'] : 'all';
         if ($range !== 'dates') {
-            return [null, null, null, true];
+            return [null, null, null, true, false];
         }
         $fromRaw = is_string($q['from'] ?? null) ? trim($q['from']) : '';
         $toRaw = is_string($q['to'] ?? null) ? trim($q['to']) : '';
         $from = $fromRaw === '' ? null : EventList::isoDate($fromRaw);
         $to = $toRaw === '' ? null : EventList::isoDate($toRaw);
         if (($fromRaw !== '' && $from === null) || ($toRaw !== '' && $to === null)) {
-            return [null, null, 'Dates must be written dd/mm/yyyy, for example 01/09/2026. Showing all time instead.', true];
+            return [null, null, 'Dates must be written dd/mm/yyyy, for example 01/09/2026. Showing all time instead.', true, false];
         }
         if ($from === null && $to === null) {
-            return [null, null, null, true];
+            return [null, null, null, true, false];
         }
+        $swapped = false;
         if ($from !== null && $to !== null && $from > $to) {
             [$from, $to] = [$to, $from];
+            $swapped = true;
         }
-        return [$from, $to, null, false];
+        return [$from, $to, null, false, $swapped];
     }
 
     /** @param list<array{id:string}> $choices */

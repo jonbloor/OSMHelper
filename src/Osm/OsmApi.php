@@ -13,6 +13,8 @@ final class OsmApi
     private array $lastRateLimit = [];
     /** Whether the most recent response carried any X-RateLimit-* header. */
     private bool $lastHadRateHeaders = false;
+    /** Shape of the last 2xx body: empty | empty-object | empty-list | json | not-json (null before any reply). */
+    private ?string $lastBodyKind = null;
 
     public function __construct(?Client $http = null)
     {
@@ -171,6 +173,7 @@ final class OsmApi
         }
         $options['headers'] = array_merge($options['headers'] ?? [], $headers);
         $ctx = self::requestContext($path, $options);
+        $this->lastBodyKind = null;
         try {
             $response = $this->http->request($method, $path, $options);
         } catch (\Throwable $e) {
@@ -289,7 +292,36 @@ final class OsmApi
             ]);
             throw new \RuntimeException($msg, $status);
         }
+        $this->lastBodyKind = self::bodyKind($body);
         return self::decodeBody($body);
+    }
+
+    /**
+     * Shape of the last successful reply body. decodeBody() turns '', '{}' and '[]' all into [],
+     * so callers that must tell "empty list" from "empty reply" check this instead.
+     */
+    public function lastBodyKind(): ?string
+    {
+        return $this->lastBodyKind;
+    }
+
+    /** empty ('' / whitespace) | empty-object ({}) | empty-list ([]) | json | not-json */
+    public static function bodyKind(string $body): string
+    {
+        $t = trim($body);
+        if ($t === '') {
+            return 'empty';
+        }
+        // Same JS-assignment unwrapping as decodeBody().
+        $t = rtrim(trim(preg_replace('/^(?:var\s+\w+\s*=\s*|window\.\w+\s*=\s*)/i', '', $t) ?? $t), ';');
+        $d = $t === '' ? null : json_decode($t, true);
+        if (!is_array($d)) {
+            return 'not-json';
+        }
+        if ($d === []) {
+            return $t[0] === '[' ? 'empty-list' : 'empty-object';
+        }
+        return 'json';
     }
 
     /**
