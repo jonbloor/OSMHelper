@@ -37,6 +37,8 @@ final class App
         // Top awards caches hold member names: delete any past the 2-hour TTL on every request,
         // so the promise holds even when nobody opens Top awards (glob + mtime, cheap).
         TopAwardsController::sweepExpiredCaches();
+        // Error log entries are kept for at most 30 days (reads one line when nothing is due).
+        \App\Osm\OsmErrorLog::pruneOld();
         self::sendSecurityHeaders();
         self::upgradeInsecureOAuthCallback();
         $this->bootTwig();
@@ -84,6 +86,7 @@ final class App
         $router->post('/members', [$mem, 'run']);
         $router->get('/member-checks', [$mem, 'checks']);
         $router->get('/find-member', [$find, 'index']);
+        $router->post('/find-member/search', [$find, 'search']);
         $router->post('/find-member/refresh', [$find, 'refresh']);
         $router->get('/events', [$events, 'index']);
         $router->post('/events/refresh', [$events, 'refresh']);
@@ -150,15 +153,72 @@ final class App
             $https = true;
         }
         session_set_cookie_params([
-            'lifetime' => 86400,
+            'lifetime' => self::SESSION_MAX_AGE_SEC,
             'path' => '/',
             'secure' => $https,
             'httponly' => true,
             'samesite' => 'Lax',
         ]);
         ini_set('session.use_strict_mode', '1');
+        // Sessions hold the OSM token and short-lived member caches: keep them for 2 hours at most.
+        // Files live in the app's own storage/sessions (0700, outside the docroot) so PHP's own
+        // garbage collection with our 2-hour limit applies (the system-wide cleaner uses 24 hours).
+        self::useAppSessionDir($this->root . '/storage/sessions');
+        ini_set('session.gc_maxlifetime', (string) self::SESSION_MAX_AGE_SEC);
+        ini_set('session.gc_probability', '1');
+        ini_set('session.gc_divisor', '50');
         session_start();
+        self::enforceSessionMaxAge();
         if (!isset($_SESSION['_init'])) $_SESSION['_init'] = hash('sha256', $secret);
+    }
+
+    /** Sessions end 2 hours after sign-in (absolute) or after 2 hours idle, whichever comes first. */
+    public const SESSION_MAX_AGE_SEC = 7200;
+
+    private static function useAppSessionDir(string $dir): void
+    {
+        $override = Config::get('OSMHELPER_SESSION_PATH');
+        if ($override !== null && $override !== '') {
+            $dir = $override;
+        }
+        if (!is_dir($dir) && !@mkdir($dir, 0700, true) && !is_dir($dir)) {
+            // Don't break the site: fall back to PHP's default save path, and say why (no paths/IDs).
+            error_log('OSMHelper sessions: session_dir_create_failed (using PHP default)');
+            return;
+        }
+        if ((fileperms($dir) & 0777) !== 0700) {
+            @chmod($dir, 0700);
+        }
+        if (!is_writable($dir)) {
+            error_log('OSMHelper sessions: session_dir_not_writable (using PHP default)');
+            return;
+        }
+        session_save_path($dir);
+    }
+
+    /**
+     * Absolute + idle 2-hour limit enforced in the app (the cookie and file GC are only best effort).
+     * An expired session is emptied (Top awards caches cleared too) and given a new ID.
+     */
+    public static function enforceSessionMaxAge(?int $now = null): bool
+    {
+        $now ??= time();
+        $started = $_SESSION['_startedAt'] ?? null;
+        $seen = $_SESSION['_lastSeen'] ?? null;
+        $expired = (is_int($started) && $now - $started > self::SESSION_MAX_AGE_SEC)
+            || (is_int($seen) && $now - $seen > self::SESSION_MAX_AGE_SEC);
+        if ($expired) {
+            TopAwardsController::clearSessionCaches();
+            $_SESSION = [];
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                @session_regenerate_id(true);
+            }
+        }
+        if (!is_int($_SESSION['_startedAt'] ?? null)) {
+            $_SESSION['_startedAt'] = $now;
+        }
+        $_SESSION['_lastSeen'] = $now;
+        return $expired;
     }
 
     /**

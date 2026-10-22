@@ -1,7 +1,9 @@
 <?php
 declare(strict_types=1);
 namespace App\Osm;
+
 use App\Config;
+use App\Support\LogSafe;
 use GuzzleHttp\Client;
 /**
  * Bearer-authenticated OSM API client with rate-limit header tracking.
@@ -187,7 +189,6 @@ final class OsmApi
                 'kind' => 'transport',
                 'section_id' => $ctx['section_id'],
                 'badge_id' => $ctx['badge_id'],
-                'scoutid' => $ctx['scoutid'],
                 'detail' => null,
             ]);
             throw new \RuntimeException('OSM transport error for /' . ltrim(explode('?', $path, 2)[0], '/') . ' — ' . $e->getMessage(), 0, $e);
@@ -210,7 +211,6 @@ final class OsmApi
                 'kind' => 'blocked',
                 'section_id' => $ctx['section_id'],
                 'badge_id' => $ctx['badge_id'],
-                'scoutid' => $ctx['scoutid'],
                 'detail' => null,
             ]);
             throw new \RuntimeException('OSM_BLOCKED: OSM blocked this application (X-Blocked' . $detail . '). Further OSM requests must stop.', 403);
@@ -218,7 +218,8 @@ final class OsmApi
 
         $deprecated = self::headerFirst($headers, 'X-Deprecated', 'x-deprecated');
         if ($deprecated !== null && $deprecated !== '') {
-            error_log('OSM API X-Deprecated: ' . $deprecated . ' endpoint: ' . $path);
+            // Path only: the query string can carry section/member IDs.
+            error_log('OSM API X-Deprecated: ' . LogSafe::redact($deprecated) . ' endpoint: ' . LogSafe::pathOnly($path));
             $ts = strtotime($deprecated);
             if ($ts !== false && $ts <= time()) {
                 OsmErrorLog::log([
@@ -231,7 +232,6 @@ final class OsmApi
                     'kind' => 'deprecated-removed',
                     'section_id' => $ctx['section_id'],
                     'badge_id' => $ctx['badge_id'],
-                    'scoutid' => $ctx['scoutid'],
                     'detail' => null,
                 ]);
                 throw new \RuntimeException('OSM marked this endpoint removed (X-Deprecated: ' . $deprecated . '). It will not be called again.', 410);
@@ -287,7 +287,6 @@ final class OsmApi
                 'kind' => $kind,
                 'section_id' => $ctx['section_id'],
                 'badge_id' => $ctx['badge_id'],
-                'scoutid' => $ctx['scoutid'],
                 'detail' => null,
             ]);
             throw new \RuntimeException($msg, $status);
@@ -325,9 +324,9 @@ final class OsmApi
     }
 
     /**
-     * Pull safe request context for error logs (no bodies / tokens).
+     * Pull safe request context for error logs (no bodies / tokens / member IDs).
      * @param array<string, mixed> $options
-     * @return array{action:?string,section_id:?string,badge_id:?string,scoutid:?string}
+     * @return array{action:?string,section_id:?string,badge_id:?string}
      */
     private static function requestContext(string $path, array $options): array
     {
@@ -352,7 +351,6 @@ final class OsmApi
             'action' => $pick($params, 'action'),
             'section_id' => $pick($params, 'section_id', 'sectionid'),
             'badge_id' => $pick($params, 'badge_id', 'badgeid'),
-            'scoutid' => $pick($params, 'scoutid', 'associated_id', 'member_id', 'id'),
         ];
     }
 

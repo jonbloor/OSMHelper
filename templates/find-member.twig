@@ -6,7 +6,9 @@
   {% if flash %}<div class="alert{% if flash.kind == 'error' %} alert-error{% endif %}" role="status">{{ flash.message }}</div>{% endif %}
 
   {% if indexed %}
-  <form method="get" action="/find-member/" class="find-member-form" role="search">
+  {# POST + session (not GET) so search terms never appear in URLs or the web server's access log. #}
+  <form method="post" action="/find-member/search/" class="find-member-form" role="search">
+    {% include '_csrf.twig' %}
     <p>
       <label for="fm-q">Search for</label>
       <input type="search" id="fm-q" name="q" value="{{ q }}" maxlength="100" required autocomplete="off" aria-describedby="fm-q-help">
@@ -18,6 +20,7 @@
         <option value="name" {% if type == 'name' %}selected{% endif %}>Contact name</option>
       </select>
       <button class="btn" type="submit">Search</button>
+      {% if q %}<button class="btn btn-secondary" type="submit" name="clear" value="1" formnovalidate>Clear search</button>{% endif %}
     </p>
     <p class="muted" id="fm-q-help">Part of a value is enough. Spaces and capitals in postcodes are ignored. Phone numbers ignore spaces, dashes and brackets, and +44, 0044 and a leading 0 count as the same.</p>
   </form>

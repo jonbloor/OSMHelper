@@ -24,7 +24,7 @@
 
     <section class="help-section" id="find-member">
       <h3>Find a member</h3>
-      <p>Find who a postcode, phone number or parent belongs to. First tick the sections and choose <strong>Load contacts</strong>. That uses one OSM request per section and holds a copy of those contact details temporarily in your session, only on our server, for up to about 2 hours. It is cleared when it expires or when you sign out, after which you load contacts again. Then search as often as you like: searching never calls OSM. It looks at the member’s own contact details, Primary contacts 1 and 2 and the Emergency contact: postcodes, phone numbers and contact names. Part of a value is enough. Postcodes ignore spaces and capitals. Phone numbers ignore spaces, dashes and brackets, and +44, 0044 and a leading 0 count as the same. Each result shows the member, their section, and which contact and field matched, with a <strong>Nights</strong> link into Nights away. Refresh is limited to once every 5 minutes, and stops straight away if OSM returns an error, an unexpected reply, or your allowance runs low. If a load fails before any section is read, your earlier contacts are kept. Leaders in a Leaders patrol are left out, as on Members.</p>
+      <p>Find who a postcode, phone number or parent belongs to. First tick the sections and choose <strong>Load contacts</strong>. That uses one OSM request per section and holds a copy of those contact details temporarily in your session, only on our server, for up to about 2 hours. It is cleared when it expires or when you sign out, after which you load contacts again. Then search as often as you like: searching never calls OSM. It looks at the member’s own contact details, Primary contacts 1 and 2 and the Emergency contact: postcodes, phone numbers and contact names. Your search is sent privately, so what you type is not saved in the web address, your browser history or our server logs, and it is forgotten after 2 hours or when you sign out. Part of a value is enough. Postcodes ignore spaces and capitals. Phone numbers ignore spaces, dashes and brackets, and +44, 0044 and a leading 0 count as the same. Each result shows the member, their section, and which contact and field matched, with a <strong>Nights</strong> link into Nights away. Refresh is limited to once every 5 minutes, and stops straight away if OSM returns an error, an unexpected reply, or your allowance runs low. If a load fails before any section is read, your earlier contacts are kept. Leaders in a Leaders patrol are left out, as on Members.</p>
     </section>
 
     <section class="help-section" id="events">
@@ -124,7 +124,7 @@
       </ol>
       <p>The form asks for the child’s name, date of birth and home address (address line 1, line 2, town, county, postcode), and up to two parents’ names, emails and phone numbers. Each parent can tick “Receive text messages from Leaders?”, which turns on OSM’s receive-texts setting for their phone. There’s an optional note box; the note is saved to the Notes field you chose under <a href="#waiting-rank">Rank and notes</a>, stamped “Parent (website form)”.</p>
       <p>In WordPress you can also turn on a confirmation email to the parents (with your own reply-to address), Google reCAPTCHA or Cloudflare Turnstile against spam, and an address lookup: Google address search (needs a Google key) or a free postcode check with postcodes.io.</p>
-      <p>OSMHelper passes each form straight to OSM and doesn’t keep a copy. To do that, it keeps your OSM sign-in for the form (not your password) on the server until you turn the form off on the Joining form page.</p>
+      <p>OSMHelper passes each form straight to OSM and doesn’t keep a copy. To do that, it keeps an encrypted OSM access key for the form (not your password) on the server until you turn the form off on the Joining form page.</p>
     </section>
 
     <section class="help-section" id="top-awards">
@@ -149,6 +149,13 @@
     <section class="help-section" id="settings">
       <h3>Settings</h3>
       <p>Age cutoffs, capacity per section, which section Equipment uses, which section Bank uses, and a named <strong>Equipment locations</strong> list (add, edit, reorder, remove). Saves on this server (not only in your browser session) so they stick after logout. Unticking <strong>Show</strong> on a section leaves it off the Group numbers picker. Locations power the Equipment bulk-move destination list. The WordPress joining form has its own page, <strong>Members → Joining form</strong>; Settings links to it.</p>
+    </section>
+
+    <section class="help-section" id="privacy">
+      <h3>Your data and privacy</h3>
+      <p>OSM stays the record. Your OSM access token is held only in your session on our server, and most pages fetch fresh data from OSM when you open them. Anything a page holds for you while you work (a member list, group numbers, events, or the contacts Find a member searches) stays in that session only. Every session ends 2 hours after you sign in, or sooner if you sign out, so you will be asked to sign in again after 2 hours.</p>
+      <p>Top awards results are kept for up to 2 hours so the page loads faster, then deleted. Find a member searches are sent privately and never appear in web addresses or server logs.</p>
+      <p>The only things saved on our server are your group settings (age cut-offs, capacity, which sections each tool uses, kit locations and your chosen waiting list fields) and, if you use the <a href="#wordpress-form">WordPress joining form</a>, an encrypted OSM access key for that form, kept until you turn the form off. We also keep a short error log to fix problems. It records what failed and which section, never names, contact details or member IDs, and OSMHelper’s own error log entries are deleted after 30 days.</p>
     </section>
 
     <section class="help-section" id="rate-limit">

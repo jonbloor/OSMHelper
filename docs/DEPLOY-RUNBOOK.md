@@ -22,11 +22,14 @@ files `660`, run with `umask 002`).
 
 ## Backups (made by deploy.sh)
 Stored in `/home/osmhelper/backups/deploy/`. The newest 10 of each kind are kept; older ones are deleted by deploy.sh.
-- `app-predeploy-<UTC TS>.tgz`: the live `app/` tree **without** `vendor/` and `storage/`, but **with** `.env`.
+- `app-predeploy-<UTC TS>.tgz`: the live `app/` tree **without** `vendor/`, `storage/`, `.env` or any `.env.bak*`
+  (from 22 Oct 2026). A deploy never touches the live `.env`, so a rollback keeps using it. Archives made before
+  that date still contain `.env`: treat them as secret until they age out (only the newest 10 are kept).
 - `db-<UTC TS>.sqlite`: an online `sqlite3 .backup` copy of `storage/osmhelper.sqlite` (safe while the site is
   running; includes anything still in the WAL). It holds group settings (age cut-offs, capacity, kit locations,
   waiting-list field choices) and WordPress joining form site keys with the leader's OSM tokens, not member data.
-  Treat it as secret.
+  Since 22 Oct 2026 those tokens are encrypted with `OSMHELPER_TOKEN_KEY`, which is only in `.env` (never in a
+  backup). Still treat it as secret.
 - Not backed up on purpose: `storage/settings.json`, `storage/osm-errors.jsonl`, and any Top awards cache
   (member names, deleted after 2 hours).
 
@@ -41,7 +44,7 @@ Code (rollback to the previous release):
 
     ssh bungle@79.72.90.90
     cd /home/osmhelper && B=/home/osmhelper/backups/deploy && ls -1t $B/app-predeploy-*.tgz | head
-    umask 002; tar -xzf $B/app-predeploy-<TS>.tgz --no-overwrite-dir     # restores app/ (and .env) over the current code
+    umask 002; tar -xzf $B/app-predeploy-<TS>.tgz --no-overwrite-dir     # restores app/ code (the live .env is left as is)
     cd app && composer install --no-dev --optimize-autoloader --no-interaction
     # then re-run the "Permissions" and "storage writable" steps from deploy.sh (or a full deploy of the old commit)
 
@@ -65,10 +68,54 @@ Unset or empty: nobody sees it. A user's OSM ID appears in waiting-list field se
 ## Debug files and member data
 - Top awards caches (`storage/top-awards-cache-<section>.json`, member names) are deleted once older than 2 hours on
   every request (swept in `App::run()`), and a user's sections are cleared when they log out.
-- `storage/osm-debug.json` and `storage/top-awards-dryrun.json` are only written when `OSM_DEBUG_FILES=true` is set
-  in `.env`. Leave it off in production (it is off by default; `APP_DEBUG` alone doesn't turn it on).
-- `storage/osm-errors.jsonl` keeps the last ~200 OSM API errors, with tokens, names, emails, phone numbers and notes
-  stripped from the text fields. Numeric OSM IDs (member/section/badge) are kept for diagnosis.
+- There are no debug dump files any more: `OsmDebug` (`storage/osm-debug.json`) and the Top awards dry-run dump
+  (`storage/top-awards-dryrun.json`) were removed from the code on 22 Oct 2026, and `OSM_DEBUG_FILES` does nothing.
+  Old copies of those files on the server can be deleted.
+- `storage/osm-errors.jsonl` keeps the last ~200 OSM API errors, at most 30 days old (older entries are pruned on
+  every request), with tokens, names, emails, phone numbers, postcodes and notes stripped from the text fields
+  (`App\Support\LogSafe::redact()`). Only section and badge IDs are kept; member IDs (scoutid) are never written.
+- PHP `error_log` lines from OSMHelper carry a reason code (`LogSafe::reason()`: exception class, code and a fixed
+  reason such as `osm_http_429`) plus a section ID at most, never member IDs, OSM reply text or search terms.
+- Find a member searches are POSTed (`/find-member/search/`, CSRF-checked) and kept in the session, so search
+  terms never appear in URLs or the nginx access log.
+
+## Sessions (2 hours)
+- PHP sessions are stored in `app/storage/sessions/` (created by PHP-FPM as `osmhelper`, `0700`, outside the
+  docroot, not backed up), not the system `/var/lib/php/sessions`. The app sets `session.gc_maxlifetime=7200`
+  with a 1-in-50 GC chance per request, and the cookie lifetime is 7200 s.
+- The app also enforces the limit itself (`App::enforceSessionMaxAge()`): 2 hours after sign-in, or after 2 hours
+  idle, the session is emptied (Top awards caches cleared) and given a new ID, so the leader signs in again.
+- Switching the save path signs everyone out once when it first goes live.
+- If `storage/sessions/` can't be created or written, the app logs `session_dir_create_failed` /
+  `session_dir_not_writable` and falls back to PHP's default path (the in-app 2-hour limit still applies).
+- deploy.sh leaves `storage/sessions/` alone (it is owned by `osmhelper`, so `bungle` couldn't chmod it anyway).
+
+## WordPress form token encryption (`OSMHELPER_TOKEN_KEY`)
+`wordpress_site_keys.access_token` / `refresh_token` are encrypted at rest with libsodium secretbox
+(`App\Store\TokenCrypto`, stored as `sb1:<base64 nonce+ciphertext>`). The key is 32 random bytes, base64, in
+`.env` as `OSMHELPER_TOKEN_KEY`. Never print it, never commit it, and never change it once tokens are saved
+(encrypted tokens would become unreadable; leaders would have to sign in and press Save on the Joining form again).
+
+Adding the key (deploy.sh does this automatically via `deploy/ensure-token-key.php`, which only fills a missing or
+empty value and never prints it). By hand, on the server:
+
+    cd /home/osmhelper/app
+    grep -c '^OSMHELPER_TOKEN_KEY=.' .env       # prints 0 or 1 only, never the value
+    # only if it printed 0:
+    php deploy/ensure-token-key.php             # prints "OSMHELPER_TOKEN_KEY set"
+    chmod 640 .env
+
+Encrypting rows saved before the key existed (one-off; safe to re-run; prints counts only):
+
+    cd /home/osmhelper/app && (umask 007; php bin/encrypt-site-tokens.php)
+    # e.g. "wordpress_site_keys rows: 1, encrypted now: 1, already encrypted: 0"
+
+`bin/` is outside the docroot and the script refuses to run outside the CLI. Without the migration, plaintext rows
+are still read normally and are encrypted the first time they are read (e.g. the next form submission) once the key
+is set. If the key is missing or invalid the site keeps working: new tokens are saved unencrypted and the PHP log
+shows `OSMHelper token encryption: token_key_missing` (or `token_key_invalid`, `token_sodium_missing`); an
+encrypted token that can't be opened logs `token_decrypt_failed` and the form asks the leader to save again.
+Database backups taken before the migration still hold plaintext tokens.
 
 ## WordPress plugin download (/wordpress-form/)
 Signed-in leaders download the plugin from `/wordpress-form/download/`, which streams

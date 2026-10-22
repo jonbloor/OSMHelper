@@ -5,6 +5,8 @@ use PDO;
 /**
  * Per-leader WordPress site keys for waiting-list intake.
  * Stores configuration and OSM tokens only — never child/parent form payloads.
+ * access_token/refresh_token are encrypted at rest (TokenCrypto); rows returned by the find*
+ * methods carry the decrypted values. Legacy plaintext rows are read as-is and re-saved encrypted.
  */
 final class WordpressSiteKeyStore
 {
@@ -40,7 +42,7 @@ final class WordpressSiteKeyStore
         $stmt = Db::pdo()->prepare('SELECT * FROM wordpress_site_keys WHERE osm_user_id = ? LIMIT 1');
         $stmt->execute([$osmUserId]);
         $row = $stmt->fetch();
-        return is_array($row) ? $row : null;
+        return is_array($row) ? self::hydrate($row) : null;
     }
 
     /** @return array<string, mixed>|null */
@@ -53,7 +55,7 @@ final class WordpressSiteKeyStore
         $stmt = Db::pdo()->prepare('SELECT * FROM wordpress_site_keys WHERE site_key = ? LIMIT 1');
         $stmt->execute([$siteKey]);
         $row = $stmt->fetch();
-        return is_array($row) ? $row : null;
+        return is_array($row) ? self::hydrate($row) : null;
     }
 
     /**
@@ -95,8 +97,8 @@ final class WordpressSiteKeyStore
                 $siteKey,
                 $sectionId,
                 $sectionName !== '' ? $sectionName : null,
-                $accessToken,
-                $refreshToken,
+                TokenCrypto::encrypt($accessToken),
+                TokenCrypto::encrypt($refreshToken),
                 $tokenExpiresAt,
                 $now,
                 $now,
@@ -117,8 +119,8 @@ final class WordpressSiteKeyStore
                 $siteKey,
                 $sectionId,
                 $sectionName !== '' ? $sectionName : null,
-                $accessToken,
-                $refreshToken,
+                TokenCrypto::encrypt($accessToken),
+                TokenCrypto::encrypt($refreshToken),
                 $tokenExpiresAt,
                 $now,
                 $osmUserId,
@@ -145,8 +147,8 @@ final class WordpressSiteKeyStore
              WHERE id = ?'
         );
         $stmt->execute([
-            $accessToken,
-            $refreshToken,
+            TokenCrypto::encrypt($accessToken),
+            TokenCrypto::encrypt($refreshToken),
             $tokenExpiresAt,
             gmdate('c'),
             $id,
@@ -176,6 +178,82 @@ final class WordpressSiteKeyStore
         self::ensureSchema();
         $stmt = Db::pdo()->prepare('DELETE FROM wordpress_site_keys WHERE osm_user_id = ?');
         $stmt->execute([$osmUserId]);
+    }
+
+    /**
+     * Encrypt any plaintext tokens left from before encryption (one-off migration; safe to re-run).
+     *
+     * @return array{rows:int, encrypted:int, already:int}
+     */
+    public static function encryptExistingRows(): array
+    {
+        self::ensureSchema();
+        if (!TokenCrypto::available()) {
+            throw new \RuntimeException('OSMHELPER_TOKEN_KEY is missing or invalid; nothing was changed.');
+        }
+        $rows = Db::pdo()->query('SELECT id, access_token, refresh_token FROM wordpress_site_keys')->fetchAll();
+        $out = ['rows' => 0, 'encrypted' => 0, 'already' => 0];
+        foreach ($rows as $row) {
+            $out['rows']++;
+            if (self::needsEncrypting($row)) {
+                self::reencrypt($row);
+                $out['encrypted']++;
+            } else {
+                $out['already']++;
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Decrypt the token columns for callers; upgrade a legacy plaintext row in place when a key is set.
+     *
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    private static function hydrate(array $row): array
+    {
+        if (self::needsEncrypting($row) && TokenCrypto::available()) {
+            try {
+                self::reencrypt($row);
+            } catch (\Throwable $e) {
+                error_log('OSMHelper token encryption: upgrade_failed ' . get_class($e));
+            }
+        }
+        $access = $row['access_token'] ?? null;
+        $refresh = $row['refresh_token'] ?? null;
+        $row['access_token'] = (string) (TokenCrypto::decrypt(is_string($access) ? $access : null) ?? '');
+        $row['refresh_token'] = TokenCrypto::decrypt(is_string($refresh) ? $refresh : null);
+        return $row;
+    }
+
+    /** @param array<string, mixed> $row */
+    private static function needsEncrypting(array $row): bool
+    {
+        foreach (['access_token', 'refresh_token'] as $col) {
+            $v = $row[$col] ?? null;
+            if (is_string($v) && $v !== '' && !TokenCrypto::isEncrypted($v)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** @param array<string, mixed> $row */
+    private static function reencrypt(array $row): void
+    {
+        $access = $row['access_token'] ?? null;
+        $refresh = $row['refresh_token'] ?? null;
+        // Only touch the token columns; updated_at is left alone (this is not a user change).
+        $stmt = Db::pdo()->prepare(
+            'UPDATE wordpress_site_keys SET access_token = ?, refresh_token = ? WHERE id = ? AND access_token = ?'
+        );
+        $stmt->execute([
+            TokenCrypto::encrypt(is_string($access) ? $access : ''),
+            TokenCrypto::encrypt(is_string($refresh) ? $refresh : null),
+            (int) $row['id'],
+            (string) $access,
+        ]);
     }
 
     public static function generateSiteKey(): string

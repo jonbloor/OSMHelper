@@ -7,7 +7,6 @@ use App\App;
 use App\Http\Auth;
 use App\Http\Csrf;
 use App\Osm\OsmApi;
-use App\Osm\OsmDebug;
 use App\Osm\OsmErrorLog;
 use App\Osm\OsmLists;
 use App\Store\SettingsStore;
@@ -240,7 +239,6 @@ final class TopAwardsController
             'fromCache' => $fromCache,
             'cacheAt' => $cacheAt,
         ];
-        self::writeDryRun($payload);
 
         App::render('top-awards.twig', Auth::baseContext([
             'title' => 'Top awards',
@@ -508,12 +506,6 @@ final class TopAwardsController
                 'message' => $write['message'],
                 'path' => $write['path'],
             ];
-            OsmDebug::log('top_awards_write', [
-                'scoutid' => $change['scoutid'],
-                'ok' => $write['ok'],
-                'path' => $write['path'],
-                'message' => $write['message'],
-            ]);
             // Fail fast: one rejected/disabled write -> stop (no cascade).
             if (!$write['ok']) {
                 $notesStop = 'Stopped (fail-fast after first failure).';
@@ -645,7 +637,6 @@ final class TopAwardsController
             'kind' => 'write',
             'section_id' => $sectionId,
             'badge_id' => $badgeId,
-            'scoutid' => $memberId,
             'detail' => self::briefResponse($res),
         ]);
         return [
@@ -907,12 +898,6 @@ final class TopAwardsController
                     'term_id' => $termId,
                 ], $debugMeta, $notes, $rateLimited, $rateLimitBanner);
                 if (!$rateLimited) {
-                    OsmDebug::log('top_awards_byperson_keys', [
-                        'keys' => array_keys($byPerson),
-                        'data0' => is_array($byPerson['data'][0] ?? null)
-                            ? array_keys($byPerson['data'][0])
-                            : null,
-                    ]);
                     $people = OsmLists::items($byPerson);
                     if ($people === [] && isset($byPerson['data']) && is_array($byPerson['data'])) {
                         $people = array_values(array_filter($byPerson['data'], 'is_array'));
@@ -1118,12 +1103,6 @@ final class TopAwardsController
                     ], $debugMeta, $notes, $rateLimited, $rateLimitBanner);
 
                     if (!$rateLimited) {
-                        OsmDebug::log('top_awards_challenge_records', [
-                            'badge' => $challengeBadge,
-                            'top_keys' => array_keys($recs),
-                            'data_keys' => isset($recs['data']) && is_array($recs['data']) ? array_keys($recs['data']) : null,
-                            'sample_member' => self::badgeRecordMembers($recs)[0] ?? null,
-                        ]);
                         // Lock progress requirement from live records when not yet known (Bronze).
                         if ($progressField === '') {
                             $progressField = self::detectProgressField($recs);
@@ -1177,11 +1156,6 @@ final class TopAwardsController
                                 'member_id' => 0,
                             ], $debugMeta, $notes, $rateLimited, $rateLimitBanner);
                             if (!$rateLimited) {
-                                OsmDebug::log('top_awards_challenge_records', [
-                                    'badge' => $pick,
-                                    'top_keys' => array_keys($recs),
-                                    'sample_member' => self::badgeRecordMembers($recs)[0] ?? null,
-                                ]);
                                 $progressField = self::detectProgressField($recs);
                                 $debugMeta['progressField'] = $progressField;
                                 $challengeBadge['progress_requirement_id'] = $progressField;
@@ -1659,26 +1633,6 @@ final class TopAwardsController
         return $ind;
     }
 
-    /**
-     * Debug-only dump of the whole page payload (includes member names). Off unless the
-     * OSM_DEBUG_FILES env flag is set; never on in production.
-     *
-     * @param array<string, mixed> $payload
-     */
-    private static function writeDryRun(array $payload): void
-    {
-        if (!\App\Config::debugFiles()) {
-            return;
-        }
-        $dir = dirname(__DIR__, 3) . '/storage';
-        if (!is_dir($dir)) {
-            @mkdir($dir, 0770, true);
-        }
-        $path = $dir . '/top-awards-dryrun.json';
-        @file_put_contents($path, json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n", LOCK_EX);
-        @chmod($path, 0660);
-    }
-
     private static function is429(Throwable $e): bool
     {
         if ((int) $e->getCode() === 429) {
@@ -1757,12 +1711,6 @@ final class TopAwardsController
                     throw $e;
                 }
                 $sleep = self::backoffSeconds($api, $e, $attempt);
-                OsmDebug::log('top_awards_429_backoff', [
-                    'path' => $path,
-                    'attempt' => $attempt,
-                    'sleep' => $sleep,
-                    'message' => $e->getMessage(),
-                ]);
                 sleep($sleep);
             }
         }

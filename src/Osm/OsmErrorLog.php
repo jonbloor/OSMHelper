@@ -4,20 +4,35 @@ declare(strict_types=1);
 
 namespace App\Osm;
 
+use App\Support\LogSafe;
+
 /**
  * Durable append-only OSM API error log (always on, outside webroot).
  * Redacts tokens and personal details (names, emails, phone numbers, dates of birth, notes) from the
- * free-text fields; keeps numeric scoutid/section_id/badge_id for diagnosis.
- * Rotate by capping entry count and approximate file size.
+ * free-text fields via LogSafe::redact(); keeps only section_id/badge_id for diagnosis. Member IDs
+ * (scoutid) are never written. Entries older than MAX_AGE_SEC are pruned, and the file is capped by
+ * entry count and approximate size.
  */
 final class OsmErrorLog
 {
     private const MAX_ENTRIES = 200;
     private const MAX_BYTES = 524288; // 512 KiB soft cap before trim
     private const FILENAME = 'osm-errors.jsonl';
+    /** Entries are kept for at most 30 days. */
+    public const MAX_AGE_SEC = 30 * 86400;
 
-    /** Keys whose values are personal details and must never reach the log. */
-    private const PII_KEYS = 'first_?name|last_?name|full_?name|name|email\\d*|phone\\d*|mobile|address\\d*|dob|date_of_birth|notes?|comment|birthday|date.?of.?birth|emergency\\w*|custom_?data\\w*';
+    /** Test helper: write to another directory instead of storage/. */
+    private static ?string $dirOverride = null;
+
+    public static function setDirForTests(?string $dir): void
+    {
+        self::$dirOverride = $dir;
+    }
+
+    public static function path(): string
+    {
+        return (self::$dirOverride ?? dirname(__DIR__, 2) . '/storage') . '/' . self::FILENAME;
+    }
 
     /**
      * @param array{
@@ -32,15 +47,15 @@ final class OsmErrorLog
      *   badge_id?: string|null,
      *   scoutid?: string|null,
      *   detail?: string|null
-     * } $entry
+     * } $entry  (scoutid is accepted for older callers but never written)
      */
     public static function log(array $entry): void
     {
-        $dir = dirname(__DIR__, 2) . '/storage';
+        $path = self::path();
+        $dir = dirname($path);
         if (!is_dir($dir)) {
             @mkdir($dir, 0770, true);
         }
-        $path = $dir . '/' . self::FILENAME;
 
         $row = [
             'at' => gmdate('c'),
@@ -51,12 +66,11 @@ final class OsmErrorLog
                 ? (int) $entry['http_status']
                 : null,
             'osm_code' => self::clipNullable($entry['osm_code'] ?? null, 80),
-            'osm_message' => self::clipNullable(self::redactDetail($entry['osm_message'] ?? null), 240),
+            'osm_message' => self::clipNullable(LogSafe::redact(self::str($entry['osm_message'] ?? null)), 240),
             'kind' => self::clip((string) ($entry['kind'] ?? 'http'), 40),
             'section_id' => self::idOnly($entry['section_id'] ?? null),
             'badge_id' => self::idOnly($entry['badge_id'] ?? null),
-            'scoutid' => self::idOnly($entry['scoutid'] ?? null),
-            'detail' => self::clipNullable(self::redactDetail($entry['detail'] ?? null), 200),
+            'detail' => self::clipNullable(LogSafe::redact(self::str($entry['detail'] ?? null)), 200),
         ];
 
         $line = json_encode($row, JSON_UNESCAPED_SLASHES);
@@ -65,18 +79,19 @@ final class OsmErrorLog
         }
         $ok = @file_put_contents($path, $line . "\n", FILE_APPEND | LOCK_EX);
         if ($ok === false) {
-            @error_log('OsmErrorLog write failed: ' . $path);
+            @error_log('OsmErrorLog write failed (storage not writable)');
             return;
         }
         @chmod($path, 0660);
         @chgrp('osmhelper', $path);
         self::rotateIfNeeded($path);
+        self::pruneOld();
     }
 
     /** @return list<array<string, mixed>> */
     public static function recent(int $limit = 10): array
     {
-        $path = dirname(__DIR__, 2) . '/storage/' . self::FILENAME;
+        $path = self::path();
         if (!is_readable($path)) {
             return [];
         }
@@ -93,6 +108,67 @@ final class OsmErrorLog
             }
         }
         return $out;
+    }
+
+    /**
+     * Drop entries older than MAX_AGE_SEC. Cheap when nothing is due: reads only the first line
+     * (entries are appended in time order). Called on every request from App::run() and after each write.
+     *
+     * @return int number of entries removed
+     */
+    public static function pruneOld(?int $now = null): int
+    {
+        $now ??= time();
+        $path = self::path();
+        if (!is_file($path)) {
+            return 0;
+        }
+        $fh = @fopen($path, 'rb');
+        if ($fh === false) {
+            return 0;
+        }
+        $first = fgets($fh);
+        fclose($fh);
+        if (!is_string($first) || $first === '') {
+            return 0;
+        }
+        $at = self::entryTime($first);
+        if ($at !== null && $at >= $now - self::MAX_AGE_SEC) {
+            return 0;
+        }
+        $lines = @file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        if (!is_array($lines)) {
+            return 0;
+        }
+        $keep = [];
+        foreach ($lines as $line) {
+            $t = self::entryTime((string) $line);
+            // Unreadable lines have no trustworthy date: drop them too.
+            if ($t !== null && $t >= $now - self::MAX_AGE_SEC) {
+                $keep[] = $line;
+            }
+        }
+        $removed = count($lines) - count($keep);
+        if ($removed <= 0) {
+            return 0;
+        }
+        if ($keep === []) {
+            @unlink($path);
+        } else {
+            @file_put_contents($path, implode("\n", $keep) . "\n", LOCK_EX);
+            @chmod($path, 0660);
+        }
+        return $removed;
+    }
+
+    private static function entryTime(string $line): ?int
+    {
+        $decoded = json_decode(trim($line), true);
+        if (!is_array($decoded) || !is_string($decoded['at'] ?? null)) {
+            return null;
+        }
+        $t = strtotime($decoded['at']);
+        return $t === false ? null : $t;
     }
 
     private static function rotateIfNeeded(string $path): void
@@ -151,25 +227,9 @@ final class OsmErrorLog
         return self::clip($s, $max);
     }
 
-    private static function redactDetail(mixed $v): ?string
+    private static function str(mixed $v): ?string
     {
-        if ($v === null) {
-            return null;
-        }
-        $s = (string) $v;
-        $s = preg_replace('/Bearer\s+[A-Za-z0-9._\-]+/i', 'Bearer [redacted]', $s) ?? $s;
-        $s = preg_replace('/(access_token|refresh_token|client_secret|SESSION_SECRET)=([^&\s]+)/i', '$1=[redacted]', $s) ?? $s;
-        // Personal fields in JSON-ish text ("firstname":"Ann", 'lastname' => 'Smith', notes=...).
-        $s = preg_replace(
-            '/(["\']?(?:' . self::PII_KEYS . ')["\']?\s*(?::|=>|=)\s*)("(?:[^"\\\\]|\\\\.)*"|\'[^\']*\'|[^,&}\r\n]+)/i',
-            '$1"[redacted]"',
-            $s
-        ) ?? $s;
-        // Query strings in logged URLs can carry IDs or search terms: keep the path only.
-        $s = preg_replace('#(https?://[^\s?\#"\']+)\?[^\s\#"\']*#i', '$1?[query removed]', $s) ?? $s;
-        $s = preg_replace('/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i', '[email]', $s) ?? $s;
-        $s = preg_replace('/(?<![\d\-])(?:\+44\s?|0)\d(?:[\s\-]?\d){8,9}(?!\d)/', '[phone]', $s) ?? $s;
-        return $s;
+        return $v === null ? null : (string) $v;
     }
 
     /** IDs are kept only if they look like IDs (digits/short tokens), never free text. */

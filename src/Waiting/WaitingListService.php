@@ -638,7 +638,6 @@ final class WaitingListService
             'kind' => 'write',
             'section_id' => $sectionId,
             'badge_id' => null,
-            'scoutid' => $memberId,
             'detail' => 'column ' . $columnId,
         ]);
         return ['ok' => false, 'message' => 'OSM did not return status true.', 'raw' => $raw, 'forbidden' => $forbidden, 'returned' => null];

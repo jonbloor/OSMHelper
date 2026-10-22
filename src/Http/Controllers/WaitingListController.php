@@ -11,6 +11,7 @@ use App\Store\SettingsStore;
 use App\Store\WaitingFieldMapStore;
 use App\Waiting\WaitingListService as WL;
 use Throwable;
+use App\Support\LogSafe;
 final class WaitingListController
 {
     /**
@@ -88,7 +89,7 @@ final class WaitingListController
             // Never show raw SQL/PDO errors to users; log the detail for us instead.
             error_log('OSMHelper waiting list: could not read saved field settings (group ' . WL::groupKey($list)
                 . ', section ' . (string) ($list['id'] ?? '') . ', db ' . Db::path() . '): '
-                . get_class($e) . ': ' . $e->getMessage());
+                . get_class($e) . ': ' . LogSafe::redact($e->getMessage()));
             return ['map' => null, 'error' => self::MAP_LOAD_ERROR];
         }
     }
@@ -283,7 +284,7 @@ final class WaitingListController
         } catch (Throwable $e) {
             error_log('OSMHelper waiting list: could not save field settings (group ' . WL::groupKey($list)
                 . ', section ' . (string) ($list['id'] ?? '') . ', db ' . Db::path() . '): '
-                . get_class($e) . ': ' . $e->getMessage());
+                . get_class($e) . ': ' . LogSafe::redact($e->getMessage()));
             self::flash('error', self::MAP_SAVE_ERROR);
             self::redirect('/waiting-list/fields/', $list['id']);
         }

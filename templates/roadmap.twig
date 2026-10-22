@@ -106,6 +106,17 @@
       <h3 id="history-h">Changelog</h3>
       <p class="muted">What changed, newest first. Each entry went live on the date shown.</p>
       <ul class="rm-list">
+        <li class="rm-item rm-shipped rm-history" id="2026-10-22-privacy">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-22">22 Oct 2026</time></div>
+          <h4 class="rm-title">Privacy tightening</h4>
+          <ul>
+            <li><strong>Sessions end after 2 hours:</strong> you are signed out 2 hours after signing in (or after 2 hours idle), and the session and anything it held is deleted from the server. Everyone is signed out once when this goes live.</li>
+            <li><strong>Find a member:</strong> searches are sent privately, so postcodes, phone numbers and names you search for no longer appear in web addresses, browser history or server logs.</li>
+            <li><strong>WordPress joining form:</strong> the OSM access key kept for the form is now encrypted on the server.</li>
+            <li><strong>Error logs:</strong> no member IDs or OSM reply text, only what failed and which section. OSMHelper’s error log entries are deleted after 30 days.</li>
+            <li>Leftover debug files that could hold member data have been removed from the code entirely. See <a href="/help/#privacy">Help → Your data and privacy</a>.</li>
+          </ul>
+        </li>
         <li class="rm-item rm-shipped rm-history" id="2026-10-22-events">
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-22">22 Oct 2026</time></div>
           <h4 class="rm-title">Events list</h4>

@@ -5,7 +5,6 @@ use App\Http\Csrf;
 use App\App;
 use App\Http\Auth;
 use App\Osm\OsmApi;
-use App\Osm\OsmDebug;
 use App\Store\SettingsStore;
 use Throwable;
 
@@ -83,12 +82,6 @@ final class BankTransfersController
     {
         $path = '/v3/finances/accounting/bank_accounts/section/' . rawurlencode($sectionId);
         $res = $api->get($token, $path);
-        OsmDebug::log('bank_v3_accounts_' . $sectionId, [
-            'sectionId' => $sectionId,
-            'path' => $path,
-            'top_keys' => array_keys($res),
-            'body' => $res,
-        ]);
         $rows = self::asList($res);
         $out = [];
         foreach ($rows as $row) {
@@ -137,13 +130,6 @@ final class BankTransfersController
                 'per_page' => self::PER_PAGE,
                 'expense_cardholder_id' => 0,
                 'mode' => 'all',
-            ]);
-            OsmDebug::log('bank_v3_trans_' . $accountId . '_p' . $p, [
-                'accountId' => $accountId,
-                'page' => $p,
-                'top_keys' => array_keys($res),
-                'meta' => $res['meta'] ?? null,
-                'body' => $res,
             ]);
             $pagesFetched++;
             if ($total === null && isset($res['meta']['number_transactions']) && is_numeric($res['meta']['number_transactions'])) {
@@ -237,11 +223,6 @@ final class BankTransfersController
         } catch (Throwable $e) {
             $code = (int) $e->getCode();
             $hint = $code > 0 ? " (OSM HTTP {$code})" : '';
-            OsmDebug::log('bank_v3_accounts_error', [
-                'sectionId' => $sectionId,
-                'message' => $e->getMessage(),
-                'code' => $code,
-            ]);
             App::render('error.twig', Auth::baseContext([
                 'title' => 'Bank',
                 'message' => "Could not load bank accounts for section {$sectionName} (id {$sectionId}){$hint}: " . $e->getMessage(),
@@ -273,10 +254,6 @@ final class BankTransfersController
                 $tx = self::loadTransactions($api, $token, $accountId, $page, $page === 1);
             } catch (Throwable $e) {
                 $code = (int) $e->getCode();
-                OsmDebug::log('bank_v3_trans_error_' . $accountId, [
-                    'message' => $e->getMessage(),
-                    'code' => $code,
-                ]);
                 App::render('error.twig', Auth::baseContext([
                     'title' => 'Bank',
                     'message' => 'Could not load transactions for ' . $account['name'] . ': ' . $e->getMessage(),
@@ -390,10 +367,6 @@ final class BankTransfersController
                 }
             } catch (Throwable $e) {
                 $errors[] = $account['name'] . ': ' . $e->getMessage();
-                OsmDebug::log('bank_v3_all_trans_error_' . $account['id'], [
-                    'message' => $e->getMessage(),
-                    'code' => (int) $e->getCode(),
-                ]);
             }
         }
 

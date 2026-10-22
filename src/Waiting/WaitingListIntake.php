@@ -126,13 +126,13 @@ final class WaitingListIntake
         try {
             $created = $api->post($token, '/ext/members/contact/actions/?action=newMember', $body);
         } catch (Throwable $e) {
-            self::logStepFailure($step, $sectionId, null);
+            self::logStepFailure($step, $sectionId);
             self::rethrowOsm($e, $siteKeyId);
         }
 
         $scoutid = self::parseNewMemberScoutId($created);
         if ($scoutid <= 0) {
-            self::logStepFailure($step . ':missing-scoutid', $sectionId, null);
+            self::logStepFailure($step . ':missing-scoutid', $sectionId);
             throw new WaitingListIntakeException('OSM did not return a member ID.', 502);
         }
 
@@ -239,7 +239,7 @@ final class WaitingListIntake
         int $delayUs
     ): array {
         if ($target === null) {
-            self::logStepFailure('update-parent-note:no-notes-field-mapped', $sectionId, $scoutid);
+            self::logStepFailure('update-parent-note:no-notes-field-mapped', $sectionId);
             return [
                 'note_status' => 'skipped',
                 'warnings' => ['The child was added, but the parent note was not saved: no Notes field is chosen for this waiting list in OSM Helper (Waiting list → Rank & notes settings).'],
@@ -273,11 +273,11 @@ final class WaitingListIntake
             } catch (Throwable) {
                 // Logged below; the member write already succeeded.
             }
-            self::logStepFailure('update-parent-note:blocked', $sectionId, $scoutid);
+            self::logStepFailure('update-parent-note:blocked', $sectionId);
         } elseif (str_contains($msg, '429')) {
-            self::logStepFailure('update-parent-note:rate-limited', $sectionId, $scoutid);
+            self::logStepFailure('update-parent-note:rate-limited', $sectionId);
         } else {
-            self::logStepFailure('update-parent-note', $sectionId, $scoutid);
+            self::logStepFailure('update-parent-note', $sectionId);
         }
         return [
             'note_status' => 'failed',
@@ -420,12 +420,12 @@ final class WaitingListIntake
         try {
             $res = $api->post($token, $path, $body);
         } catch (Throwable $e) {
-            self::logStepFailure($step, $sectionId, $scoutid);
+            self::logStepFailure($step, $sectionId);
             self::rethrowOsm($e, $siteKeyId);
         }
         // customdata update returns {status:true,…}; treat missing/false as failure and abort.
         if (array_key_exists('status', $res) && $res['status'] !== true) {
-            self::logStepFailure($step . ':status-not-true', $sectionId, $scoutid);
+            self::logStepFailure($step . ':status-not-true', $sectionId);
             throw new WaitingListIntakeException(
                 'Could not write the waiting-list member to OSM.',
                 502
@@ -513,13 +513,12 @@ final class WaitingListIntake
         }
     }
 
-    private static function logStepFailure(string $step, string $sectionId, ?int $scoutid): void
+    private static function logStepFailure(string $step, string $sectionId): void
     {
-        // Step + section + scoutid only — never child/parent names, emails, phones, or addresses.
+        // Step + section id only — never member IDs, child/parent names, emails, phones, or addresses.
         error_log(
             'OSMHelper waiting-list intake step failed: ' . $step
-            . ' section_id=' . $sectionId
-            . ' scoutid=' . ($scoutid !== null ? (string) $scoutid : 'null')
+            . ' section_id=' . (ctype_digit($sectionId) ? $sectionId : 'invalid')
         );
     }
 

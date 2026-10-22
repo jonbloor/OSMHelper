@@ -11,25 +11,25 @@ use Throwable;
 
 /**
  * Find a member by postcode, phone number or parent/contact name.
- * GET searches the session index only (no OSM calls). POST /find-member/refresh rebuilds it.
+ * POST /find-member/search keeps the search in the session and redirects back (PRG), so search terms
+ * (postcodes, phone numbers, names) never appear in URLs, browser history or the web server's access log.
+ * GET /find-member/ shows results from the session index only (no OSM calls).
+ * POST /find-member/refresh rebuilds the index.
  */
 final class FindMemberController
 {
     private const TYPES = ['any', 'postcode', 'phone', 'name'];
+    public const SEARCH_KEY = 'findMemberSearch';
+    /** A remembered search is dropped after 2 hours, like the contacts copy. */
+    private const SEARCH_TTL_SEC = 7200;
 
     public function index(): void
     {
         $token = Auth::requireLogin();
         [$choices, $sectionError] = self::choices($token);
         $idx = self::index_();
-        $q = trim((string) ($_GET['q'] ?? ''));
-        if (mb_strlen($q) > 100) {
-            $q = mb_substr($q, 0, 100);
-        }
-        $type = (string) ($_GET['type'] ?? 'any');
-        if (!in_array($type, self::TYPES, true)) {
-            $type = 'any';
-        }
+        // Search terms come from the session only (set by POST /find-member/search), never the URL.
+        [$q, $type] = self::currentSearch();
         $results = null;
         if ($q !== '' && $idx !== null) {
             // Only sections still on this login (permissions unchanged since the index was built).
@@ -106,6 +106,47 @@ final class FindMemberController
                 . ($kept ? ' Your earlier contacts are still available for searching.' : '') . $note);
         }
         $back('ok', 'Contacts loaded for ' . count($built['loaded']) . ' section(s) using ' . $built['calls'] . ' OSM request(s). Searching uses this copy and does not call OSM.' . $note);
+    }
+
+    /** POST: remember the search in the session, then redirect to the results page (303, no terms in the URL). */
+    public function search(): void
+    {
+        Auth::requireLogin();
+        Csrf::requireValid();
+        [$q, $type] = self::normalise($_POST['q'] ?? '', $_POST['type'] ?? 'any');
+        if ($q === '' || isset($_POST['clear'])) {
+            unset($_SESSION[self::SEARCH_KEY]);
+        } else {
+            $_SESSION[self::SEARCH_KEY] = ['q' => $q, 'type' => $type, 'at' => time()];
+        }
+        header('Location: /find-member/', true, 303);
+        exit;
+    }
+
+    /** @return array{0: string, 1: string} */
+    public static function currentSearch(?int $now = null): array
+    {
+        $now ??= time();
+        $s = $_SESSION[self::SEARCH_KEY] ?? null;
+        if (!is_array($s) || $now - (int) ($s['at'] ?? 0) > self::SEARCH_TTL_SEC) {
+            unset($_SESSION[self::SEARCH_KEY]);
+            return ['', 'any'];
+        }
+        return self::normalise($s['q'] ?? '', $s['type'] ?? 'any');
+    }
+
+    /** @return array{0: string, 1: string} */
+    public static function normalise(mixed $q, mixed $type): array
+    {
+        $q = is_string($q) ? trim($q) : '';
+        if (mb_strlen($q) > 100) {
+            $q = mb_substr($q, 0, 100);
+        }
+        $type = is_string($type) ? $type : 'any';
+        if (!in_array($type, self::TYPES, true)) {
+            $type = 'any';
+        }
+        return [$q, $type];
     }
 
     /** @return array<string, mixed>|null */

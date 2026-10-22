@@ -106,10 +106,6 @@ final class Config
     }
 
     /**
-     * Debug files that can contain OSM data (storage/osm-debug.json, storage/top-awards-dryrun.json).
-     * Separate explicit flag, off by default; APP_DEBUG alone does not turn them on.
-     */
-    /**
      * OSM user IDs allowed to see the OSM API error log (all groups) on the signed-in home page.
      * Comma-separated ADMIN_OSM_USER_IDS; nobody else sees the panel. Unset/empty: nobody sees it.
      *
@@ -128,8 +124,13 @@ final class Config
         return $id !== '' && in_array($id, self::adminOsmUserIds(), true);
     }
 
-    public static function debugFiles(): bool
+    /**
+     * Key for encrypting the stored OSM tokens of the WordPress joining form (OSMHELPER_TOKEN_KEY):
+     * 32 random bytes, base64-encoded. Null when unset.
+     */
+    public static function tokenKey(): ?string
     {
-        return filter_var(self::get('OSM_DEBUG_FILES', 'false'), FILTER_VALIDATE_BOOLEAN);
+        $v = self::get('OSMHELPER_TOKEN_KEY');
+        return ($v === null || trim($v) === '') ? null : trim($v);
     }
 }

@@ -328,7 +328,6 @@ final class EventList
                 'kind' => 'bad-200',
                 'section_id' => $sid,
                 'badge_id' => null,
-                'scoutid' => null,
                 'detail' => $archivedCall ? 'archived request' : 'events request',
             ]);
         } catch (Throwable) {

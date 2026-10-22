@@ -5,7 +5,6 @@ use App\Http\Csrf;
 use App\App;
 use App\Http\Auth;
 use App\Osm\OsmApi;
-use App\Osm\OsmDebug;
 use App\Osm\OsmLists;
 use App\Store\SettingsStore;
 use Throwable;
@@ -269,12 +268,6 @@ final class EquipmentController
                         'sectionid' => $sectionId,
                     ]);
                     if ($listCount <= 3) {
-                        OsmDebug::log('equipment_items_' . $listId, [
-                            'listId' => $listId,
-                            'top_keys' => array_keys($itemsRes),
-                            'data_keys' => is_array($itemsRes['data'] ?? null) ? array_keys($itemsRes['data']) : null,
-                            'body' => $itemsRes,
-                        ]);
                     }
                     $rows = self::quartermasterItems($itemsRes);
                     if ($rows === []) {
@@ -322,11 +315,6 @@ final class EquipmentController
                     }
                 } catch (Throwable $ie) {
                     $itemErrors[] = $listName . ' (HTTP ' . (int) $ie->getCode() . ')';
-                    OsmDebug::log('equipment_items_error_' . $listId, [
-                        'listId' => $listId,
-                        'message' => $ie->getMessage(),
-                        'code' => (int) $ie->getCode(),
-                    ]);
                     $equipment[] = [
                         'listName' => $listName,
                         'listId' => (string) $listId,
@@ -350,12 +338,6 @@ final class EquipmentController
             }
         } catch (Throwable $e) {
             $code = (int) $e->getCode();
-            OsmDebug::log('equipment_error', [
-                'message' => $e->getMessage(),
-                'code' => $code,
-                'sectionId' => $sectionId,
-                'sectionType' => $sectionType,
-            ]);
             $hint = $code > 0 ? " (OSM HTTP {$code})" : '';
             App::render('error.twig', Auth::baseContext([
                 'title' => 'Equipment',
@@ -472,23 +454,8 @@ final class EquipmentController
             $rowId = $read['rowId'];
             $error = $read['error'];
             $echo = $read['row'];
-            OsmDebug::log('equipment_add_' . $list['id'], [
-                'listId' => $list['id'],
-                'sectionId' => $ctx['sectionId'],
-                'sectionType' => $ctx['sectionType'],
-                'ok' => $ok,
-                'rowId' => $rowId,
-                'response' => $res,
-            ]);
         } catch (Throwable $e) {
             $error = $e->getMessage();
-            OsmDebug::log('equipment_add_error_' . $list['id'], [
-                'listId' => $list['id'],
-                'sectionId' => $ctx['sectionId'],
-                'sectionType' => $ctx['sectionType'],
-                'message' => $e->getMessage(),
-                'code' => (int) $e->getCode(),
-            ]);
         }
 
         App::render('equipment-add-result.twig', Auth::baseContext([
@@ -654,26 +621,8 @@ final class EquipmentController
                     $message = 'OSM did not return status true'
                         . (isset($res['error']) ? (': ' . (is_string($res['error']) ? $res['error'] : json_encode($res['error']))) : '');
                 }
-                OsmDebug::log('equipment_move_' . $item['listId'] . '_' . $item['rowid'], [
-                    'listId' => $item['listId'],
-                    'rowid' => $item['rowid'],
-                    'location' => $location,
-                    'sectionId' => $sectionId,
-                    'sectionType' => $sectionType,
-                    'ok' => $ok,
-                    'response' => $res,
-                ]);
             } catch (Throwable $e) {
                 $message = $e->getMessage();
-                OsmDebug::log('equipment_move_error_' . $item['listId'] . '_' . $item['rowid'], [
-                    'listId' => $item['listId'],
-                    'rowid' => $item['rowid'],
-                    'location' => $location,
-                    'sectionId' => $sectionId,
-                    'sectionType' => $sectionType,
-                    'message' => $e->getMessage(),
-                    'code' => (int) $e->getCode(),
-                ]);
             }
             $results[] = [
                 'listId' => $item['listId'],
@@ -794,12 +743,6 @@ final class EquipmentController
                     'section' => $tryType,
                     'sectionid' => $sectionId,
                 ]);
-                OsmDebug::log('equipment_lists_' . $sectionId . '_' . $tryType, [
-                    'sectionId' => $sectionId,
-                    'sectionType' => $tryType,
-                    'top_keys' => array_keys($listsRes),
-                    'body' => $listsRes,
-                ]);
                 $lists = self::quartermasterLists($listsRes);
                 if ($lists !== []) {
                     $usedType = $tryType;
@@ -811,10 +754,6 @@ final class EquipmentController
                 ];
             } catch (Throwable $e) {
                 $lastErr = $e;
-                OsmDebug::log('equipment_lists_error_' . $sectionId . '_' . $tryType, [
-                    'message' => $e->getMessage(),
-                    'code' => (int) $e->getCode(),
-                ]);
             }
         }
 
@@ -834,12 +773,6 @@ final class EquipmentController
                         'section' => $fbType,
                         'sectionid' => $fbId,
                     ]);
-                    OsmDebug::log('equipment_lists_fallback_' . $fbId, [
-                        'sectionId' => $fbId,
-                        'sectionType' => $fbType,
-                        'top_keys' => array_keys($listsRes),
-                        'body' => $listsRes,
-                    ]);
                     $fbLists = self::quartermasterLists($listsRes);
                     if ($fbLists !== []) {
                         $lists = $fbLists;
@@ -857,12 +790,6 @@ final class EquipmentController
 
         if ($lists === [] && $lastErr !== null && $listsRes === []) {
             $code = (int) $lastErr->getCode();
-            OsmDebug::log('equipment_error', [
-                'message' => $lastErr->getMessage(),
-                'code' => $code,
-                'sectionId' => $sectionId,
-                'sectionType' => $sectionType,
-            ]);
             $hint = $code > 0 ? " (OSM HTTP {$code})" : '';
             $empty['error'] = "Could not load equipment for section {$sectionName} (id {$sectionId}, type {$sectionType}){$hint}. Check Settings → Tool sections.";
             return $empty;

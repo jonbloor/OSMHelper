@@ -11,6 +11,7 @@ use App\Osm\LoginSections;
 use App\Osm\OsmApi;
 use App\Osm\OsmOAuth;
 use Throwable;
+use App\Support\LogSafe;
 
 final class AuthController
 {
@@ -93,6 +94,8 @@ final class AuthController
             $accessToken = $token->getToken();
 
             $_SESSION['accessToken'] = $accessToken;
+            // The 2-hour session limit runs from sign-in (see App::enforceSessionMaxAge()).
+            $_SESSION['_startedAt'] = time();
             $refresh = $token->getRefreshToken();
             if (is_string($refresh) && $refresh !== '') {
                 $_SESSION['refreshToken'] = $refresh;
@@ -160,7 +163,7 @@ final class AuthController
             header('Location: /');
             exit;
         } catch (Throwable $e) {
-            error_log('OAuth callback failed: ' . $e->getMessage());
+            error_log('OAuth callback failed: ' . LogSafe::reason($e));
             http_response_code(500);
             $msg = 'Authentication failed.';
             if (Config::debug()) {

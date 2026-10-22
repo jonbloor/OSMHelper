@@ -36,6 +36,7 @@ Open http://localhost:8080 — if `.env` keys are missing you will see the setup
 | `CLIENT_ID` | OSM OAuth client id |
 | `CLIENT_SECRET` | OSM OAuth client secret |
 | `REDIRECT_URI` | Must match OSM app registration **exactly** |
+| `OSMHELPER_TOKEN_KEY` | 32 random bytes, base64: encrypts the WordPress form's saved OSM tokens. Generate with `php deploy/ensure-token-key.php` (writes it into `.env` without printing it). See `docs/DEPLOY-RUNBOOK.md`. |
 
 Optional: `OSM_API_BASE` (default `https://www.onlinescoutmanager.co.uk`), `APP_DEBUG=true`.
 
@@ -51,7 +52,7 @@ Also sends `access_type=offline` (same as Node) if OSM issues refresh tokens.
 
 ### Session privacy
 
-The server session stores your OSM access token (and refresh token when OSM sends one), your name, email, group, and the section list from sign-in. A member list or group-numbers view you load stays in that session until you sign out. The WordPress joining form also keeps that leader's OSM tokens in the database until the form is turned off. Scout names and dates of birth are not stored long-term.
+The server session stores your OSM access token (and refresh token when OSM sends one), your name, email, group, and the section list from sign-in. Anything a page loads for you (member list, group numbers, events, Find a member contacts) stays in that session only. Sessions last at most 2 hours from sign-in (or 2 hours idle): files live in `storage/sessions/` (0700) with a 2-hour GC, and the app enforces the limit itself. Find a member search terms are POSTed and kept in the session, never in URLs. The WordPress joining form keeps that leader's OSM tokens in the database, encrypted with `OSMHELPER_TOKEN_KEY`, until the form is turned off. Error logs carry reason codes and section IDs only, never member IDs. Scout names and dates of birth are not stored long-term.
 
 ## Routes (P0)
 

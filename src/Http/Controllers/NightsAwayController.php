@@ -7,11 +7,11 @@ use App\App;
 use App\Http\Auth;
 use App\Http\Csrf;
 use App\Osm\OsmApi;
-use App\Osm\OsmDebug;
 use App\Osm\OsmLists;
 use DateTimeImmutable;
 use DateTimeZone;
 use Throwable;
+use App\Support\LogSafe;
 
 /**
  * Nights away from OSM's staged Nights Away badge (badge_id 94, type_id 3).
@@ -161,7 +161,6 @@ final class NightsAwayController
             $members = self::loadMembers($api, $token);
         } catch (Throwable $e) {
             $error = 'Could not load members from OSM.';
-            OsmDebug::log('nights_away_members_fail', ['message' => $e->getMessage()]);
         }
 
         if ($scoutIds !== []) {
@@ -334,14 +333,10 @@ final class NightsAwayController
                     $awardedDate = $memberSummaries[0]['awardedDate'];
                 }
             } catch (Throwable $e) {
-                error_log('nights-away scoutids=' . implode(',', $scoutIds) . ' ' . $e->getMessage()
-                    . ' @ ' . $e->getFile() . ':' . $e->getLine());
-                OsmDebug::log('nights_away_fatal', [
-                    'scoutid' => $scoutid,
-                    'message' => $e->getMessage(),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                ]);
+                // Reason code + section id only: no member IDs or OSM reply text in the server log.
+                $logSection = (string) ($selectedMembers[0]['sectionMeta'][0]['id'] ?? '');
+                error_log('OSMHelper nights-away load failed: ' . LogSafe::reason($e)
+                    . ' section_id=' . (ctype_digit($logSection) ? $logSection : 'unknown'));
                 $error = 'Could not load nights away for this member (' . $e->getMessage() . ').';
             }
         }
@@ -583,10 +578,6 @@ final class NightsAwayController
                     $scopeHint = $msg;
                 }
                 $notes[] = 'Nights Away badge records failed for ' . ($sectionName !== '' ? $sectionName : $sectionId) . '.';
-                OsmDebug::log('nights_away_records_fail', [
-                    'section_id' => $sectionId,
-                    'message' => $msg,
-                ]);
                 continue;
             }
 
@@ -775,20 +766,9 @@ final class NightsAwayController
                 $scopeHint = $msg;
             }
             $notes[] = 'Other-sections Nights Away records failed.';
-            OsmDebug::log('nights_away_other_sections_fail', [
-                'section_id' => $sectionId,
-                'scoutid' => $memberId,
-                'message' => $msg,
-            ]);
             return null;
         }
 
-        OsmDebug::log('nights_away_other_sections', [
-            'section_id' => $sectionId,
-            'scoutid' => $memberId,
-            'top_keys' => array_keys($res),
-            'data_keys' => is_array($res['data'] ?? null) ? array_keys($res['data']) : null,
-        ]);
 
         $merged = null;
         try {

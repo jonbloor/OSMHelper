@@ -9,6 +9,7 @@ use App\Store\WaitingFieldMapStore;
 use App\Store\WordpressSiteKeyStore;
 use App\Waiting\WaitingListService as WL;
 use Throwable;
+use App\Support\LogSafe;
 
 /**
  * WordPress joining (waiting-list) form: plugin download, site key + waiting-list section,
@@ -171,7 +172,7 @@ final class WordpressFormController
                 $regenerate
             );
         } catch (Throwable $e) {
-            error_log('OSMHelper WordPress site key save failed: ' . $e->getMessage());
+            error_log('OSMHelper WordPress site key save failed: ' . LogSafe::reason($e));
             self::back('error', 'Could not save the WordPress site key.');
         }
 

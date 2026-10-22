@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 use App\Waiting\WaitingListIntake;
 use App\Waiting\WaitingListIntakeException;
 use Throwable;
+use App\Support\LogSafe;
 /**
  * Authenticated WordPress → OSM Helper waiting-list intake.
  * Auth: Bearer site key or X-Osmhelper-Site-Key. No session / CSRF.
@@ -34,10 +35,11 @@ final class WaitingListSubmitController
             self::json(200, self::successBody($result));
         } catch (WaitingListIntakeException $e) {
             // Do not echo child data or tokens.
-            error_log('OSMHelper waiting-list intake: HTTP ' . $e->status() . ' — ' . $e->getMessage());
+            error_log('OSMHelper waiting-list intake: HTTP ' . $e->status() . ' ' . LogSafe::reasonCode($e->getMessage())
+                . ' — ' . mb_substr((string) LogSafe::redact($e->getMessage()), 0, 160));
             self::json($e->status(), ['ok' => false, 'error' => $e->getMessage()]);
         } catch (Throwable $e) {
-            error_log('OSMHelper waiting-list intake failed: ' . $e->getMessage());
+            error_log('OSMHelper waiting-list intake failed: ' . LogSafe::reason($e));
             self::json(502, ['ok' => false, 'error' => 'Could not add the child to the waiting list.']);
         }
     }
