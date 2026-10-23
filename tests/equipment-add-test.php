@@ -7,6 +7,7 @@ declare(strict_types=1);
  * Run: php tests/equipment-add-test.php
  */
 require dirname(__DIR__) . '/vendor/autoload.php';
+require __DIR__ . '/isolate-storage.php';
 
 use App\Http\Controllers\EquipmentController;
 

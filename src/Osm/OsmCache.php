@@ -6,11 +6,17 @@ namespace App\Osm;
  * Short-lived cache of OSM read results, per OSM user and section, so reopening a page within a
  * few minutes doesn't spend the user's OSM allowance again.
  *
- * Privacy:
- *  - Files live in storage/osm-cache/ (dir 0700, files 0600) and expire after TTL_SECONDS.
- *    Expired files are swept on every write and at sign-out.
- *  - Never put tokens in here. Callers store only what the page needs (for the waiting list:
- *    names, dates and the custom-data values; no contact details).
+ * Privacy (this cache holds personal data; home.twig, README and Help describe it):
+ *  - What: for the waiting list, applicants' names, dates of birth, dates joined, every
+ *    waiting-list custom field value and the leaders' notes field (no parent contact details,
+ *    which OSM keeps in other groups); and the user's section list.
+ *  - Who: owner-only. Each entry is keyed to the OSM user who fetched it and is only ever read
+ *    back for that same user.
+ *  - How long: deleted 5 minutes (TTL_SECONDS) after it was fetched. sweep() runs on every
+ *    request (App::sweepPrivateCaches) as well as on every write and at sign-out, so expired
+ *    files don't linger when nobody reopens the page.
+ *  - Files live in storage/osm-cache/ (dir 0700, files 0600, owned by the PHP-FPM user).
+ *  - Never put tokens in here.
  *  - File names are hashes, so they carry no section or member ids.
  *  - Cleared for the user at sign-out / session expiry; cleared for every user of a section when
  *    OSMHelper writes to that section (rank, notes, new applicant).
@@ -18,6 +24,7 @@ namespace App\Osm;
 final class OsmCache
 {
     public const TTL_SECONDS = 300;
+    public const MARKER_TTL_SECONDS = 3600;
 
     private static ?string $dirOverride = null;
     /** @var callable():int|null */
@@ -38,6 +45,12 @@ final class OsmCache
     public static function dir(): string
     {
         return self::$dirOverride ?? (dirname(__DIR__, 2) . '/storage/osm-cache');
+    }
+
+    /** Current time on the cache's clock (tests can fake it with useClock()). */
+    public static function currentTime(): int
+    {
+        return self::now();
     }
 
     private static function now(): int
@@ -92,8 +105,15 @@ final class OsmCache
         return is_array($d) && is_int($d['at'] ?? null) ? max(0, self::now() - $d['at']) : null;
     }
 
-    /** @param array<string, mixed> $value */
-    public static function put(string $kind, ?string $userId, string $scope, array $value): void
+    /**
+     * @param array<string, mixed> $value
+     * @param float|null $loadStartedAt microtime(true) when the caller started fetching $value from
+     *   OSM. When given, the write is dropped if forgetScope() ran for this scope after that moment
+     *   (an OSMHelper write landed while this load was in flight, so $value may be out of date).
+     * @param int|null $fetchedAt when the oldest data in $value was fetched (default now): the entry
+     *   expires, and sweep() deletes it, TTL_SECONDS after this.
+     */
+    public static function put(string $kind, ?string $userId, string $scope, array $value, ?float $loadStartedAt = null, ?int $fetchedAt = null): void
     {
         if ($userId === null || $userId === '') {
             return;
@@ -107,7 +127,8 @@ final class OsmCache
         self::sweep();
         $p = self::path($kind, $userId, $scope);
         $tmp = $p . '.' . bin2hex(random_bytes(4)) . '.tmp';
-        $json = json_encode(['at' => self::now(), 'value' => $value], JSON_INVALID_UTF8_SUBSTITUTE);
+        $at = min($fetchedAt ?? self::now(), self::now());
+        $json = json_encode(['at' => $at, 'value' => $value], JSON_INVALID_UTF8_SUBSTITUTE);
         if (!is_string($json)) {
             return;
         }
@@ -119,9 +140,33 @@ final class OsmCache
             return;
         }
         @chmod($tmp, 0600);
+        @touch($tmp, $at);
+        if ($loadStartedAt !== null && self::invalidatedSince($kind, $scope, $loadStartedAt)) {
+            @unlink($tmp);
+            return;
+        }
         if (!@rename($tmp, $p)) {
             @unlink($tmp);
+            return;
         }
+        // Re-check after the rename: forgetScope() writes its marker *before* deleting, so either its
+        // delete saw this file, or this check sees its marker. No stale copy survives either way.
+        if ($loadStartedAt !== null && self::invalidatedSince($kind, $scope, $loadStartedAt)) {
+            @unlink($p);
+        }
+    }
+
+    /** True when forgetScope($kind, $scope) ran at or after $since (microtime). */
+    private static function invalidatedSince(string $kind, string $scope, float $since): bool
+    {
+        clearstatcache();
+        $raw = @file_get_contents(self::markerPath($kind, $scope));
+        return is_string($raw) && is_numeric(trim($raw)) && (float) trim($raw) >= $since;
+    }
+
+    private static function markerPath(string $kind, string $scope): string
+    {
+        return self::dir() . '/inv-' . self::kindPart($kind) . '-' . self::hash('scope:' . $scope) . '.mark';
     }
 
     /** Forget one user's entry. */
@@ -139,6 +184,26 @@ final class OsmCache
     /** Forget a section's entries for every user (after OSMHelper writes to that section). */
     public static function forgetScope(string $kind, string $scope): void
     {
+        // Marker first (see put()): loads already in flight for this scope won't store their result.
+        $dir = self::dir();
+        $old = umask(0077);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0700, true);
+        }
+        umask($old);
+        if (is_dir($dir)) {
+            $old = umask(0077);
+            $m = self::markerPath($kind, $scope);
+            $tmp = $m . '.' . bin2hex(random_bytes(4)) . '.tmp';
+            if (@file_put_contents($tmp, sprintf('%.6F', microtime(true))) !== false) {
+                @chmod($tmp, 0600);
+                @touch($tmp, self::now()); // sweep() ages markers by mtime on the same clock
+                if (!@rename($tmp, $m)) {
+                    @unlink($tmp);
+                }
+            }
+            umask($old);
+        }
         foreach (glob(self::dir() . '/' . self::kindPart($kind) . '-' . self::hash('scope:' . $scope) . '-*.json') ?: [] as $f) {
             @unlink($f);
         }
@@ -160,7 +225,10 @@ final class OsmCache
         self::forgetUser(self::currentUserId());
     }
 
-    /** Delete expired entries (and stray temp files). */
+    /**
+     * Delete expired entries (and stray temp files). Runs on every request. Invalidation markers
+     * (no personal data, just a time) are kept for MARKER_TTL_SECONDS so slow loads still see them.
+     */
     public static function sweep(): void
     {
         $now = self::now();
@@ -169,7 +237,8 @@ final class OsmCache
                 continue;
             }
             $m = @filemtime($f);
-            if ($m !== false && $now - $m >= self::TTL_SECONDS) {
+            $ttl = str_ends_with($f, '.mark') ? self::MARKER_TTL_SECONDS : self::TTL_SECONDS;
+            if ($m !== false && $now - $m >= $ttl) {
                 @unlink($f);
             }
         }

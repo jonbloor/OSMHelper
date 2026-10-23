@@ -34,9 +34,8 @@ final class App
     {
         $this->loadEnv();
         $this->bootSession();
-        // Top awards caches hold member names: delete any past the 2-hour TTL on every request,
-        // so the promise holds even when nobody opens Top awards (glob + mtime, cheap).
-        TopAwardsController::sweepExpiredCaches();
+        // Delete expired private caches on every request (glob + mtime, cheap). See sweepPrivateCaches().
+        self::sweepPrivateCaches();
         // Error log entries are kept for at most 30 days (reads one line when nothing is due).
         \App\Osm\OsmErrorLog::pruneOld();
         self::sendSecurityHeaders();
@@ -376,6 +375,20 @@ final class App
             . "base-uri 'self'; "
             . "form-action 'self'"
         );
+    }
+
+    /**
+     * Delete expired caches that hold member data, on every request, so the privacy promises hold
+     * even when nobody opens the page that wrote them:
+     *  - Top awards caches (member names): 2-hour TTL.
+     *  - OSM read cache (storage/osm-cache: waiting-list applicants' names, dates of birth, dates
+     *    joined, every waiting-list custom field and leaders' notes; section lists): 5 minutes.
+     */
+    public static function sweepPrivateCaches(): void
+    {
+        TopAwardsController::sweepExpiredCaches();
+        \App\Osm\OsmCache::sweep();
+        \App\Waiting\IntakeThrottle::sweep();
     }
 
     private function bootTwig(): void

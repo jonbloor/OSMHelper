@@ -1659,20 +1659,9 @@ final class TopAwardsController
         }
     }
 
-    private static function backoffSeconds(OsmApi $api, Throwable $e, int $attempt): int
-    {
-        $ra = $api->getRetryAfterSeconds();
-        if ($ra !== null && $ra > 0) {
-            return min(30, max(5, $ra));
-        }
-        if (preg_match('/Retry-After\s+(\d+)/i', $e->getMessage(), $m)) {
-            return min(30, max(5, (int) $m[1]));
-        }
-        return min(15, 5 + ($attempt - 1) * 5);
-    }
-
     /**
-     * GET with 429 backoff. Sets rateLimited + banner when retries exhausted.
+     * One GET, never retried. A 429 from OSM, or a refusal by the shared OSM allowance guard
+     * (OsmBusyException, also code 429), sets rateLimited + banner and stops: no sleep, no retry.
      *
      * @param array<string, mixed> $query
      * @param array<string, mixed> $debugMeta
@@ -1692,28 +1681,21 @@ final class TopAwardsController
         if ($rateLimited) {
             return [];
         }
-        $maxAttempts = 3;
-        $attempt = 0;
-        while (true) {
-            $attempt++;
-            try {
-                $res = $api->get($token, $path, $query);
-                $debugMeta['badgeApiCalls'] = (int) ($debugMeta['badgeApiCalls'] ?? 0) + 1;
-                return $res;
-            } catch (Throwable $e) {
-                if (!self::is429($e) || $attempt >= $maxAttempts) {
-                    if (self::is429($e)) {
-                        $rateLimited = true;
-                        self::setRateBanner(
-                            $rateLimitBanner,
-                            'OSM rate limit (HTTP 429). Stopped further badge API calls. Wait for the window to reset, then Refresh now.'
-                        );
-                    }
-                    throw $e;
-                }
-                $sleep = self::backoffSeconds($api, $e, $attempt);
-                sleep($sleep);
+        try {
+            $res = $api->get($token, $path, $query);
+            $debugMeta['badgeApiCalls'] = (int) ($debugMeta['badgeApiCalls'] ?? 0) + 1;
+            return $res;
+        } catch (Throwable $e) {
+            if (self::is429($e)) {
+                $rateLimited = true;
+                self::setRateBanner(
+                    $rateLimitBanner,
+                    $e instanceof \App\Osm\OsmBusyException
+                        ? $e->getMessage()
+                        : 'OSM rate limit (HTTP 429). Stopped further badge API calls. Wait for the window to reset, then Refresh now.'
+                );
             }
+            throw $e;
         }
     }
 

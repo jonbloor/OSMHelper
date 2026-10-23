@@ -8,6 +8,7 @@ declare(strict_types=1);
 $dbFile = sys_get_temp_dir() . '/osm-tokens-test-' . bin2hex(random_bytes(4)) . '.sqlite';
 $_ENV['OSMHELPER_DB_PATH'] = $dbFile;
 require dirname(__DIR__) . '/vendor/autoload.php';
+require __DIR__ . '/isolate-storage.php';
 
 use App\Osm\OsmApi;
 use App\Osm\OsmTokens;

@@ -219,6 +219,7 @@ final class OsmApi
         try {
             $guard->assertCanCall($essential || $this->essentialScope);
         } catch (OsmBusyException $busy) {
+            // Covers OsmBlockedException too (app-wide X-Blocked state).
             self::logReason('osm_call_refused ' . $busy->reason());
             throw $busy;
         }
@@ -263,9 +264,9 @@ final class OsmApi
         }
         $body = (string) $response->getBody();
 
-        $blocked = self::headerFirst($headers, 'X-Blocked', 'x-blocked');
-        if ($blocked !== null) {
-            $detail = ($blocked !== '' && $blocked !== '1' && strtolower($blocked) !== 'true') ? (': ' . $blocked) : '';
+        if ($started === OsmRateGuard::REASON_BLOCKED) {
+            // OSM blocked the application. The guard has written the app-wide block, so every later
+            // call (any user, saves and sign-in included) is refused until an admin clears it.
             OsmErrorLog::log([
                 'method' => $method,
                 'endpoint' => $path,
@@ -277,7 +278,7 @@ final class OsmApi
                 'badge_id' => $ctx['badge_id'],
                 'detail' => null,
             ]);
-            throw new \RuntimeException('OSM_BLOCKED: OSM blocked this application (X-Blocked' . $detail . '). Further OSM requests must stop.', 403);
+            throw new OsmBlockedException();
         }
 
         $deprecated = self::headerFirst($headers, 'X-Deprecated', 'x-deprecated');

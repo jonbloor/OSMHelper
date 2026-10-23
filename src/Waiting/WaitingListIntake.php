@@ -69,6 +69,19 @@ final class WaitingListIntake
 
         // Same allowance guard as the site owner's own pages (a 429 backoff for them stops this too).
         // A joining-form application is essential: a low allowance doesn't refuse it, a 429 backoff does.
+        // App-wide stop first (OSM blocked OSMHelper, or backoff state can't be saved): no OSM call.
+        try {
+            \App\Osm\OsmRateGuard::assertAppMayCall();
+        } catch (\App\Osm\OsmBusyException $e) {
+            throw new WaitingListIntakeException(
+                $e instanceof \App\Osm\OsmBlockedException
+                    ? 'OSM has blocked OSM Helper (X-Blocked), so it is not sending anything to OSM until the site administrator clears the block. Please try again later.'
+                    : 'OSM Helper is not contacting OSM right now. Please try again later.',
+                503,
+                $e
+            );
+        }
+
         $ownerId = trim((string) ($row['osm_user_id'] ?? ''));
         $api = new OsmApi(null, $ownerId !== '' ? $ownerId : null);
         $api->setEssential(true);
@@ -80,10 +93,7 @@ final class WaitingListIntake
         }
 
         try {
-            $created = self::createMember($api, $token, $sectionId, $payload, (int) $row['id'], $noteTarget);
-            // A new applicant: any cached copy of this waiting list is out of date.
-            \App\Waiting\WaitingListService::invalidateCache($sectionId);
-            return $created;
+            return self::createMember($api, $token, $sectionId, $payload, (int) $row['id'], $noteTarget);
         } catch (WaitingListIntakeException $e) {
             throw $e;
         } catch (Throwable $e) {
@@ -100,6 +110,10 @@ final class WaitingListIntake
                 $code >= 400 && $code < 600 ? $code : 502,
                 $e
             );
+        } finally {
+            // Any write attempt (success, or a failure part way, e.g. after newMember) may have
+            // changed this waiting list in OSM: drop every cached copy of it.
+            \App\Waiting\WaitingListService::invalidateCache($sectionId);
         }
     }
 

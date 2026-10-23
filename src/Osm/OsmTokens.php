@@ -169,6 +169,8 @@ final class OsmTokens
             return (self::$refresher)($refreshToken);
         }
         try {
+            // X-Blocked / fail-closed applies to the token refresh too (no HTTP call when stopped).
+            OsmRateGuard::assertAppMayCall();
             $token = (new OsmOAuth())->getProvider()->getAccessToken('refresh_token', ['refresh_token' => $refreshToken]);
         } catch (Throwable $e) {
             // No token values in the log.

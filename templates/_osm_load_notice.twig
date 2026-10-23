@@ -1,6 +1,8 @@
 {# Shown on waiting list pages when a load was cut short to protect the OSM allowance. #}
-{% if loadBusyMinutes|default(null) and not listError|default(null) %}
+{% if loadBlocked|default(false) %}
+  <p class="alert alert-error" role="status">OSM has blocked OSMHelper, so it has stopped all requests to OSM, for everyone, until the site administrator clears the block. Please don’t keep retrying. <a href="/help/#osm-busy">Why?</a></p>
+{% elseif loadBusyMinutes|default(null) and not listError|default(null) %}
   <p class="alert alert-error" role="status">OSM is busy, try again in {{ loadBusyMinutes }} minute{{ loadBusyMinutes == 1 ? '' : 's' }}. Some details below weren’t loaded. OSMHelper has paused its requests to protect your OSM allowance. <a href="/help/#osm-busy">Why?</a></p>
 {% elseif detailsSkipped|default(0) > 0 %}
-  <p class="alert" role="status">{{ detailsSkipped }} applicant{{ detailsSkipped == 1 ? '’s' : 's’' }} details weren’t loaded this time, to protect your OSM allowance. Open this page again in a few minutes and more will fill in. <a href="/help/#osm-busy">Why?</a></p>
+  <p class="alert" role="status">{{ detailsSkipped }} applicant{{ detailsSkipped == 1 ? '’s' : 's’' }} details weren’t loaded this time, to protect your OSM allowance. Reload this page within 5 minutes to load the next batch: details already loaded are kept for 5 minutes, then deleted. <a href="/help/#osm-busy">Why?</a></p>
 {% endif %}

@@ -35,7 +35,7 @@
 {% if loaded %}
 <div class="card">
   <p class="muted">Updated {{ dataUpdated }} · Waiting of age {{ totalWaiting }} · Squirrels {{ squirrelsWaiting|default(0) }} · Too young {{ tooYoungWaiting }} · Explorers / too old {{ explorersWaiting|default(0) }} · All waiting {{ totalWaitingFull|default(0) }}</p>
-  {% if waitingIncomplete|default(false) %}<p class="alert">Some waiting list ages could not be loaded this time, to protect your OSM allowance, so the waiting numbers may be low. Run this again in a few minutes.</p>{% endif %}
+  {% if waitingIncomplete|default(false) %}<p class="alert">Some waiting list ages could not be loaded this time, to protect your OSM allowance, so the waiting numbers may be low. Run this again within 5 minutes to load the next batch (details already loaded are kept for 5 minutes).</p>{% endif %}
   <p class="muted chart-snapshot">Charts: snapshot as of this load (same data as the tables below — no extra OSM calls). Only the ticked sections were loaded.</p>
 
   {% set maxMembersSpaces = chartMaxMembersSpaces|default(1) %}

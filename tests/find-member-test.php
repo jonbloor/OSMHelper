@@ -5,6 +5,7 @@ declare(strict_types=1);
  * Run: php tests/find-member-test.php
  */
 require dirname(__DIR__) . '/vendor/autoload.php';
+require __DIR__ . '/isolate-storage.php';
 
 use App\Members\ContactIndex;
 use App\Osm\OsmApi;

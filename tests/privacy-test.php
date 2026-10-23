@@ -6,6 +6,7 @@ declare(strict_types=1);
  * Run: php tests/privacy-test.php   (needs the sodium extension)
  */
 require dirname(__DIR__) . '/vendor/autoload.php';
+require __DIR__ . '/isolate-storage.php';
 
 use App\App;
 use App\Http\Controllers\FindMemberController;

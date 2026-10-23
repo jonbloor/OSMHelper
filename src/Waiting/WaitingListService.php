@@ -435,12 +435,29 @@ final class WaitingListService
     /** Cache kind for OsmCache (per OSM user and waiting-list section). */
     public const CACHE_KIND = 'waiting';
     /**
-     * Most applicants per page load whose details may be fetched one by one, when the bulk grid
-     * doesn't supply them. Keeps a load at a fixed maximum number of OSM calls whatever the list size.
+     * Most one-by-one OSM calls (getIndividual / getData) per page load, for details the bulk grid
+     * doesn't supply. Keeps a load at a fixed maximum number of OSM calls whatever the list size:
+     * 1 list call + 1 grid call + at most this many.
      */
+    public const DETAIL_CALL_BUDGET = 40;
+    /** @deprecated kept for callers/tests: applicants per load when each needs both calls. */
     public const DETAIL_FALLBACK_MAX = 20;
-    /** Cache kind for applicants' one-by-one details (only used when the grid doesn't cover them). */
+    /** Cache kind for applicants' one-by-one details. */
     public const DETAIL_CACHE_KIND = 'waitingdetail';
+
+    /** Test hook: force the OSM_WAITING_GRID_DATES flag (null = read config). */
+    private static ?bool $gridDatesOverride = null;
+
+    public static function useGridDatesForTests(?bool $on): void
+    {
+        self::$gridDatesOverride = $on;
+    }
+
+    /** Whether grid dates are trusted (Config OSM_WAITING_GRID_DATES, off by default). */
+    public static function gridDatesEnabled(): bool
+    {
+        return self::$gridDatesOverride ?? \App\Config::waitingGridDates();
+    }
 
     /**
      * One bulk request for every member of the waiting list: the members grid already used by
@@ -456,9 +473,9 @@ final class WaitingListService
     }
 
     /**
-     * What the waiting list needs from a grid response, per member: dates (when present) and the
-     * custom-data (group 5) values keyed by column id. Contact groups are ignored, never kept.
-     * Pure.
+     * What the waiting list needs from a grid response, per member: dates (when present and valid,
+     * see validDate) and the custom-data (group 5) values keyed by column id. Contact groups are
+     * ignored, never kept. Pure.
      * @param array<string, mixed> $res
      * @return array{members: array<string, array{dob:string, joined:string, custom: array<string,string>, hasCustom: bool}>, notesColumnId: ?string, structureColumns: list<string>}
      */
@@ -501,8 +518,8 @@ final class WaitingListService
                     }
                 }
                 $members[$sid] = [
-                    'dob' => self::firstScalar($m, ['dob', 'date_of_birth']),
-                    'joined' => self::firstScalar($m, ['joined', 'applicationdate', 'started']),
+                    'dob' => self::firstValidDate($m, ['dob', 'date_of_birth']),
+                    'joined' => self::firstValidDate($m, ['joined', 'applicationdate', 'started']),
                     'custom' => $custom,
                     'hasCustom' => is_array($g) || $structureColumns !== [],
                 ];
@@ -520,25 +537,61 @@ final class WaitingListService
         return '';
     }
 
-    private static function parsesAsDate(string $v): bool
+    /**
+     * First key holding a valid date (see validDate), normalised to Y-m-d; '' when none does.
+     * @param array<string, mixed> $row @param list<string> $keys
+     */
+    private static function firstValidDate(array $row, array $keys): string
     {
-        return $v !== '' && strtotime($v) !== false;
+        foreach ($keys as $k) {
+            if (isset($row[$k]) && is_scalar($row[$k])) {
+                $d = self::validDate((string) $row[$k]);
+                if ($d !== '') return $d;
+            }
+        }
+        return '';
+    }
+
+    /**
+     * A real calendar date in Y-m-d form (an optional time part after it is ignored), normalised to
+     * Y-m-d. Anything else is "missing" (''): empty, 0000-00-00, the 1970-01-01 epoch placeholder
+     * OSM uses for an unset date, other formats (e.g. 01/02/2015), impossible dates, years before
+     * 1900 and dates in the future. Pure.
+     */
+    public static function validDate(string $v, ?int $now = null): string
+    {
+        $v = trim($v);
+        if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})(?:[ T]\d{2}:\d{2}(?::\d{2})?.*)?$/', $v, $m)) return '';
+        [$y, $mo, $d] = [(int) $m[1], (int) $m[2], (int) $m[3]];
+        if ($y < 1900 || !checkdate($mo, $d, $y)) return '';
+        $ymd = sprintf('%04d-%02d-%02d', $y, $mo, $d);
+        if ($ymd === '1970-01-01') return '';
+        if ($ymd > gmdate('Y-m-d', ($now ?? time()) + 86400)) return '';
+        return $ymd;
     }
 
     /**
      * Raw waiting-list rows with as few OSM calls as possible, cached per OSM user and section for
      * OsmCache::TTL_SECONDS:
-     *   cache hit: 0 calls. Otherwise 1 list call + 1 grid call, plus (only for applicants the grid
-     *   didn't cover) at most DETAIL_FALLBACK_MAX applicants' individual calls.
+     *   cache hit: 0 calls. Otherwise 1 list call + 1 grid call, plus at most DETAIL_CALL_BUDGET
+     *   one-by-one calls for details the grid doesn't supply.
+     * Dates: with OSM_WAITING_GRID_DATES off (the default), date of birth and date joined come from
+     *   each applicant's own record (getIndividual: authoritative, 1 call each), falling back to a
+     *   valid list-row value; the grid supplies only the custom fields. On: valid grid dates are
+     *   used and getIndividual is only called when the grid has none.
      * Stops at once (no retry) when the OSM allowance guard refuses or OSM returns 429.
-     * Cached rows hold names, dates and custom-data values only (no contact details, no tokens).
+     * Cached rows hold names, dates of birth, dates joined, every custom-field value and the
+     * leaders' notes (no contact details, no tokens); see OsmCache for who can read them and when
+     * they are deleted.
+     * $useCache false ("Refresh from OSM"): ignore cached rows and details, still guarded.
      *
-     * @return array{rows: list<array<string, mixed>>, listCount: int, listError: ?string, busyMinutes: ?int, detailsSkipped: int, fromCache: bool, source: string}
+     * @return array{rows: list<array<string, mixed>>, listCount: int, listError: ?string, busyMinutes: ?int, blocked: bool, detailsSkipped: int, fromCache: bool, source: string}
      */
     public static function loadRows(OsmApi $api, string $token, array $list, bool $useCache = true): array
     {
         $sectionId = (string) $list['id'];
         $userId = OsmCache::currentUserId();
+        $loadStartedAt = microtime(true);
         if ($useCache) {
             $hit = OsmCache::get(self::CACHE_KIND, $userId, $sectionId);
             if (is_array($hit) && is_array($hit['rows'] ?? null)) {
@@ -547,17 +600,22 @@ final class WaitingListService
                     'listCount' => (int) ($hit['listCount'] ?? count($hit['rows'])),
                     'listError' => null,
                     'busyMinutes' => null,
+                    'blocked' => false,
                     'detailsSkipped' => 0,
                     'fromCache' => true,
                     'source' => (string) ($hit['source'] ?? 'grid'),
                 ];
             }
         }
-        $out = ['rows' => [], 'listCount' => 0, 'listError' => null, 'busyMinutes' => null, 'detailsSkipped' => 0, 'fromCache' => false, 'source' => 'grid'];
+        $out = ['rows' => [], 'listCount' => 0, 'listError' => null, 'busyMinutes' => null, 'blocked' => false, 'detailsSkipped' => 0, 'fromCache' => false, 'source' => 'grid'];
+        $busy = static function (OsmBusyException $e) use (&$out): void {
+            $out['busyMinutes'] = $e->waitMinutes();
+            if ($e instanceof \App\Osm\OsmBlockedException) $out['blocked'] = true;
+        };
         try {
             $listData = self::fetchListRows($api, $token, $list);
         } catch (OsmBusyException $e) {
-            $out['busyMinutes'] = $e->waitMinutes();
+            $busy($e);
             $out['listError'] = $e->getMessage();
             return $out;
         } catch (Throwable) {
@@ -565,6 +623,7 @@ final class WaitingListService
             return $out;
         }
         $out['listCount'] = count($listData);
+        $gridDates = self::gridDatesEnabled();
 
         $grid = ['members' => [], 'notesColumnId' => null, 'structureColumns' => []];
         $gridOk = false;
@@ -582,31 +641,34 @@ final class WaitingListService
                     @error_log('OSMHelper waiting-list grid_unusable');
                 }
             } catch (OsmBusyException $e) {
-                $out['busyMinutes'] = $e->waitMinutes();
+                $busy($e);
             } catch (Throwable) {
                 @error_log('OSMHelper waiting-list grid_error');
             }
         }
 
-        // Details already fetched one by one in the last few minutes (only used when the grid
-        // didn't cover them), so a long list fills in over a few loads instead of re-fetching.
-        $now = time();
-        $detailCache = OsmCache::get(self::DETAIL_CACHE_KIND, $userId, $sectionId) ?? [];
+        // Details fetched one by one in the last 5 minutes, so a long list fills in over a few
+        // reloads instead of re-fetching. Each entry is dropped 5 minutes after it was fetched.
+        $now = OsmCache::currentTime();
+        $detailCache = $useCache ? (OsmCache::get(self::DETAIL_CACHE_KIND, $userId, $sectionId) ?? []) : [];
         $details = [];
         foreach (is_array($detailCache['members'] ?? null) ? $detailCache['members'] : [] as $sid => $d) {
             if (is_array($d) && is_int($d['at'] ?? null) && $now - $d['at'] < OsmCache::TTL_SECONDS) $details[(string) $sid] = $d;
         }
         $detailsChanged = false;
 
-        $fallbackUsed = 0;
+        $callsUsed = 0;
+        $oldestUsed = $now; // fetch time of the oldest detail these rows use
         $rows = [];
         foreach ($listData as $applicant) {
             if (!is_array($applicant)) continue;
             $scoutid = (string) ($applicant['scoutid'] ?? $applicant['id'] ?? '');
             if ($scoutid === '') continue;
             $g = $gridOk ? ($grid['members'][$scoutid] ?? null) : null;
-            $dob = $g !== null && self::parsesAsDate($g['dob']) ? $g['dob'] : self::firstScalar($applicant, ['dob']);
-            $joined = $g !== null && self::parsesAsDate($g['joined']) ? $g['joined'] : self::firstScalar($applicant, ['joined']);
+            $listDob = self::firstValidDate($applicant, ['dob']);
+            $listJoined = self::firstValidDate($applicant, ['joined']);
+            $dob = $gridDates && $g !== null ? $g['dob'] : '';
+            $joined = $gridDates && $g !== null ? $g['joined'] : '';
             $custom = $g !== null ? $g['custom'] : [];
             $customOk = $g !== null && $g['hasCustom'];
             $notesCol = $grid['notesColumnId'];
@@ -622,18 +684,24 @@ final class WaitingListService
                 'leadersNotes' => $leadersNotes,
                 'detail' => 'ok',
             ];
-            $needInd = !self::parsesAsDate($dob) || !self::parsesAsDate($joined);
+            // Grid dates off: the applicant's own record decides (as before the grid was used).
+            $needInd = !$gridDates || $dob === '' || $joined === '';
             $needCustom = !$customOk;
             $cachedDetail = $details[$scoutid] ?? null;
-            if (($needInd || $needCustom) && is_array($cachedDetail)) {
+            if (is_array($cachedDetail) && (($needInd && !array_key_exists('dob', $cachedDetail)) || ($needCustom && !is_array($cachedDetail['custom'] ?? null)))) {
+                $cachedDetail = null; // cached entry lacks what this load needs
+            }
+            $cost = ($needInd ? 1 : 0) + ($needCustom ? 1 : 0);
+            if ($cost > 0 && is_array($cachedDetail)) {
                 $row = self::mergeDetail($row, $cachedDetail, $needInd, $needCustom);
-            } elseif ($needInd || $needCustom) {
-                if ($out['busyMinutes'] !== null || $fallbackUsed >= self::DETAIL_FALLBACK_MAX) {
+                $oldestUsed = min($oldestUsed, (int) $cachedDetail['at']);
+            } elseif ($cost > 0) {
+                if ($out['busyMinutes'] !== null || $callsUsed + $cost > self::DETAIL_CALL_BUDGET) {
                     // Not fetched this time, to keep this load's OSM calls bounded (or OSM is busy).
                     $out['detailsSkipped']++;
                     $row['detail'] = 'skipped';
                 } else {
-                    $fallbackUsed++;
+                    $callsUsed += $cost;
                     $out['source'] = $gridOk ? 'grid+individual' : 'individual';
                     $fetched = ['at' => $now];
                     try {
@@ -647,11 +715,12 @@ final class WaitingListService
                             ]);
                             $d = $ind['data'] ?? $ind;
                             if (!is_array($d)) $d = [];
-                            $fetched['dob'] = self::firstScalar($d, ['dob']);
-                            $fetched['joined'] = self::firstScalar($d, ['joined', 'applicationdate', 'started']);
+                            $fetched['dob'] = self::firstValidDate($d, ['dob']);
+                            $fetched['joined'] = self::firstValidDate($d, ['joined', 'applicationdate', 'started']);
                             $fetched['firstname'] = self::firstScalar($d, ['firstname']);
                             $fetched['lastname'] = self::firstScalar($d, ['lastname']);
                         }
+                        $customFailed = false;
                         if ($needCustom) {
                             try {
                                 $cols = self::extractCustomColumns(self::fetchCustomData($api, $token, $sectionId, $scoutid));
@@ -664,13 +733,19 @@ final class WaitingListService
                             } catch (OsmBusyException $e) {
                                 throw $e;
                             } catch (Throwable) {
+                                $customFailed = true;
                             }
                         }
                         $row = self::mergeDetail($row, $fetched, $needInd, $needCustom);
-                        $details[$scoutid] = $fetched;
-                        $detailsChanged = true;
+                        if ($customFailed) {
+                            // Custom fields unreadable: no score, and nothing cached for this applicant.
+                            $row['detail'] = 'error';
+                        } else {
+                            $details[$scoutid] = $fetched;
+                            $detailsChanged = true;
+                        }
                     } catch (OsmBusyException $e) {
-                        $out['busyMinutes'] = $e->waitMinutes();
+                        $busy($e);
                         $out['detailsSkipped']++;
                         $row['detail'] = 'skipped';
                     } catch (Throwable) {
@@ -678,25 +753,38 @@ final class WaitingListService
                     }
                 }
             }
+            if ($needInd && $row['detail'] === 'ok') {
+                // getIndividual had no valid date: fall back to a valid list-row value.
+                if ($row['dob'] === '') $row['dob'] = $listDob;
+                if ($row['joined'] === '') $row['joined'] = $listJoined;
+            }
             $rows[] = $row;
         }
         $out['rows'] = $rows;
         if ($detailsChanged) {
-            OsmCache::put(self::DETAIL_CACHE_KIND, $userId, $sectionId, ['members' => $details]);
+            // Stamped with the oldest entry's fetch time, so the file is deleted 5 minutes after the
+            // oldest detail in it was fetched (no entry outlives the 5-minute promise).
+            $oldest = $now;
+            foreach ($details as $d) $oldest = min($oldest, (int) $d['at']);
+            OsmCache::put(self::DETAIL_CACHE_KIND, $userId, $sectionId, ['members' => $details], $loadStartedAt, $oldest);
         }
-        // Cache only a complete load: never one cut short by the allowance guard or the cap.
-        if ($out['busyMinutes'] === null && $out['detailsSkipped'] === 0) {
+        // Cache only a complete load: never one cut short by the guard or the budget, nor one where
+        // any applicant's details failed to load.
+        $anyError = false;
+        foreach ($rows as $r) if ($r['detail'] !== 'ok') { $anyError = true; break; }
+        if ($out['busyMinutes'] === null && $out['detailsSkipped'] === 0 && !$anyError) {
             OsmCache::put(self::CACHE_KIND, $userId, $sectionId, [
                 'rows' => $rows,
                 'listCount' => $out['listCount'],
                 'source' => $out['source'],
-            ]);
+            ], $loadStartedAt, $oldestUsed); // expires 5 minutes after its oldest data was fetched
         }
         return $out;
     }
 
     /**
      * Fill a row's missing pieces from one-by-one details (getIndividual / getData). Pure.
+     * getIndividual's valid dates replace the row's (they are authoritative); names fill blanks.
      * @param array<string, mixed> $row
      * @param array<string, mixed> $d
      * @return array<string, mixed>
@@ -704,13 +792,14 @@ final class WaitingListService
     private static function mergeDetail(array $row, array $d, bool $needInd, bool $needCustom): array
     {
         if ($needInd) {
-            if (!self::parsesAsDate((string) $row['dob'])) $row['dob'] = (string) ($d['dob'] ?? '');
-            if (!self::parsesAsDate((string) $row['joined'])) $row['joined'] = (string) ($d['joined'] ?? '');
+            $dob = self::validDate((string) ($d['dob'] ?? ''));
+            $joined = self::validDate((string) ($d['joined'] ?? ''));
+            if ($dob !== '') $row['dob'] = $dob;
+            if ($joined !== '') $row['joined'] = $joined;
             if ($row['firstname'] === '') $row['firstname'] = (string) ($d['firstname'] ?? '');
             if ($row['lastname'] === '') $row['lastname'] = (string) ($d['lastname'] ?? '');
         }
         if ($needCustom && is_array($d['custom'] ?? null)) {
-            $row['custom'] = $row['custom'] + $d['custom'];
             foreach ($d['custom'] as $k => $v) $row['custom'][(string) $k] = (string) $v;
             $row['customOk'] = true;
             $row['leadersNotes'] = (string) ($d['leadersNotes'] ?? '');
@@ -730,7 +819,7 @@ final class WaitingListService
      * column values. $map (saved field mapping, optional): its willing_column_id, when set, supplies
      * "willing to help".
      * @param array<string, float|int> $cutoffs
-     * @return array{applicants: list<array<string, mixed>>, listCount: int, listError: ?string, busyMinutes: ?int, detailsSkipped: int, fromCache: bool}
+     * @return array{applicants: list<array<string, mixed>>, listCount: int, listError: ?string, busyMinutes: ?int, blocked: bool, detailsSkipped: int, fromCache: bool}
      */
     public static function loadApplicants(OsmApi $api, string $token, array $list, array $cutoffs, ?array $map = null, bool $useCache = true): array
     {
@@ -740,6 +829,7 @@ final class WaitingListService
             'listCount' => $raw['listCount'],
             'listError' => $raw['listError'],
             'busyMinutes' => $raw['busyMinutes'],
+            'blocked' => $raw['blocked'] ?? false,
             'detailsSkipped' => $raw['detailsSkipped'],
             'fromCache' => $raw['fromCache'],
         ];
@@ -773,7 +863,7 @@ final class WaitingListService
                     'baseScore' => -INF,
                     'ageYears' => null,
                     'scoreBreakdown' => $detail === 'skipped'
-                        ? 'Not loaded yet, to protect your OSM allowance. Open this page again in a few minutes.'
+                        ? 'Not loaded yet, to protect your OSM allowance. Reload this page within 5 minutes to load the next batch (details already loaded are kept for 5 minutes).'
                         : 'Could not read this applicant’s details from OSM, so there is no score.',
                     'mappedNotes' => '',
                     'leadersNotes' => '',

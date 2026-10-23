@@ -5,6 +5,7 @@ declare(strict_types=1);
  * Run: php tests/events-test.php
  */
 require dirname(__DIR__) . '/vendor/autoload.php';
+require __DIR__ . '/isolate-storage.php';
 
 use App\Events\EventList;
 use App\Http\Controllers\EventsController;
@@ -249,6 +250,9 @@ check($r['calls'] === 1 && count($h) === 1 && str_contains((string) $r['stopReas
 $api = mockApi([new Response(200, ['X-Blocked' => 'true'] + $hdr, json_encode($main)), new Response(200, $hdr, json_encode($arch))], $h);
 $r = EventList::load($api, 'tok', ['section_id' => '55', 'section_name' => 'Beavers']);
 check($r['calls'] === 1 && count($h) === 1 && str_contains((string) $r['stopReason'], 'blocked'), 'X-Blocked: stops at once');
+// The block is app-wide and persisted until an admin clears it: clear it so later checks run.
+check(App\Osm\OsmRateGuard::appBlocked() !== null, 'X-Blocked: app-wide block persisted');
+App\Osm\OsmRateGuard::clearAppBlock();
 
 // Low allowance: no call at all; low after call 1: archived call not made
 $_SESSION['osmRateLimit'] = ['limit' => 1000, 'remaining' => 60, 'resetInSec' => 600, 'lastUpdatedMs' => (int) round(microtime(true) * 1000)];

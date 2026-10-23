@@ -18,6 +18,15 @@ final class WaitingListSubmitController
             return;
         }
 
+        // Per-IP throttle before anything else (see IntakeThrottle): caps OSM writes per caller.
+        $wait = \App\Waiting\IntakeThrottle::hit((string) ($_SERVER['REMOTE_ADDR'] ?? ''));
+        if ($wait !== null) {
+            error_log('OSMHelper waiting-list intake: HTTP 429 intake_throttled');
+            header('Retry-After: ' . $wait);
+            self::json(429, ['ok' => false, 'error' => 'Too many joining-form submissions from this site in a short time. Please try again in ' . max(1, (int) ceil($wait / 60)) . ' minutes.']);
+            return;
+        }
+
         $siteKey = self::siteKeyFromRequest();
         if ($siteKey === '') {
             self::json(401, ['ok' => false, 'error' => 'Missing site key.']);

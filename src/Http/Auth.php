@@ -57,7 +57,7 @@ final class Auth
         // Shared per-user backoff (429 or allowance low): no probe call while it lasts.
         $guard = OsmRateGuard::forCurrentUser();
         $busyMinutes = $guard->busyMinutes();
-        if ($rate === null && $token !== '' && $busyMinutes === null) {
+        if ($rate === null && $token !== '' && $busyMinutes === null && OsmRateGuard::appBlocked() === null) {
             try {
                 (new OsmApi())->get($token, '/oauth/resource');
             } catch (Throwable) {
@@ -97,6 +97,8 @@ final class Auth
             'rateLimitNearing' => $nearing,
             'osmBusyMinutes' => $busyMinutes,
             'osmBusyHard' => $busyMinutes !== null && $guard->reason() !== OsmRateGuard::REASON_LOW,
+            // OSM blocked the application (X-Blocked): every OSM call is stopped until an admin clears it.
+            'osmBlocked' => OsmRateGuard::appBlocked() !== null,
         ];
     }
 }

@@ -273,7 +273,9 @@ final class EventList
                 $calls++;
                 $res = $api->get($token, self::ENDPOINT, $query);
             } catch (Throwable $e) {
-                if ($e->getCode() === 429) {
+                if ($e instanceof \App\Osm\OsmBlockedException) {
+                    $msg = 'OSM has blocked requests from OSMHelper, so it stopped straight away. Do not retry; contact OSM support.';
+                } elseif ($e->getCode() === 429) {
                     $ra = $api->getRetryAfterSeconds();
                     $msg = 'OSM said too many requests, so OSMHelper stopped. '
                         . ($ra !== null ? 'Try again in about ' . self::humanWait($ra) . '.' : 'Wait for your allowance to reset.');

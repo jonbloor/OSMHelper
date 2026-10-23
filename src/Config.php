@@ -100,6 +100,17 @@ final class Config
         return self::missingRequired() === [];
     }
 
+    /**
+     * OSM_WAITING_GRID_DATES (default off): take waiting-list applicants' date of birth and date
+     * joined from the bulk members grid. Off: those dates come from each applicant's own record
+     * (getIndividual), as before the grid was used, and the grid only supplies custom fields.
+     * Turn on only once a captured grid response confirms its dates mean the same as getIndividual's.
+     */
+    public static function waitingGridDates(): bool
+    {
+        return filter_var(self::get('OSM_WAITING_GRID_DATES', 'false'), FILTER_VALIDATE_BOOLEAN);
+    }
+
     public static function debug(): bool
     {
         return filter_var(self::get('APP_DEBUG', 'false'), FILTER_VALIDATE_BOOLEAN);

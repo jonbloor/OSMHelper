@@ -4,7 +4,7 @@
   <h2>Waiting list</h2>
   {% set pickerAction = '/waiting-list/' %}
   {% include '_waiting_picker.twig' %}
-  <p class="muted">{{ waitingSectionName }} · Fetched {{ fetchedAt }} · # = order by score (highest first).{% if fieldMap %} Rank = your leaders’ order, saved in OSM.{% endif %}</p>
+  <p class="muted">{{ waitingSectionName }} · Fetched {{ fetchedAt }}{% if fromCache|default(false) %} (saved copy, kept for 5 minutes){% endif %} · <a href="/waiting-list/?section={{ waitingList.id|url_encode }}&amp;refresh=1" title="Fetch the list from OSM again now, ignoring the 5-minute copy. Uses a few OSM requests.">Refresh from OSM</a> · # = order by score (highest first).{% if fieldMap %} Rank = your leaders’ order, saved in OSM.{% endif %}</p>
   <p class="muted score-note"><strong>How the score works:</strong> age in years (including part-years) × 3, plus months on the list (days ÷ 30), plus 20 if Willing to help is yes. A higher score means a stronger claim to a place. {% if fieldMap %}Rank is your leaders’ decision and can differ from the score order. {% endif %}The score is worked out here in OSMHelper and is never saved to OSM.
     {% if fieldMap and fieldMap.willing_column_id %}Willing to help comes from the OSM field “{{ fieldMap.willing_label }}”.{% else %}Willing to help only counts once a Willing to help field is chosen in <a href="/waiting-list/fields/?section={{ waitingList.id }}">Fields</a>.{% endif %}
     Hover over or tap a score to see how it was worked out. <a href="/help/#waiting-score">More about the score</a>.</p>

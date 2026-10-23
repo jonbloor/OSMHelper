@@ -43,6 +43,8 @@ $now = 1_800_000_000;
 $clock = static function () use (&$now): int { return $now; };
 OsmRateGuard::useClock($clock);
 OsmCache::useClock($clock);
+// Sections 1-7 test the grid-dates mode (OSM_WAITING_GRID_DATES=1). The default (off) is section 8.
+WL::useGridDatesForTests(true);
 
 const TOKEN = 'tok-SECRET-abc123';
 const SECTION = '4242';
@@ -244,12 +246,12 @@ $responder = static function (RequestInterface $req): Response {
 };
 $r = WL::loadRows(api(), TOKEN, $list);
 check(count($calls) === 2, '429 on the grid: no further calls (no retry, no per-applicant fallback) [got ' . count($calls) . ']');
-check($r['busyMinutes'] === 2, '429 Retry-After 120s → busy for 2 minutes');
+check($r['busyMinutes'] === 50, '429 Retry-After 120s but Reset 3000s → busy for the longer, 50 minutes [got ' . var_export($r['busyMinutes'], true) . ']');
 check($r['detailsSkipped'] === 40, 'every applicant marked skipped');
 $calls = [];
 $r = WL::loadRows(api(), TOKEN, $list);
 check(count($calls) === 0, 'incomplete load was not cached, and the next load makes 0 calls during backoff');
-check($r['listError'] !== null && str_contains($r['listError'], 'OSM is busy, try again in 2 minutes'), 'friendly "OSM is busy, try again in N minutes"');
+check($r['listError'] !== null && str_contains($r['listError'], 'OSM is busy, try again in 50 minutes'), 'friendly "OSM is busy, try again in N minutes"');
 $threw = null;
 try { api()->get(TOKEN, '/ext/members/contact/', ['action' => 'getListOfMembers']); } catch (OsmBusyException $e) { $threw = $e; }
 check($threw !== null && count($calls) === 0 && $threw->getCode() === 429, 'new OsmApi instance refuses a read during backoff (shared per-user state)');
@@ -263,9 +265,12 @@ $threw = null;
 try { $intakeApi->post(TOKEN, '/ext/members/contact/actions/?action=newMember', []); } catch (OsmBusyException $e) { $threw = $e; }
 check($threw !== null && count($calls) === 0, 'token-owner client (WordPress form) shares the same backoff');
 $now += 121;
+$r = WL::loadRows(api(), TOKEN, $list);
+check(count($calls) === 0 && $r['busyMinutes'] !== null, 'Retry-After passed but Reset has not: still 0 calls');
+$now += 3000;
 $responder = standard(40);
 $r = WL::loadRows(api(), TOKEN, $list);
-check(count($calls) === 2 && $r['busyMinutes'] === null, 'after Retry-After passes, calls resume');
+check(count($calls) === 2 && $r['busyMinutes'] === null, 'after the longer of Retry-After and Reset passes, calls resume');
 
 // 429 on the very first call
 freshUser('9005');

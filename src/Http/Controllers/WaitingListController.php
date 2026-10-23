@@ -92,6 +92,15 @@ final class WaitingListController
         return ['api' => $api, 'lists' => $found['lists'], 'list' => $list, 'usedNameFallback' => $found['usedNameFallback']];
     }
 
+    /**
+     * "Refresh from OSM" (?refresh=1): ignore this user's cached waiting list and fetch it again.
+     * Still goes through the OSM allowance guard like any other load.
+     */
+    private static function refreshRequested(): bool
+    {
+        return isset($_GET['refresh']) && (string) $_GET['refresh'] === '1';
+    }
+
     private static function requestedSection(): ?string
     {
         $raw = $_GET['section'] ?? $_POST['section'] ?? null;
@@ -159,7 +168,7 @@ final class WaitingListController
         if ($ctx === null) return;
         $waiting = $ctx['list'];
         $mapping = self::mapping($waiting);
-        $loaded = WL::loadApplicants($ctx['api'], $token, $waiting, $cutoffs, $mapping['map']);
+        $loaded = WL::loadApplicants($ctx['api'], $token, $waiting, $cutoffs, $mapping['map'], !self::refreshRequested());
         $map = $mapping['map'];
         $applicants = $loaded['applicants'];
         if ($map !== null) {
@@ -181,6 +190,8 @@ final class WaitingListController
             'fetchedAt' => self::fetchedAt($waiting, !empty($loaded['fromCache'])),
             'detailsSkipped' => $loaded['detailsSkipped'],
             'loadBusyMinutes' => $loaded['busyMinutes'],
+            'loadBlocked' => $loaded['blocked'],
+            'fromCache' => !empty($loaded['fromCache']),
         ])));
     }
 
@@ -355,7 +366,8 @@ final class WaitingListController
             'writesEnabled' => $writesOn,
         ]);
         // A cached copy costs no OSM requests, so only a fresh load is held back by a low allowance.
-        $cachedCopy = OsmCache::get(WL::CACHE_KIND, OsmCache::currentUserId(), (string) $list['id']) !== null;
+        $refresh = self::refreshRequested();
+        $cachedCopy = !$refresh && OsmCache::get(WL::CACHE_KIND, OsmCache::currentUserId(), (string) $list['id']) !== null;
         if (!$cachedCopy && $api->isRateLow(self::RATE_LOW_REMAINING)) {
             App::render('waiting-rank.twig', Auth::baseContext(array_merge($base, [
                 'rows' => [],
@@ -363,7 +375,7 @@ final class WaitingListController
             ])));
             return;
         }
-        $loaded = WL::loadApplicants($api, $token, $list, self::cutoffs(), $map);
+        $loaded = WL::loadApplicants($api, $token, $list, self::cutoffs(), $map, !$refresh);
         $rows = [];
         $anyReadable = false;
         $anyHasColumns = false;
@@ -405,6 +417,8 @@ final class WaitingListController
             'fetchedAt' => self::fetchedAt($list, !empty($loaded['fromCache'])),
             'detailsSkipped' => $loaded['detailsSkipped'],
             'loadBusyMinutes' => $loaded['busyMinutes'],
+            'loadBlocked' => $loaded['blocked'],
+            'fromCache' => !empty($loaded['fromCache']),
         ])));
     }
 

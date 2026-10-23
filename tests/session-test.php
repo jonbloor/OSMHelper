@@ -7,6 +7,7 @@ declare(strict_types=1);
  */
 ob_start(); // keep headers unsent so session_regenerate_id() works under the CLI
 require dirname(__DIR__) . '/vendor/autoload.php';
+require __DIR__ . '/isolate-storage.php';
 
 use App\App;
 use App\Config;

@@ -10,6 +10,8 @@ use App\Http\OAuthState;
 use App\Osm\LoginSections;
 use App\Osm\OsmApi;
 use App\Osm\OsmOAuth;
+use App\Osm\OsmBusyException;
+use App\Osm\OsmRateGuard;
 use Throwable;
 use App\Support\LogSafe;
 
@@ -26,6 +28,9 @@ final class AuthController
             return;
         }
 
+        if (self::refuseIfOsmStopped()) {
+            return;
+        }
         $oauth = new OsmOAuth();
         $url = $oauth->getAuthorizationUrl();
         $state = $oauth->getState();
@@ -53,6 +58,23 @@ final class AuthController
         echo '<script>location.replace(' . $js . ');</script>';
         echo '</body></html>';
         exit;
+    }
+
+    /** Renders an error page (no OSM call) when OSM is blocked app-wide or state can't be saved. */
+    private static function refuseIfOsmStopped(): bool
+    {
+        try {
+            OsmRateGuard::assertAppMayCall();
+            return false;
+        } catch (OsmBusyException $e) {
+            error_log('OSM API osm_call_refused ' . $e->reason());
+            http_response_code(503);
+            App::render('error.twig', [
+                'title' => 'OSM is unavailable',
+                'message' => $e->getMessage(),
+            ]);
+            return true;
+        }
     }
 
     public function callback(): void
@@ -88,6 +110,10 @@ final class AuthController
             return;
         }
 
+        // X-Blocked / fail-closed: the token exchange is an OSM call too, so it stops as well.
+        if (self::refuseIfOsmStopped()) {
+            return;
+        }
         try {
             $oauth = new OsmOAuth();
             $token = $oauth->getAccessToken($code);

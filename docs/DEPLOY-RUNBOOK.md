@@ -93,6 +93,43 @@ Unset or empty: nobody sees it. A user's OSM ID appears in waiting-list field se
   concurrent requests can't lose or duplicate lines. deploy.sh runs `bin/scrub-error-log.php` (prints counts only)
   to strip `osm_message`/`scoutid` and OSM text from lines written before this change.
 
+## OSM rate limit: cache, backoff and the X-Blocked stop
+Two storage dirs are created by PHP-FPM itself (owner `osmhelper`, dir `0700`, files `0600`). deploy.sh **prunes
+both from its storage chmod** (next to `storage/sessions/`), so a deploy never loosens them; `bungle` can't read them.
+Don't back them up.
+
+| Path | Holds | Lifetime |
+|---|---|---|
+| `storage/osm-cache/` | **Personal data.** Per OSM user and section: waiting-list applicants' names, dates of birth, dates joined, every waiting-list custom field and the leaders' notes; the user's section list. Owner-only (keyed to the OSM user who fetched it). Plus `inv-*.mark` invalidation markers (a timestamp only). | Each entry is deleted 5 minutes after it was fetched by `OsmCache::sweep()` on every request (`App::sweepPrivateCaches()`), at sign-out, and for a waiting list whenever OSMHelper writes to it. Markers: 1 hour. |
+| `storage/osm-rate/<hash>.json` (+ `.lock`) | Per-OSM-user backoff: numbers and a reason code (`osm_backoff_429`, `osm_backoff_exhausted`, `osm_rate_low`). File name = first 40 hex chars of `sha256("osm-user:<id>")`. | Until the backoff ends (then ignored). |
+| `storage/osm-rate/app-blocked.json` | App-wide stop, written when OSM sends `X-Blocked`. While it exists **every** OSM call is refused for every user: page loads, saves, sign-in, token refresh and the WordPress joining form. | **Until cleared by hand** (below). Never expires on its own. |
+| `storage/osm-rate/intake-<hash>.json` | Joining-form per-IP throttle (20 submits / 15 min; keyed hash of the IP, timestamps only). | Swept 15 minutes after the last submit. |
+
+- Fail closed: if `storage/osm-rate/` can't be created or written, the app refuses all OSM calls (sign-in included),
+  shows "OSMHelper is not contacting OSM right now", and logs `osm_rate_state_unwritable`. Fix ownership
+  (`chown -R osmhelper:osmhelper storage/osm-rate; chmod 700 storage/osm-rate`) and it recovers on the next request.
+- If `storage/osm-cache/` can't be written the app logs `osm_cache_unwritable` and just doesn't cache (more OSM calls).
+
+### Clearing the X-Blocked stop by hand
+Carrying on after `X-Blocked` can make OSM's block permanent. Only clear it once OSM support has confirmed the block
+is lifted and the cause is fixed. Log `kind: blocked` lines in `storage/osm-errors.jsonl` show when it happened.
+
+    cd /home/osmhelper/app
+    sudo -u osmhelper php8.5 bin/osm-clear-block.php            # show status (BLOCKED since ... UTC / Not blocked)
+    sudo -u osmhelper php8.5 bin/osm-clear-block.php --clear    # lift it
+
+(Or, as `osmhelper`: `rm storage/osm-rate/app-blocked.json`.) WordPress site keys marked blocked by the same event
+stay blocked until the leader clears them on Members → Joining form.
+
+### Clearing a stuck per-user backoff by hand
+Backoffs end on their own (at most about 25 hours). Only clear one early if you are sure OSM's limit has reset:
+
+    sudo -u osmhelper php8.5 bin/osm-clear-block.php --user=<OSM user id>           # show
+    sudo -u osmhelper php8.5 bin/osm-clear-block.php --user=<OSM user id> --clear   # clear
+
+(Or delete `storage/osm-rate/<first 40 hex of sha256("osm-user:<id>")>.json` as `osmhelper`.)
+Removing the whole `storage/osm-rate/` dir clears every backoff **and the X-Blocked stop**, so don't.
+
 ## Sessions (2 hours, even while working)
 - Limits come from `.env` (optional, seconds, clamped to 300..86400): `SESSION_ABSOLUTE_SECONDS` (default 7200:
   every session ends 2 hours after sign-in, even while in use) and `SESSION_IDLE_SECONDS` (default 7200).

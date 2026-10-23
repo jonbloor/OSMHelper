@@ -5,6 +5,7 @@ declare(strict_types=1);
  * Run: php tests/waiting-list-intake-test.php
  */
 require dirname(__DIR__) . '/vendor/autoload.php';
+require __DIR__ . '/isolate-storage.php';
 
 use App\Http\Controllers\Api\WaitingListSubmitController;
 use App\Osm\OsmApi;
