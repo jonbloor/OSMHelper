@@ -6,6 +6,8 @@ use App\Config;
 use App\Http\Auth;
 use App\Http\Csrf;
 use App\Osm\OsmApi;
+use App\Osm\OsmBusyException;
+use App\Osm\OsmCache;
 use App\Store\Db;
 use App\Store\SettingsStore;
 use App\Store\WaitingFieldMapStore;
@@ -33,6 +35,8 @@ final class WaitingListController
     private const VERIFY_DELAY_US = 1000000;
     /** Shown instead of raw database errors (details go to the PHP error log). */
     private const MAP_LOAD_ERROR = "We couldn't load your saved waiting list settings. This is a problem on our side, and we've been told. You can still view the waiting list.";
+    /** OsmCache kind for this user's /oauth/resource sections (no member data). */
+    private const SECTIONS_CACHE_KIND = 'sections';
     private const MAP_SAVE_ERROR = "We couldn't save your waiting list settings. This is a problem on our side, and we've been told. Please try again later.";
 
     /** @return array<string, float|int> */
@@ -46,17 +50,31 @@ final class WaitingListController
      * Sections → waiting lists → selected list. Renders the error page and returns null on failure.
      * @return array{api:OsmApi, lists:list<array<string,string>>, list:array<string,string>, usedNameFallback:bool}|null
      */
-    private static function resolve(string $token, ?string $requested): ?array
+    private static function resolve(string $token, ?string $requested, bool $essential = false): ?array
     {
         $api = new OsmApi();
-        try {
-            $sections = $api->getDynamicSections($token);
-        } catch (Throwable) {
-            App::render('error.twig', Auth::baseContext([
-                'title' => 'Waiting list',
-                'message' => 'Could not load sections from OSM.',
-            ]));
-            return null;
+        $api->setEssential($essential);
+        // Sections change rarely: reuse this user's list for a few minutes instead of asking OSM on every page.
+        $userId = OsmCache::currentUserId();
+        $cached = OsmCache::get(self::SECTIONS_CACHE_KIND, $userId, 'resource');
+        $sections = is_array($cached['sections'] ?? null) ? $cached['sections'] : null;
+        if ($sections === null) {
+            try {
+                $sections = $api->getDynamicSections($token);
+                OsmCache::put(self::SECTIONS_CACHE_KIND, $userId, 'resource', ['sections' => $sections]);
+            } catch (OsmBusyException $e) {
+                App::render('error.twig', Auth::baseContext([
+                    'title' => 'Waiting list',
+                    'message' => $e->getMessage(),
+                ]));
+                return null;
+            } catch (Throwable) {
+                App::render('error.twig', Auth::baseContext([
+                    'title' => 'Waiting list',
+                    'message' => 'Could not load sections from OSM.',
+                ]));
+                return null;
+            }
         }
         $found = WL::discoverLists($sections);
         $remembered = isset($_SESSION['waitingSectionId']) && is_string($_SESSION['waitingSectionId']) ? $_SESSION['waitingSectionId'] : null;
@@ -160,8 +178,17 @@ final class WaitingListController
             'listError' => $loaded['listError'],
             'fieldMap' => $map,
             'mapError' => $mapping['error'],
-            'fetchedAt' => (new \DateTimeImmutable('now', new \DateTimeZone('Europe/London')))->format('d/m/y H:i'),
+            'fetchedAt' => self::fetchedAt($waiting, !empty($loaded['fromCache'])),
+            'detailsSkipped' => $loaded['detailsSkipped'],
+            'loadBusyMinutes' => $loaded['busyMinutes'],
         ])));
+    }
+
+    /** When the shown data came from OSM (UK time): now, or when the cached copy was fetched. */
+    private static function fetchedAt(array $list, bool $fromCache): string
+    {
+        $age = $fromCache ? (OsmCache::ageSeconds(WL::CACHE_KIND, OsmCache::currentUserId(), (string) $list['id']) ?? 0) : 0;
+        return (new \DateTimeImmutable('@' . (time() - $age)))->setTimezone(new \DateTimeZone('Europe/London'))->format('d/m/y H:i');
     }
 
     // ------------------------------------------------------------------ field mapping
@@ -174,6 +201,8 @@ final class WaitingListController
     {
         try {
             $rows = WL::fetchListRows($api, $token, $list);
+        } catch (OsmBusyException $e) {
+            return ['groupId' => WL::FIELD_GROUP_ID, 'columns' => [], 'error' => $e->getMessage()];
         } catch (Throwable $e) {
             return ['groupId' => WL::FIELD_GROUP_ID, 'columns' => [], 'error' => 'Could not load the waiting list from OSM: ' . $e->getMessage()];
         }
@@ -187,6 +216,8 @@ final class WaitingListController
         }
         try {
             $res = WL::fetchCustomData($api, $token, $list['id'], $first);
+        } catch (OsmBusyException $e) {
+            return ['groupId' => WL::FIELD_GROUP_ID, 'columns' => [], 'error' => $e->getMessage()];
         } catch (Throwable $e) {
             return ['groupId' => WL::FIELD_GROUP_ID, 'columns' => [], 'error' => 'Could not read custom fields from OSM: ' . $e->getMessage()];
         }
@@ -323,7 +354,9 @@ final class WaitingListController
             'access' => $access,
             'writesEnabled' => $writesOn,
         ]);
-        if ($api->isRateLow(self::RATE_LOW_REMAINING)) {
+        // A cached copy costs no OSM requests, so only a fresh load is held back by a low allowance.
+        $cachedCopy = OsmCache::get(WL::CACHE_KIND, OsmCache::currentUserId(), (string) $list['id']) !== null;
+        if (!$cachedCopy && $api->isRateLow(self::RATE_LOW_REMAINING)) {
             App::render('waiting-rank.twig', Auth::baseContext(array_merge($base, [
                 'rows' => [],
                 'rateBlocked' => true,
@@ -369,7 +402,9 @@ final class WaitingListController
             'proposedChanges' => $proposedChanges,
             'notesMax' => WL::NOTES_MAX_LEN,
             'noteEntryMax' => WL::NOTE_ENTRY_MAX_LEN,
-            'fetchedAt' => (new \DateTimeImmutable('now', new \DateTimeZone('Europe/London')))->format('d/m/y H:i'),
+            'fetchedAt' => self::fetchedAt($list, !empty($loaded['fromCache'])),
+            'detailsSkipped' => $loaded['detailsSkipped'],
+            'loadBusyMinutes' => $loaded['busyMinutes'],
         ])));
     }
 
@@ -542,6 +577,8 @@ final class WaitingListController
                 $sid = is_array($r) ? (string) ($r['scoutid'] ?? $r['id'] ?? '') : '';
                 if ($sid !== '') $names[$sid] = trim((string) ($r['firstname'] ?? '') . ' ' . (string) ($r['lastname'] ?? ''));
             }
+        } catch (OsmBusyException $e) {
+            return ['error' => $e->getMessage(), 'names' => [], 'current' => [], 'notes' => []];
         } catch (Throwable $e) {
             return ['error' => 'Could not re-read the waiting list from OSM: ' . $e->getMessage(), 'names' => [], 'current' => [], 'notes' => []];
         }
@@ -566,6 +603,15 @@ final class WaitingListController
                 if ($current[$sid]['rank'] === null || $current[$sid]['notes'] === null) {
                     $notes[$sid] = 'Mapped field not found for this member in OSM — skipped. Check Fields.';
                 }
+            } catch (OsmBusyException $e) {
+                // Allowance guard: stop re-reading at once (no further OSM calls for the rest).
+                foreach ($members as $rest) {
+                    if (!array_key_exists($rest, $current)) {
+                        $current[$rest] = null;
+                        $notes[$rest] = 'Not checked — ' . $e->getMessage();
+                    }
+                }
+                break;
             } catch (Throwable $e) {
                 $current[$sid] = null;
                 $notes[$sid] = 'Could not re-read from OSM — skipped (' . $e->getMessage() . ').';
@@ -619,7 +665,9 @@ final class WaitingListController
             self::flash('info', 'No rows were ticked, so nothing was written.');
             self::redirect('/waiting-list/rank/', $sectionId);
         }
-        $ctx = self::resolve($token, $sectionId);
+        // A save the user confirmed is essential: a low allowance doesn't cut it off half way
+        // (this page keeps its own margin below), but a 429 backoff still refuses every call.
+        $ctx = self::resolve($token, $sectionId, true);
         if ($ctx === null) return;
         $list = $ctx['list'];
         $api = $ctx['api'];
@@ -703,6 +751,13 @@ final class WaitingListController
                 continue;
             }
             $w = WL::writeColumn($api, $token, $sectionId, $sid, (string) $pending['fieldGroupId'], $row['columnId'], $row['to']);
+            if (!empty($w['notSent'])) {
+                // The allowance guard refused before anything went to OSM: stop, don't retry.
+                $row['message'] = 'Not sent. ' . $w['message'];
+                $results[] = $row;
+                $stopped = true;
+                continue;
+            }
             $written++;
             $lastMember = $sid;
             $row['sent'] = true;
@@ -770,6 +825,10 @@ final class WaitingListController
                 }
             }
             unset($x);
+        }
+        if ($written > 0) {
+            // OSMHelper changed this list in OSM: nobody's cached copy of it is current any more.
+            WL::invalidateCache($sectionId);
         }
         unset($_SESSION['waitingRankPending']); // cleared at start too; make sure nothing survives apply
         $ok = count(array_filter($results, static fn ($x) => $x['ok']));

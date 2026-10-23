@@ -223,6 +223,7 @@ final class App
             || (is_int($seen) && $now - $seen >= Config::sessionIdleSeconds());
         if ($expired) {
             TopAwardsController::clearSessionCaches();
+            \App\Osm\OsmCache::forgetCurrentUser(); // cached OSM data (waiting list, sections) for this user
             $_SESSION = [];
             if (session_status() === PHP_SESSION_ACTIVE) {
                 @session_regenerate_id(true);
@@ -246,6 +247,7 @@ final class App
         // except the page to return to.
         $returnTo = $_SESSION['returnTo'] ?? null;
         TopAwardsController::clearSessionCaches();
+        \App\Osm\OsmCache::forgetCurrentUser(); // cached OSM data (waiting list, sections) for this user
         $_SESSION = [];
         if ($returnTo !== null) {
             $_SESSION['returnTo'] = $returnTo;

@@ -10,6 +10,7 @@ use App\Osm\OsmApi;
 use App\Store\CapacitiesStore;
 use App\Store\SettingsStore;
 use App\Osm\OsmLists;
+use App\Waiting\WaitingListService as WL;
 use Throwable;
 final class MembershipDashboardController
 {
@@ -126,6 +127,7 @@ final class MembershipDashboardController
         $saved = SettingsStore::all();
         $cutoffs = array_merge(Config::DEFAULT_CUTOFFS, is_array($saved['cutoffs'] ?? null) ? $saved['cutoffs'] : []);
 
+        $waitingIncomplete = false;
         $waitingCounts = ['tooYoung' => 0, 'squirrels' => 0, 'beavers' => 0, 'cubs' => 0, 'scouts' => 0, 'explorers' => 0];
         try {
             $waitingSection = null;
@@ -141,39 +143,24 @@ final class MembershipDashboardController
             if ($waitingSection) {
                 $waitingId = $waitingSection['section_id'];
                 $waitingType = $waitingSection['section_type'] ?? 'waiting';
-                $listRes = $api->get($token, '/ext/members/contact/', [
-                    'action' => 'getListOfMembers',
-                    'sectionid' => $waitingId,
-                    'termid' => -1,
-                    'section' => $waitingType,
-                    'sort' => 'dob',
+                // Shared, cached loader: a constant number of OSM calls (list + grid) instead of one per applicant.
+                $loadedWaiting = WL::loadRows($api, $token, [
+                    'id' => (string) $waitingId,
+                    'type' => (string) $waitingType,
+                    'name' => (string) ($waitingSection['section_name'] ?? ''),
                 ]);
-                $waitingList = OsmLists::items($listRes);
+                $waitingIncomplete = $loadedWaiting['busyMinutes'] !== null || $loadedWaiting['detailsSkipped'] > 0;
                 $now = time();
-                foreach ($waitingList as $applicant) {
-                    if (!is_array($applicant) || empty($applicant['scoutid'])) continue;
-                    try {
-                        $ind = $api->get($token, '/ext/members/contact/', [
-                            'action' => 'getIndividual',
-                            'sectionid' => $waitingId,
-                            'scoutid' => $applicant['scoutid'],
-                            'termid' => -1,
-                            'context' => 'members',
-                        ]);
-                        $indData = $ind['data'] ?? $ind;
-                        if (!is_array($indData)) continue;
-                        $dob = strtotime((string) ($indData['dob'] ?? ''));
-                        if ($dob === false) continue;
-                        $age = ($now - $dob) / (365.25 * 24 * 60 * 60);
-                        if ($age < $cutoffs['squirrels']) $waitingCounts['tooYoung']++;
-                        elseif ($age < $cutoffs['beavers']) $waitingCounts['squirrels']++;
-                        elseif ($age < $cutoffs['cubs']) $waitingCounts['beavers']++;
-                        elseif ($age < $cutoffs['scouts']) $waitingCounts['cubs']++;
-                        elseif ($age < $cutoffs['explorers']) $waitingCounts['scouts']++;
-                        else $waitingCounts['explorers']++;
-                    } catch (Throwable) {
-                        continue;
-                    }
+                foreach ($loadedWaiting['rows'] as $applicant) {
+                    $dob = strtotime((string) ($applicant['dob'] ?? ''));
+                    if ($dob === false) continue;
+                    $age = ($now - $dob) / (365.25 * 24 * 60 * 60);
+                    if ($age < $cutoffs['squirrels']) $waitingCounts['tooYoung']++;
+                    elseif ($age < $cutoffs['beavers']) $waitingCounts['squirrels']++;
+                    elseif ($age < $cutoffs['cubs']) $waitingCounts['beavers']++;
+                    elseif ($age < $cutoffs['scouts']) $waitingCounts['cubs']++;
+                    elseif ($age < $cutoffs['explorers']) $waitingCounts['scouts']++;
+                    else $waitingCounts['explorers']++;
                 }
             }
         } catch (Throwable) {
@@ -373,6 +360,7 @@ final class MembershipDashboardController
             'totalCapacity' => $totals['capacity'],
             'totalSpaces' => $totals['spaces'],
             'totalWaiting' => $waitingOfAgeYouth,
+            'waitingIncomplete' => $waitingIncomplete,
             'squirrelsWaiting' => $squirrelsWaiting,
             'explorersWaiting' => $explorersWaiting,
             'tooYoungWaiting' => $tooYoungWaiting,

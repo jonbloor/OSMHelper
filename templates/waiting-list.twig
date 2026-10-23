@@ -18,6 +18,7 @@
   </p>
   {% if mapError %}<p class="alert alert-error">{{ mapError }}</p>{% endif %}
   {% if listError %}<p class="alert alert-error">{{ listError }}</p>{% endif %}
+  {% include '_osm_load_notice.twig' %}
   <div class="table-wrap">
   {% set showWilling = fieldMap and fieldMap.willing_column_id %}
   {% set cols = 7 + (fieldMap ? 2 : 0) + (showWilling ? 1 : 0) %}

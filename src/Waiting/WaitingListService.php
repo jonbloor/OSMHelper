@@ -3,6 +3,8 @@ declare(strict_types=1);
 namespace App\Waiting;
 use App\Config;
 use App\Osm\OsmApi;
+use App\Osm\OsmBusyException;
+use App\Osm\OsmCache;
 use App\Osm\OsmErrorLog;
 use App\Osm\OsmLists;
 use Throwable;
@@ -430,97 +432,338 @@ final class WaitingListService
         return $out;
     }
 
+    /** Cache kind for OsmCache (per OSM user and waiting-list section). */
+    public const CACHE_KIND = 'waiting';
     /**
-     * Load applicants exactly as the scored waiting list always has (list + getIndividual +
-     * getData per applicant), additionally keeping scoutid and all custom column values.
-     * $map (saved field mapping, optional): its willing_column_id, when set, supplies "willing to help".
-     * @param array<string, float|int> $cutoffs
-     * @return array{applicants: list<array<string, mixed>>, listCount: int, listError: ?string}
+     * Most applicants per page load whose details may be fetched one by one, when the bulk grid
+     * doesn't supply them. Keeps a load at a fixed maximum number of OSM calls whatever the list size.
      */
-    public static function loadApplicants(OsmApi $api, string $token, array $list, array $cutoffs, ?array $map = null): array
+    public const DETAIL_FALLBACK_MAX = 20;
+    /** Cache kind for applicants' one-by-one details (only used when the grid doesn't cover them). */
+    public const DETAIL_CACHE_KIND = 'waitingdetail';
+
+    /**
+     * One bulk request for every member of the waiting list: the members grid already used by
+     * Find a member (POST /ext/members/contact/grid/?action=getMembers, live since 15 Oct 2026).
+     * @return array<string, mixed>
+     */
+    public static function fetchGrid(OsmApi $api, string $token, array $list): array
     {
-        $waitingId = $list['id'];
-        $listCount = 0;
-        $listError = null;
+        return $api->post($token, '/ext/members/contact/grid/?action=getMembers', [
+            'section_id' => (string) $list['id'],
+            'term_id' => '-1',
+        ]);
+    }
+
+    /**
+     * What the waiting list needs from a grid response, per member: dates (when present) and the
+     * custom-data (group 5) values keyed by column id. Contact groups are ignored, never kept.
+     * Pure.
+     * @param array<string, mixed> $res
+     * @return array{members: array<string, array{dob:string, joined:string, custom: array<string,string>, hasCustom: bool}>, notesColumnId: ?string, structureColumns: list<string>}
+     */
+    public static function parseGrid(array $res): array
+    {
+        $structureColumns = [];
+        $notesColumnId = null;
+        $structure = $res['meta']['structure'] ?? $res['structure'] ?? [];
+        if (is_array($structure)) {
+            foreach ($structure as $grp) {
+                if (!is_array($grp)) continue;
+                $gid = (string) ($grp['group_id'] ?? '');
+                $ident = (string) ($grp['identifier'] ?? '');
+                if ($gid !== self::FIELD_GROUP_ID && $ident !== 'customisable_data') continue;
+                foreach (is_array($grp['columns'] ?? null) ? $grp['columns'] : [] as $col) {
+                    if (!is_array($col) || !isset($col['column_id'])) continue;
+                    $cid = (string) $col['column_id'];
+                    $structureColumns[] = $cid;
+                    if ((string) ($col['varname'] ?? '') === 'cf_notes') $notesColumnId = $cid;
+                }
+            }
+        }
+        $data = $res['data'] ?? [];
+        if (is_array($data) && isset($data['members']) && is_array($data['members'])) {
+            $data = $data['members'];
+        }
+        $members = [];
+        if (is_array($data)) {
+            foreach ($data as $key => $m) {
+                if (!is_array($m)) continue;
+                $sid = (string) ($m['member_id'] ?? $m['scoutid'] ?? (is_int($key) || is_string($key) ? $key : ''));
+                if ($sid === '' || !ctype_digit($sid)) continue;
+                $cd = is_array($m['custom_data'] ?? null) ? $m['custom_data'] : [];
+                $g = $cd[self::FIELD_GROUP_ID] ?? $cd[(int) self::FIELD_GROUP_ID] ?? null;
+                $custom = [];
+                foreach ($structureColumns as $cid) $custom[$cid] = '';
+                if (is_array($g)) {
+                    foreach ($g as $cid => $val) {
+                        if (is_scalar($val) || $val === null) $custom[(string) $cid] = (string) ($val ?? '');
+                    }
+                }
+                $members[$sid] = [
+                    'dob' => self::firstScalar($m, ['dob', 'date_of_birth']),
+                    'joined' => self::firstScalar($m, ['joined', 'applicationdate', 'started']),
+                    'custom' => $custom,
+                    'hasCustom' => is_array($g) || $structureColumns !== [],
+                ];
+            }
+        }
+        return ['members' => $members, 'notesColumnId' => $notesColumnId, 'structureColumns' => $structureColumns];
+    }
+
+    /** @param array<string, mixed> $row @param list<string> $keys */
+    private static function firstScalar(array $row, array $keys): string
+    {
+        foreach ($keys as $k) {
+            if (isset($row[$k]) && is_scalar($row[$k]) && trim((string) $row[$k]) !== '') return trim((string) $row[$k]);
+        }
+        return '';
+    }
+
+    private static function parsesAsDate(string $v): bool
+    {
+        return $v !== '' && strtotime($v) !== false;
+    }
+
+    /**
+     * Raw waiting-list rows with as few OSM calls as possible, cached per OSM user and section for
+     * OsmCache::TTL_SECONDS:
+     *   cache hit: 0 calls. Otherwise 1 list call + 1 grid call, plus (only for applicants the grid
+     *   didn't cover) at most DETAIL_FALLBACK_MAX applicants' individual calls.
+     * Stops at once (no retry) when the OSM allowance guard refuses or OSM returns 429.
+     * Cached rows hold names, dates and custom-data values only (no contact details, no tokens).
+     *
+     * @return array{rows: list<array<string, mixed>>, listCount: int, listError: ?string, busyMinutes: ?int, detailsSkipped: int, fromCache: bool, source: string}
+     */
+    public static function loadRows(OsmApi $api, string $token, array $list, bool $useCache = true): array
+    {
+        $sectionId = (string) $list['id'];
+        $userId = OsmCache::currentUserId();
+        if ($useCache) {
+            $hit = OsmCache::get(self::CACHE_KIND, $userId, $sectionId);
+            if (is_array($hit) && is_array($hit['rows'] ?? null)) {
+                return [
+                    'rows' => $hit['rows'],
+                    'listCount' => (int) ($hit['listCount'] ?? count($hit['rows'])),
+                    'listError' => null,
+                    'busyMinutes' => null,
+                    'detailsSkipped' => 0,
+                    'fromCache' => true,
+                    'source' => (string) ($hit['source'] ?? 'grid'),
+                ];
+            }
+        }
+        $out = ['rows' => [], 'listCount' => 0, 'listError' => null, 'busyMinutes' => null, 'detailsSkipped' => 0, 'fromCache' => false, 'source' => 'grid'];
         try {
             $listData = self::fetchListRows($api, $token, $list);
-            $listCount = count($listData);
+        } catch (OsmBusyException $e) {
+            $out['busyMinutes'] = $e->waitMinutes();
+            $out['listError'] = $e->getMessage();
+            return $out;
         } catch (Throwable) {
-            $listData = [];
-            $listError = 'We couldn’t load this waiting list from OSM. Try again in a few minutes. If it keeps happening, sign out and sign in again.';
+            $out['listError'] = 'We couldn’t load this waiting list from OSM. Try again in a few minutes. If it keeps happening, sign out and sign in again.';
+            return $out;
+        }
+        $out['listCount'] = count($listData);
+
+        $grid = ['members' => [], 'notesColumnId' => null, 'structureColumns' => []];
+        $gridOk = false;
+        $anyApplicant = false;
+        foreach ($listData as $applicant) {
+            if (is_array($applicant) && (string) ($applicant['scoutid'] ?? $applicant['id'] ?? '') !== '') { $anyApplicant = true; break; }
+        }
+        if ($anyApplicant) {
+            try {
+                $res = self::fetchGrid($api, $token, $list);
+                if (!array_key_exists('_raw', $res) && ($res['status'] ?? null) !== false && empty($res['error']) && is_array($res['data'] ?? null)) {
+                    $grid = self::parseGrid($res);
+                    $gridOk = true;
+                } else {
+                    @error_log('OSMHelper waiting-list grid_unusable');
+                }
+            } catch (OsmBusyException $e) {
+                $out['busyMinutes'] = $e->waitMinutes();
+            } catch (Throwable) {
+                @error_log('OSMHelper waiting-list grid_error');
+            }
         }
 
-        $applicants = [];
+        // Details already fetched one by one in the last few minutes (only used when the grid
+        // didn't cover them), so a long list fills in over a few loads instead of re-fetching.
         $now = time();
+        $detailCache = OsmCache::get(self::DETAIL_CACHE_KIND, $userId, $sectionId) ?? [];
+        $details = [];
+        foreach (is_array($detailCache['members'] ?? null) ? $detailCache['members'] : [] as $sid => $d) {
+            if (is_array($d) && is_int($d['at'] ?? null) && $now - $d['at'] < OsmCache::TTL_SECONDS) $details[(string) $sid] = $d;
+        }
+        $detailsChanged = false;
+
+        $fallbackUsed = 0;
+        $rows = [];
         foreach ($listData as $applicant) {
             if (!is_array($applicant)) continue;
-            $scoutid = $applicant['scoutid'] ?? $applicant['id'] ?? null;
-            if ($scoutid === null || $scoutid === '') continue;
-            try {
-                $ind = $api->get($token, '/ext/members/contact/', [
-                    'action' => 'getIndividual',
-                    'sectionid' => $waitingId,
-                    'scoutid' => $scoutid,
-                    'termid' => -1,
-                    'context' => 'members',
-                ]);
-                $d = $ind['data'] ?? $ind;
-                if (!is_array($d)) $d = [];
-                $dobRaw = $d['dob'] ?? $applicant['dob'] ?? '';
-                $dob = strtotime((string) $dobRaw);
-                $age = $dob !== false ? ($now - $dob) / (365.25 * 24 * 60 * 60) : null;
-                $ageMonths = $dob !== false ? (int) floor(($now - $dob) / (30.4375 * 24 * 60 * 60)) : null;
-                $ageDisplay = $ageMonths !== null
-                    ? ((int) floor($ageMonths / 12)) . ' y ' . ($ageMonths % 12) . ' m'
-                    : 'Unknown';
-                $join = strtotime((string) ($d['joined'] ?? $d['applicationdate'] ?? $d['started'] ?? $applicant['joined'] ?? ''));
-                $timeOnList = $join !== false ? (int) floor(($now - $join) / 86400) : 0;
-                $leadersNotes = '';
-                $custom = [];
-                $customOk = false;
-                try {
-                    $cd = self::fetchCustomData($api, $token, (string) $waitingId, (string) $scoutid);
-                    $cols = self::extractCustomColumns($cd);
-                    $customOk = true;
-                    foreach ($cols['columns'] as $col) {
-                        $custom[$col['column_id']] = $col['value'];
-                        if ($col['varname'] === 'cf_notes') $leadersNotes = $col['value'];
+            $scoutid = (string) ($applicant['scoutid'] ?? $applicant['id'] ?? '');
+            if ($scoutid === '') continue;
+            $g = $gridOk ? ($grid['members'][$scoutid] ?? null) : null;
+            $dob = $g !== null && self::parsesAsDate($g['dob']) ? $g['dob'] : self::firstScalar($applicant, ['dob']);
+            $joined = $g !== null && self::parsesAsDate($g['joined']) ? $g['joined'] : self::firstScalar($applicant, ['joined']);
+            $custom = $g !== null ? $g['custom'] : [];
+            $customOk = $g !== null && $g['hasCustom'];
+            $notesCol = $grid['notesColumnId'];
+            $leadersNotes = ($customOk && $notesCol !== null) ? (string) ($custom[$notesCol] ?? '') : '';
+            $row = [
+                'scoutid' => $scoutid,
+                'firstname' => (string) ($applicant['firstname'] ?? ''),
+                'lastname' => (string) ($applicant['lastname'] ?? ''),
+                'dob' => $dob,
+                'joined' => $joined,
+                'custom' => $custom,
+                'customOk' => $customOk,
+                'leadersNotes' => $leadersNotes,
+                'detail' => 'ok',
+            ];
+            $needInd = !self::parsesAsDate($dob) || !self::parsesAsDate($joined);
+            $needCustom = !$customOk;
+            $cachedDetail = $details[$scoutid] ?? null;
+            if (($needInd || $needCustom) && is_array($cachedDetail)) {
+                $row = self::mergeDetail($row, $cachedDetail, $needInd, $needCustom);
+            } elseif ($needInd || $needCustom) {
+                if ($out['busyMinutes'] !== null || $fallbackUsed >= self::DETAIL_FALLBACK_MAX) {
+                    // Not fetched this time, to keep this load's OSM calls bounded (or OSM is busy).
+                    $out['detailsSkipped']++;
+                    $row['detail'] = 'skipped';
+                } else {
+                    $fallbackUsed++;
+                    $out['source'] = $gridOk ? 'grid+individual' : 'individual';
+                    $fetched = ['at' => $now];
+                    try {
+                        if ($needInd) {
+                            $ind = $api->get($token, '/ext/members/contact/', [
+                                'action' => 'getIndividual',
+                                'sectionid' => $sectionId,
+                                'scoutid' => $scoutid,
+                                'termid' => -1,
+                                'context' => 'members',
+                            ]);
+                            $d = $ind['data'] ?? $ind;
+                            if (!is_array($d)) $d = [];
+                            $fetched['dob'] = self::firstScalar($d, ['dob']);
+                            $fetched['joined'] = self::firstScalar($d, ['joined', 'applicationdate', 'started']);
+                            $fetched['firstname'] = self::firstScalar($d, ['firstname']);
+                            $fetched['lastname'] = self::firstScalar($d, ['lastname']);
+                        }
+                        if ($needCustom) {
+                            try {
+                                $cols = self::extractCustomColumns(self::fetchCustomData($api, $token, $sectionId, $scoutid));
+                                $fetched['custom'] = [];
+                                $fetched['leadersNotes'] = '';
+                                foreach ($cols['columns'] as $col) {
+                                    $fetched['custom'][$col['column_id']] = $col['value'];
+                                    if ($col['varname'] === 'cf_notes') $fetched['leadersNotes'] = $col['value'];
+                                }
+                            } catch (OsmBusyException $e) {
+                                throw $e;
+                            } catch (Throwable) {
+                            }
+                        }
+                        $row = self::mergeDetail($row, $fetched, $needInd, $needCustom);
+                        $details[$scoutid] = $fetched;
+                        $detailsChanged = true;
+                    } catch (OsmBusyException $e) {
+                        $out['busyMinutes'] = $e->waitMinutes();
+                        $out['detailsSkipped']++;
+                        $row['detail'] = 'skipped';
+                    } catch (Throwable) {
+                        $row['detail'] = 'error';
                     }
-                } catch (Throwable) {}
+                }
+            }
+            $rows[] = $row;
+        }
+        $out['rows'] = $rows;
+        if ($detailsChanged) {
+            OsmCache::put(self::DETAIL_CACHE_KIND, $userId, $sectionId, ['members' => $details]);
+        }
+        // Cache only a complete load: never one cut short by the allowance guard or the cap.
+        if ($out['busyMinutes'] === null && $out['detailsSkipped'] === 0) {
+            OsmCache::put(self::CACHE_KIND, $userId, $sectionId, [
+                'rows' => $rows,
+                'listCount' => $out['listCount'],
+                'source' => $out['source'],
+            ]);
+        }
+        return $out;
+    }
 
-                // Willing to help: optional mapped custom field (same getData group); unmapped = no +20.
-                $willingCol = is_array($map) ? (string) ($map['willing_column_id'] ?? '') : '';
-                $willingRaw = $willingCol !== '' ? (string) ($custom[$willingCol] ?? '') : '';
-                $willingYes = $willingCol !== '' && self::isWilling($willingRaw);
-                $baseScore = self::baseScore($age, $timeOnList);
-                $scoreNum = $baseScore + ($willingYes ? self::WILLING_BONUS : 0);
+    /**
+     * Fill a row's missing pieces from one-by-one details (getIndividual / getData). Pure.
+     * @param array<string, mixed> $row
+     * @param array<string, mixed> $d
+     * @return array<string, mixed>
+     */
+    private static function mergeDetail(array $row, array $d, bool $needInd, bool $needCustom): array
+    {
+        if ($needInd) {
+            if (!self::parsesAsDate((string) $row['dob'])) $row['dob'] = (string) ($d['dob'] ?? '');
+            if (!self::parsesAsDate((string) $row['joined'])) $row['joined'] = (string) ($d['joined'] ?? '');
+            if ($row['firstname'] === '') $row['firstname'] = (string) ($d['firstname'] ?? '');
+            if ($row['lastname'] === '') $row['lastname'] = (string) ($d['lastname'] ?? '');
+        }
+        if ($needCustom && is_array($d['custom'] ?? null)) {
+            $row['custom'] = $row['custom'] + $d['custom'];
+            foreach ($d['custom'] as $k => $v) $row['custom'][(string) $k] = (string) $v;
+            $row['customOk'] = true;
+            $row['leadersNotes'] = (string) ($d['leadersNotes'] ?? '');
+        }
+        return $row;
+    }
+
+    /** Forget the cached waiting list for every user of a section (after OSMHelper writes to it). */
+    public static function invalidateCache(string $sectionId): void
+    {
+        OsmCache::forgetScope(self::CACHE_KIND, $sectionId);
+        OsmCache::forgetScope(self::DETAIL_CACHE_KIND, $sectionId);
+    }
+
+    /**
+     * Load and score applicants (see loadRows for the OSM calls), keeping scoutid and all custom
+     * column values. $map (saved field mapping, optional): its willing_column_id, when set, supplies
+     * "willing to help".
+     * @param array<string, float|int> $cutoffs
+     * @return array{applicants: list<array<string, mixed>>, listCount: int, listError: ?string, busyMinutes: ?int, detailsSkipped: int, fromCache: bool}
+     */
+    public static function loadApplicants(OsmApi $api, string $token, array $list, array $cutoffs, ?array $map = null, bool $useCache = true): array
+    {
+        $raw = self::loadRows($api, $token, $list, $useCache);
+        return [
+            'applicants' => self::scoreRows($raw['rows'], $cutoffs, $map),
+            'listCount' => $raw['listCount'],
+            'listError' => $raw['listError'],
+            'busyMinutes' => $raw['busyMinutes'],
+            'detailsSkipped' => $raw['detailsSkipped'],
+            'fromCache' => $raw['fromCache'],
+        ];
+    }
+
+    /**
+     * Score raw rows. Pure (no OSM calls), so the cache can hold rows and the score still follows
+     * the current cut-offs and field mapping.
+     * @param list<array<string, mixed>> $rows
+     * @param array<string, float|int> $cutoffs
+     * @return list<array<string, mixed>>
+     */
+    public static function scoreRows(array $rows, array $cutoffs, ?array $map = null, ?int $now = null): array
+    {
+        $now ??= time();
+        $applicants = [];
+        foreach ($rows as $r) {
+            if (!is_array($r)) continue;
+            $detail = (string) ($r['detail'] ?? 'ok');
+            if ($detail !== 'ok') {
                 $applicants[] = [
-                    'scoutid' => (string) $scoutid,
-                    'firstName' => (string) ($applicant['firstname'] ?? $d['firstname'] ?? ''),
-                    'lastName' => (string) ($applicant['lastname'] ?? $d['lastname'] ?? ''),
-                    'age' => $ageDisplay,
-                    'timeOnList' => $timeOnList,
-                    'willingToHelp' => $willingCol === '' ? '' : ($willingYes ? 'Yes' : 'No'),
-                    'willingRaw' => $willingRaw,
-                    'willingYes' => $willingYes,
-                    'willingMapped' => $willingCol !== '',
-                    'baseScore' => $baseScore,
-                    'ageYears' => $age,
-                    'scoreBreakdown' => self::scoreBreakdown($age, $timeOnList, $willingCol === '' ? null : $willingYes),
-                    'mappedNotes' => is_array($map) && ($map['notes_column_id'] ?? '') !== '' ? (string) ($custom[$map['notes_column_id']] ?? '') : '',
-                    'leadersNotes' => $leadersNotes,
-                    'idealSection' => self::idealSection($age ?? 0, $cutoffs),
-                    'scoreNum' => $scoreNum,
-                    'score' => number_format($scoreNum, 1),
-                    'rank' => 0,
-                    'custom' => $custom,
-                    'customOk' => $customOk,
-                ];
-            } catch (Throwable) {
-                $applicants[] = [
-                    'scoutid' => (string) $scoutid,
-                    'firstName' => (string) ($applicant['firstname'] ?? ''),
-                    'lastName' => (string) ($applicant['lastname'] ?? ''),
+                    'scoutid' => (string) ($r['scoutid'] ?? ''),
+                    'firstName' => (string) ($r['firstname'] ?? ''),
+                    'lastName' => (string) ($r['lastname'] ?? ''),
                     'age' => 'Unknown',
                     'timeOnList' => 'N/A',
                     'willingToHelp' => 'N/A',
@@ -529,7 +772,9 @@ final class WaitingListService
                     'willingMapped' => false,
                     'baseScore' => -INF,
                     'ageYears' => null,
-                    'scoreBreakdown' => 'Could not read this applicant’s details from OSM, so there is no score.',
+                    'scoreBreakdown' => $detail === 'skipped'
+                        ? 'Not loaded yet, to protect your OSM allowance. Open this page again in a few minutes.'
+                        : 'Could not read this applicant’s details from OSM, so there is no score.',
                     'mappedNotes' => '',
                     'leadersNotes' => '',
                     'idealSection' => 'Unknown',
@@ -539,12 +784,50 @@ final class WaitingListService
                     'custom' => [],
                     'customOk' => false,
                 ];
+                continue;
             }
+            $custom = is_array($r['custom'] ?? null) ? $r['custom'] : [];
+            $dob = strtotime((string) ($r['dob'] ?? ''));
+            $age = $dob !== false ? ($now - $dob) / (365.25 * 24 * 60 * 60) : null;
+            $ageMonths = $dob !== false ? (int) floor(($now - $dob) / (30.4375 * 24 * 60 * 60)) : null;
+            $ageDisplay = $ageMonths !== null
+                ? ((int) floor($ageMonths / 12)) . ' y ' . ($ageMonths % 12) . ' m'
+                : 'Unknown';
+            $join = strtotime((string) ($r['joined'] ?? ''));
+            $timeOnList = $join !== false ? (int) floor(($now - $join) / 86400) : 0;
+            // Willing to help: optional mapped custom field (group 5); unmapped = no +20.
+            $willingCol = is_array($map) ? (string) ($map['willing_column_id'] ?? '') : '';
+            $willingRaw = $willingCol !== '' ? (string) ($custom[$willingCol] ?? '') : '';
+            $willingYes = $willingCol !== '' && self::isWilling($willingRaw);
+            $baseScore = self::baseScore($age, $timeOnList);
+            $scoreNum = $baseScore + ($willingYes ? self::WILLING_BONUS : 0);
+            $applicants[] = [
+                'scoutid' => (string) $r['scoutid'],
+                'firstName' => (string) ($r['firstname'] ?? ''),
+                'lastName' => (string) ($r['lastname'] ?? ''),
+                'age' => $ageDisplay,
+                'timeOnList' => $timeOnList,
+                'willingToHelp' => $willingCol === '' ? '' : ($willingYes ? 'Yes' : 'No'),
+                'willingRaw' => $willingRaw,
+                'willingYes' => $willingYes,
+                'willingMapped' => $willingCol !== '',
+                'baseScore' => $baseScore,
+                'ageYears' => $age,
+                'scoreBreakdown' => self::scoreBreakdown($age, $timeOnList, $willingCol === '' ? null : $willingYes),
+                'mappedNotes' => is_array($map) && ($map['notes_column_id'] ?? '') !== '' ? (string) ($custom[$map['notes_column_id']] ?? '') : '',
+                'leadersNotes' => (string) ($r['leadersNotes'] ?? ''),
+                'idealSection' => self::idealSection($age ?? 0, $cutoffs),
+                'scoreNum' => $scoreNum,
+                'score' => number_format($scoreNum, 1),
+                'rank' => 0,
+                'custom' => $custom,
+                'customOk' => (bool) ($r['customOk'] ?? false),
+            ];
         }
         usort($applicants, static fn ($a, $b) => ($b['scoreNum'] <=> $a['scoreNum']));
         foreach ($applicants as $i => &$a) { $a['rank'] = $i + 1; }
         unset($a);
-        return ['applicants' => $applicants, 'listCount' => $listCount, 'listError' => $listError];
+        return $applicants;
     }
 
     /**
@@ -609,6 +892,9 @@ final class WaitingListService
                 'value' => $value,
                 'context' => 'members',
             ]);
+        } catch (OsmBusyException $e) {
+            // Not sent: the allowance guard refused (429 backoff). No retry.
+            return ['ok' => false, 'message' => $e->getMessage(), 'raw' => null, 'forbidden' => false, 'returned' => null, 'notSent' => true];
         } catch (Throwable $e) {
             $msg = $e->getMessage();
             $lower = strtolower($msg);

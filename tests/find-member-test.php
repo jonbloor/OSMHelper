@@ -77,6 +77,7 @@ $mock = new MockHandler([
 $history = [];
 $stack = HandlerStack::create($mock);
 $stack->push(\GuzzleHttp\Middleware::history($history));
+\App\Osm\OsmRateGuard::forUser(null)->reset(); // fresh allowance state per scenario
 $api = new OsmApi(new Client(['handler' => $stack, 'http_errors' => false, 'base_uri' => 'https://osm.test/']));
 $secs = [
     ['section_id' => '55', 'section_name' => 'Beavers', 'section_type' => 'beavers', 'current_term_id' => 9],
@@ -94,6 +95,7 @@ $history = [];
 $mock2 = new MockHandler([new Response(200, [], json_encode($grid))]);
 $stack2 = HandlerStack::create($mock2);
 $stack2->push(\GuzzleHttp\Middleware::history($history));
+\App\Osm\OsmRateGuard::forUser(null)->reset(); // fresh allowance state per scenario
 $b = ContactIndex::build(new OsmApi(new Client(['handler' => $stack2, 'http_errors' => false, 'base_uri' => 'https://osm.test/'])), 'tok', $secs);
 check($b['calls'] === 0 && $history === [], 'low allowance: no OSM call');
 
@@ -115,6 +117,7 @@ foreach ($cases as $label => $body) {
     $m = new MockHandler([new Response(200, $hdr, $body), new Response(200, $hdr, json_encode($grid))]);
     $st = HandlerStack::create($m);
     $st->push(\GuzzleHttp\Middleware::history($history));
+    \App\Osm\OsmRateGuard::forUser(null)->reset(); // fresh allowance state per scenario
     $b = ContactIndex::build(new OsmApi(new Client(['handler' => $st, 'http_errors' => false, 'base_uri' => 'https://osm.test/'])), 'tok', $secs);
     check($b['calls'] === 1 && count($history) === 1 && $b['loaded'] === [] && $b['skipped'] === ['Beavers', 'Cubs', 'Scouts']
         && is_string($b['stopReason']) && str_contains($b['stopReason'], 'unexpected reply'), "200 $label: stops, next section not called");
@@ -129,12 +132,14 @@ check(!ContactIndex::shouldReplace(['stopReason' => 'x', 'loaded' => []]), 'fail
 
 // 429 message surfaces Retry-After
 $m = new MockHandler([new Response(429, ['Retry-After' => '120'], '{"error":"Too many"}')]);
+\App\Osm\OsmRateGuard::forUser(null)->reset(); // fresh allowance state per scenario
 $b = ContactIndex::build(new OsmApi(new Client(['handler' => HandlerStack::create($m), 'http_errors' => false, 'base_uri' => 'https://osm.test/'])), 'tok', [$secs[0]]);
 check(str_contains((string) $b['stopReason'], 'about 2 minutes'), '429 Retry-After shown to user');
 
 // Missing rate headers flagged
 unset($_SESSION['osmRateLimit']);
 $m = new MockHandler([new Response(200, [], json_encode($grid))]);
+\App\Osm\OsmRateGuard::forUser(null)->reset(); // fresh allowance state per scenario
 $b = ContactIndex::build(new OsmApi(new Client(['handler' => HandlerStack::create($m), 'http_errors' => false, 'base_uri' => 'https://osm.test/'])), 'tok', [$secs[0]]);
 check($b['rateUnknown'] === true && $b['loaded'] === ['Beavers'], 'missing X-RateLimit headers flagged');
 

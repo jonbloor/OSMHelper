@@ -15,6 +15,7 @@
     <div class="alert alert-error">Your OSM allowance is low ({{ rateLimit.remaining ?? '?' }} remaining), so we did not load the waiting list. Wait for it to reset (see Home), then reload this page.</div>
   {% else %}
   {% if listError %}<p class="alert alert-error">{{ listError }}</p>{% endif %}
+  {% include '_osm_load_notice.twig' %}
   {% if mappingBroken %}
     <div class="alert alert-error">The mapped fields were not found on these applicants in OSM (renamed or deleted?). <a href="/waiting-list/fields/?section={{ waitingList.id }}">Choose the fields again</a>. Saving is disabled until then.</div>
   {% endif %}

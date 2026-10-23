@@ -17,9 +17,20 @@ final class OsmApi
     private bool $lastHadRateHeaders = false;
     /** Shape of the last 2xx body: empty | empty-object | empty-list | json | not-json (null before any reply). */
     private ?string $lastBodyKind = null;
+    /** OSM user whose allowance this client spends; null = whoever is signed in to the session. */
+    private ?string $osmUserId;
+    /** When true, every call is treated as essential (a save the user confirmed, and its checks). */
+    private bool $essentialScope = false;
+    /** @var array<string, true> reason codes already logged in this PHP request */
+    private static array $loggedReasons = [];
 
-    public function __construct(?Client $http = null)
+    /**
+     * @param string|null $osmUserId OSM user whose allowance is spent (for token-owner calls such as the
+     *                               WordPress form). Defaults to the signed-in session's osmUserId.
+     */
+    public function __construct(?Client $http = null, ?string $osmUserId = null)
     {
+        $this->osmUserId = $osmUserId;
         $this->http = $http ?? new Client([
             'base_uri' => rtrim(Config::osmApiBase(), '/') . '/',
             'timeout' => 30,
@@ -27,8 +38,12 @@ final class OsmApi
         ]);
     }
 
-    /** @param array<string, mixed> $query @return array<string, mixed> */
-    public function get(string $accessToken, string $path, array $query = []): array
+    /**
+     * @param array<string, mixed> $query
+     * @param bool|null $essential null = reads are non-essential (refused while the allowance is low)
+     * @return array<string, mixed>
+     */
+    public function get(string $accessToken, string $path, array $query = [], ?bool $essential = null): array
     {
         // Prefer Guzzle query option (axios params parity). Also keep path clean with trailing slash.
         $path = '/' . ltrim($path, '/');
@@ -39,13 +54,52 @@ final class OsmApi
             $sep = str_contains($path, '?') ? '&' : '?';
             $path .= $sep . http_build_query($query);
         }
-        return $this->request('GET', $accessToken, $path, $options);
+        return $this->request('GET', $accessToken, $path, $options, $essential ?? false);
     }
 
-    /** @param array<string, mixed> $form @return array<string, mixed> */
-    public function post(string $accessToken, string $path, array $form = []): array
+    /**
+     * @param array<string, mixed> $form
+     * @param bool|null $essential null = writes are essential; POST reads (action=get...) are not
+     * @return array<string, mixed>
+     */
+    public function post(string $accessToken, string $path, array $form = [], ?bool $essential = null): array
     {
-        return $this->request('POST', $accessToken, $path, ['form_params' => $form]);
+        if ($essential === null) {
+            $essential = !preg_match('/[?&]action=get/i', $path);
+        }
+        return $this->request('POST', $accessToken, $path, ['form_params' => $form], $essential);
+    }
+
+    /**
+     * Treat every call on this client as essential until switched off: use around a save the user
+     * confirmed (writes plus their read-back checks) so a low allowance doesn't stop it half way.
+     * A 429 backoff still refuses everything.
+     */
+    public function setEssential(bool $on): void
+    {
+        $this->essentialScope = $on;
+    }
+
+    /** The shared allowance guard for this client's OSM user. */
+    public function rateGuard(): OsmRateGuard
+    {
+        return $this->osmUserId !== null ? OsmRateGuard::forUser($this->osmUserId) : OsmRateGuard::forCurrentUser();
+    }
+
+    /** Log a reason code (never names, tokens or OSM text), once per PHP request. */
+    private static function logReason(string $code): void
+    {
+        if (isset(self::$loggedReasons[$code])) {
+            return;
+        }
+        self::$loggedReasons[$code] = true;
+        @error_log('OSM API ' . $code);
+    }
+
+    /** Test helper. */
+    public static function resetLoggedReasons(): void
+    {
+        self::$loggedReasons = [];
     }
 
     /**
@@ -90,9 +144,9 @@ final class OsmApi
     }
 
     /** @return list<array<string, mixed>> */
-    public function getDynamicSections(string $accessToken): array
+    public function getDynamicSections(string $accessToken, ?bool $essential = null): array
     {
-        return self::sectionsFromResource($this->get($accessToken, '/oauth/resource'));
+        return self::sectionsFromResource($this->get($accessToken, '/oauth/resource', [], $essential));
     }
 
     /**
@@ -158,8 +212,16 @@ final class OsmApi
     }
 
     /** @param array<string, mixed> $options @return array<string, mixed> */
-    private function request(string $method, string $accessToken, string $path, array $options = []): array
+    private function request(string $method, string $accessToken, string $path, array $options = [], bool $essential = false): array
     {
+        // Central allowance guard: refuse (no HTTP call) while this user is in backoff.
+        $guard = $this->rateGuard();
+        try {
+            $guard->assertCanCall($essential || $this->essentialScope);
+        } catch (OsmBusyException $busy) {
+            self::logReason('osm_call_refused ' . $busy->reason());
+            throw $busy;
+        }
         // Absolute path from site root so base_uri host is used without eating query
         if (!preg_match('#^https?://#i', $path)) {
             $path = ltrim($path, '/');
@@ -195,6 +257,10 @@ final class OsmApi
         $headers = $response->getHeaders();
         $this->captureRateLimit($headers);
         $status = $response->getStatusCode();
+        $started = $guard->recordResponse($status, $headers);
+        if ($started !== null) {
+            self::logReason($started);
+        }
         $body = (string) $response->getBody();
 
         $blocked = self::headerFirst($headers, 'X-Blocked', 'x-blocked');
@@ -285,6 +351,10 @@ final class OsmApi
                 'badge_id' => $ctx['badge_id'],
                 'detail' => null,
             ]);
+            if ($status === 429) {
+                // Stop at once: the guard has recorded backoff-until for this user. Never retried.
+                throw new OsmBusyException(max(1, $guard->secondsLeft()), OsmRateGuard::REASON_429);
+            }
             throw new \RuntimeException($msg, $status);
         }
         $this->lastBodyKind = self::bodyKind($body);

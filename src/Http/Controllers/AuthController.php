@@ -112,7 +112,7 @@ final class AuthController
             unset($_SESSION['membersListResult'], $_SESSION['membershipDashboardResult']);
 
             $api = new OsmApi();
-            $resource = $api->get($accessToken, '/oauth/resource');
+            $resource = $api->get($accessToken, '/oauth/resource', [], true); // sign-in is essential
             $data = $resource['data'] ?? $resource;
             if (!is_array($data)) {
                 $data = [];
@@ -182,6 +182,7 @@ final class AuthController
     {
         // Top awards caches hold member names: clear this session's before the session goes.
         TopAwardsController::clearSessionCaches();
+        \App\Osm\OsmCache::forgetCurrentUser(); // cached OSM data (waiting list, sections) for this user
         $_SESSION = [];
         if (ini_get('session.use_cookies')) {
             $params = session_get_cookie_params();

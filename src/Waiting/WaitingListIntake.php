@@ -67,7 +67,11 @@ final class WaitingListIntake
 
         self::assertPayload($payload);
 
-        $api = new OsmApi();
+        // Same allowance guard as the site owner's own pages (a 429 backoff for them stops this too).
+        // A joining-form application is essential: a low allowance doesn't refuse it, a 429 backoff does.
+        $ownerId = trim((string) ($row['osm_user_id'] ?? ''));
+        $api = new OsmApi(null, $ownerId !== '' ? $ownerId : null);
+        $api->setEssential(true);
         $token = self::accessTokenForRow($row, $api);
 
         $noteTarget = null;
@@ -76,7 +80,10 @@ final class WaitingListIntake
         }
 
         try {
-            return self::createMember($api, $token, $sectionId, $payload, (int) $row['id'], $noteTarget);
+            $created = self::createMember($api, $token, $sectionId, $payload, (int) $row['id'], $noteTarget);
+            // A new applicant: any cached copy of this waiting list is out of date.
+            \App\Waiting\WaitingListService::invalidateCache($sectionId);
+            return $created;
         } catch (WaitingListIntakeException $e) {
             throw $e;
         } catch (Throwable $e) {

@@ -3,6 +3,7 @@ declare(strict_types=1);
 namespace App\Http;
 use App\App;
 use App\Osm\OsmApi;
+use App\Osm\OsmRateGuard;
 use App\Osm\OsmTokens;
 use Throwable;
 final class Auth
@@ -53,7 +54,10 @@ final class Auth
     {
         $token = !empty($_SESSION['accessToken']) ? (string) (OsmTokens::sessionToken() ?? '') : '';
         $rate = OsmApi::sessionSnapshot();
-        if ($rate === null && $token !== '') {
+        // Shared per-user backoff (429 or allowance low): no probe call while it lasts.
+        $guard = OsmRateGuard::forCurrentUser();
+        $busyMinutes = $guard->busyMinutes();
+        if ($rate === null && $token !== '' && $busyMinutes === null) {
             try {
                 (new OsmApi())->get($token, '/oauth/resource');
             } catch (Throwable) {
@@ -91,6 +95,8 @@ final class Auth
             'rateResetText' => $text,
             'rateLimitCritical' => $critical,
             'rateLimitNearing' => $nearing,
+            'osmBusyMinutes' => $busyMinutes,
+            'osmBusyHard' => $busyMinutes !== null && $guard->reason() !== OsmRateGuard::REASON_LOW,
         ];
     }
 }

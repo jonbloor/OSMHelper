@@ -215,7 +215,11 @@
     <section class="help-section" id="in-progress" aria-labelledby="in-progress-h">
       <h3 id="in-progress-h">In progress</h3>
       <ul class="rm-list">
-        <li class="rm-item muted">Nothing in progress right now.</li>
+        <li class="rm-item rm-progress">
+          <div class="rm-head">{{ rm.status('progress') }} <span class="rm-area">OSM allowance</span></div>
+          <h4 class="rm-title">Protect your OSM allowance</h4>
+          <p>The waiting list loads in a couple of OSM requests instead of two per applicant, and is kept for 5 minutes. When your allowance runs low, or OSM asks us to slow down, OSMHelper pauses and shows “OSM is busy, try again in N minutes” instead of risking a lockout. <a href="/help/#osm-busy">More in Help</a>.</p>
+        </li>
       </ul>
     </section>
 

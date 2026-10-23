@@ -155,13 +155,20 @@
       <h3>Your data and privacy</h3>
       <p>OSM stays the record. Your OSM access token is held only in your session on our server, and most pages fetch fresh data from OSM when you open them. Anything a page holds for you while you work (a member list, group numbers, events, or the contacts Find a member searches) stays in that session only.</p>
       <p>Every session ends 2 hours after you sign in, or when you sign out, even if you are still using it, and its file on our server is cleaned up shortly after. The top of each page shows when your session ends (for example “Signed in until 23:40”). If it ends while you are working, sign in again and you go back to the page you were on.</p>
-      <p>Top awards results are kept for up to 2 hours so the page loads faster, then deleted. Find a member searches, and the members you pick in Nights away, are sent privately and never appear in web addresses or server logs.</p>
+      <p>Top awards results are kept for up to 2 hours so the page loads faster, then deleted. Waiting list results (names, dates and your waiting list fields, no contact details) and your section list are kept for up to 5 minutes, only for you, then deleted. They are also deleted when you sign out and when OSMHelper saves a change to that waiting list. Find a member searches, and the members you pick in Nights away, are sent privately and never appear in web addresses or server logs.</p>
       <p>The only things saved on our server are your group settings (age cut-offs, capacity, which sections each tool uses, kit locations and your chosen waiting list fields), saved with your OSM user number so we know whose settings are whose, and, if you use the <a href="#wordpress-form">WordPress joining form</a>, an encrypted OSM access key for that form, kept until you turn the form off. We also keep a short error log to fix problems. It records what failed, the error code and which section, never OSM’s message text, names, contact details or member numbers, and entries are deleted after 30 days.</p>
     </section>
 
     <section class="help-section" id="rate-limit">
       <h3>API rate limit</h3>
       <p>OSM applies an API allowance <strong>per user</strong> (your OSM login) — it is not a “how busy OSM is” meter. Home and the hub show your limit, remaining requests, and when the window resets. A banner appears site-wide when you are nearing the limit (and again when remaining is critical). Open fewer heavy pages until it refreshes. Members and Group numbers use quota only when you load the sections you ticked. Group numbers also reads the waiting list at that point. Checks, Waiting, Equipment, Bank, Top awards and Nights away each use quota when you open them.</p>
+    </section>
+
+    <section class="help-section" id="osm-busy">
+      <h3>“OSM is busy, try again in N minutes”</h3>
+      <p>If OSM’s allowance runs out, OSM can lock your login out of its API for up to a day. To stop that happening, OSMHelper watches the allowance OSM reports on every reply. When fewer than 10% of your requests are left (and never fewer than 20), it pauses everything except essential requests, like a save you have reviewed and confirmed, until the allowance resets. If OSM ever says “too many requests”, OSMHelper stops sending it anything for your login at once, for as long as OSM asks (15 minutes if it doesn’t say). It never retries on its own. The pause covers every page and the WordPress joining form for your login, so opening other pages won’t make it worse.</p>
+      <p>While the message shows, wait the number of minutes it gives, then reload the page. Pages you opened recently may still show, from the copy OSMHelper kept.</p>
+      <p>The waiting list now loads everyone in a couple of requests rather than two per applicant, and keeps the result for 5 minutes so reopening a page or switching between the list and ranking uses no extra requests. If OSM doesn’t give some details in bulk, OSMHelper fetches them for up to 20 applicants at a time, and the rest fill in when you open the page again a few minutes later.</p>
     </section>
 
     <section class="help-section" id="tables">

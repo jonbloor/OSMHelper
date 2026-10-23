@@ -31,6 +31,7 @@ function mockApi(array $responses, ?array &$history = null): OsmApi
     $history = [];
     $stack = HandlerStack::create(new MockHandler($responses));
     $stack->push(Middleware::history($history));
+    \App\Osm\OsmRateGuard::forUser(null)->reset(); // fresh allowance state per scenario
     return new OsmApi(new Client(['handler' => $stack, 'http_errors' => false, 'base_uri' => 'https://osm.test/']));
 }
 
