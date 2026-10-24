@@ -34,7 +34,9 @@
   <h3>{{ section.name }}</h3>
   {% if flash %}<div class="alert{% if flash.kind == 'error' %} alert-error{% endif %}" role="status">{{ flash.message }}</div>{% endif %}
 
-  {% if not view.listCached %}
+  {% if view.tooLarge is not null and not view.listStale %}
+    <p class="alert alert-error">{{ section.name }} has {{ view.tooLarge }} members (more than {{ maxMembers }}). Loading each one would use too much of your OSM allowance, so this page only works for smaller sections.</p>
+  {% elseif not view.listCached %}
     <p>Nothing loaded yet for this section. Loading reads the member list once, then each member’s record once ({{ pauseSeconds }} second pause between requests), so a section of 20 uses about 21 OSM requests.</p>
   {% elseif view.pending > 0 %}
     <p>{{ view.loaded }} of {{ view.total }} members loaded{% if view.listStale or view.pending > view.total - view.loaded %} ({{ view.pending }} to refresh){% endif %}. Loading carries on from where it stopped and uses about {{ view.pending }} more OSM request{{ view.pending == 1 ? '' : 's' }}.</p>
@@ -47,7 +49,7 @@
     <span id="yl-status" role="status" aria-live="polite"></span>
   </div>
   <p class="yl-actions">
-    {% if not view.listCached or view.listStale or view.pending > 0 %}
+    {% if (not view.listCached or view.listStale or view.pending > 0) and (view.tooLarge is null or view.listStale) %}
     <button type="button" class="btn" id="yl-start">{% if view.listCached and view.loaded > 0 %}Continue loading{% else %}Load members{% endif %}</button>
     {% endif %}
     <button type="button" class="btn btn-secondary" id="yl-stop" hidden>Stop</button>

@@ -307,6 +307,17 @@ $responder2 = $responder;
 $responder = static fn (RequestInterface $r, array $q): Response => new Response(200, rlh(800), json_encode($big));
 $r = YL::step(ylApi(), 'tok', $sec, '550', ctx());
 check($r['state'] === 'stopped' && count($calls) === 1 && str_contains((string) $r['message'], 'more than'), 'section over MAX_MEMBERS refused after 1 call');
+$calls = [];
+$r = YL::step(ylApi(), 'tok', $sec, '550', ctx($r['lastCallAt']));
+check($r['state'] === 'stopped' && $calls === [] && $r['calls'] === 0 && str_contains((string) $r['message'], (string) (YL::MAX_MEMBERS + 1) . ' members'), 'S2: pressing Load again for a too-large section makes no call');
+$v = YL::view('550', '7881');
+check($v['tooLarge'] === YL::MAX_MEMBERS + 1 && $v['rows'] === [], 'S2: only the count is kept for a too-large section (no names)');
+$raw550 = '';
+foreach (glob(OsmCache::dir() . '/ylsection-*.json') ?: [] as $f) { $raw550 .= file_get_contents($f); }
+check(!str_contains($raw550, 'F1"') && !str_contains($raw550, '5001'), 'S2: too-large marker stores no member names or ids');
+$now += 10;
+$r = YL::step(ylApi(), 'tok', $sec, '550', ctx(null, (float) $now));
+check(count($calls) === 1, 'S2: Refresh checks the list again (one call)');
 $responder = $responder2;
 
 echo "\n$passed passed, $failed failed\n";

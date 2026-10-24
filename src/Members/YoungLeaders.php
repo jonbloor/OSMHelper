@@ -242,7 +242,10 @@ final class YoungLeaders
      * cached other sections when loaded. pending = members still to load (missing, or older than
      * $refreshSince after Refresh).
      *
-     * @return array{listCached:bool,listStale:bool,rows:list<array<string, mixed>>,total:int,loaded:int,pending:int,options:list<array{name:string,count:int}>,fetchedAt:?int}
+     * tooLarge = member count when OSM's list was over MAX_MEMBERS (kept, so pressing Load again
+     * doesn't spend the list call again until Refresh or the 24 hours are up).
+     *
+     * @return array{listCached:bool,listStale:bool,tooLarge:?int,rows:list<array<string, mixed>>,total:int,loaded:int,pending:int,options:list<array{name:string,count:int}>,fetchedAt:?int}
      */
     public static function view(string $userId, string $sectionId, ?float $refreshSince = null): array
     {
@@ -291,6 +294,7 @@ final class YoungLeaders
         $listAt = is_array($list) ? (int) ($list['fetchedAt'] ?? 0) : null;
         return [
             'listCached' => $list !== null,
+            'tooLarge' => is_array($list) && is_int($list['tooLarge'] ?? null) ? $list['tooLarge'] : null,
             'listStale' => $list !== null && $refreshSince !== null && self::fetchedAtOf($list) < $refreshSince,
             'rows' => $rows,
             'total' => count($rows),
@@ -311,6 +315,11 @@ final class YoungLeaders
     {
         $f = $entry['fetchedAtF'] ?? null;
         return is_float($f) || is_int($f) ? (float) $f : (float) (int) ($entry['fetchedAt'] ?? 0);
+    }
+
+    public static function tooLargeMessage(string $sectionName, int $count): string
+    {
+        return $sectionName . ' has ' . $count . ' members (more than ' . self::MAX_MEMBERS . '). Loading each one would use too much of your OSM allowance, so this page only works for smaller sections.';
     }
 
     /** Pause before the next call, given when this user's previous Young Leaders call went out. */
@@ -340,6 +349,9 @@ final class YoungLeaders
         $out = ['state' => 'running', 'total' => $view['total'], 'loaded' => $view['total'] - $view['pending'], 'calls' => 0, 'message' => null, 'lastCallAt' => $ctx['lastCallAt'], 'confirm' => false];
 
         $needList = !$view['listCached'] || $view['listStale'];
+        if (!$needList && $view['tooLarge'] !== null) {
+            return ['state' => 'stopped', 'total' => $view['tooLarge'], 'message' => self::tooLargeMessage($section['name'], $view['tooLarge'])] + $out;
+        }
         $next = null;
         if (!$needList) {
             foreach ($view['rows'] as $r) {
@@ -406,7 +418,9 @@ final class YoungLeaders
             }
             $members = self::slimList($res);
             if (count($members) > self::MAX_MEMBERS) {
-                return ['state' => 'stopped', 'total' => count($members), 'message' => $section['name'] . ' has ' . count($members) . ' members (more than ' . self::MAX_MEMBERS . '). Loading each one would use too much of your OSM allowance, so this page only works for smaller sections.'] + $out;
+                // Remember only the count (no names), so the next press doesn't spend the list call again.
+                OsmCache::put(self::LIST_KIND, $userId, $sectionId, ['members' => [], 'tooLarge' => count($members), 'fetchedAt' => $now, 'fetchedAtF' => $nowF], $started);
+                return ['state' => 'stopped', 'total' => count($members), 'message' => self::tooLargeMessage($section['name'], count($members))] + $out;
             }
             OsmCache::put(self::LIST_KIND, $userId, $sectionId, ['members' => $members, 'fetchedAt' => $now, 'fetchedAtF' => $nowF], $started);
             $after = self::view($userId, $sectionId, $refreshSince);
