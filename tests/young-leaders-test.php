@@ -393,7 +393,37 @@ $limFiles = glob(Limits::dir() . '/*.json') ?: [];
 $limRaw = implode('', array_map('file_get_contents', $limFiles));
 check($limFiles !== [] && (fileperms($limFiles[0]) & 0777) === 0600 && !str_contains($limRaw, '560') && !preg_match('/[A-Za-z]{2,}[0-9]*"\s*:\s*"[A-Za-z]/', $limRaw), 'S1: limits files are 0600, keyed by hashed user id, no names');
 $now += Limits::KEEP_SEC + 1;
-check(Limits::lastCallAt('560') === null && YL::view('550', '7881')['tooLarge'] === null, 'S1: limits entries drop after 24 hours');
+check(Limits::lastCallAt('560') === null && YL::view('550', '7881')['tooLarge'] === null, 'S1: limits entries drop after 2 hours');
+// The timing record lasts as long as the Young Leaders copy (2 hours) and never less.
+check(Limits::KEEP_SEC === 7200 && Limits::KEEP_SEC >= OsmCache::ttlFor(YL::MEMBER_KIND) && Limits::KEEP_SEC >= OsmCache::ttlFor(YL::LIST_KIND), 'S1: timing record kept 2 hours, never shorter than the Young Leaders copy');
+$_SESSION = [];
+Limits::setTooLarge('562', '7881', YL::MAX_MEMBERS + 1, (float) $now);
+$now += Limits::KEEP_SEC - 1;
+check(Limits::tooLarge('562', '7881') !== null, 'S1: the over-150 marker holds just under 2 hours');
+$now += 2;
+check(Limits::tooLarge('562', '7881') === null, 'S1: the over-150 marker drops after 2 hours');
+$_SESSION = ['osmUserId' => '563'];
+Limits::startRefresh('563', '7881', (float) $now);
+Limits::endRefresh('563', '7881');
+check(YLC::refreshWait('563', '7881') > 0, 'S1: the 5-minute Refresh wait applies inside the 2-hour window');
+$now += YLC::REFRESH_COOLDOWN_SEC + 1;
+check(YLC::refreshWait('563', '7881') === 0 && Limits::lastRefreshAt('563', '7881') === (int) ($now - YLC::REFRESH_COOLDOWN_SEC - 1), 'S1: the wait ends after 5 minutes and the record is still kept');
+// A Refresh's "since" outlives every member cached before it, so a stale member is never shown as fresh.
+$_SESSION = [];
+OsmCache::put(YL::MEMBER_KIND, '564', '7881:1', ['others' => [], 'fetchedAt' => (int) $now, 'fetchedAtF' => (float) $now], (float) $now);
+$now += 1;
+$sinceAt = (float) $now;
+Limits::startRefresh('564', '7881', $sinceAt);
+$sinceOk = true;
+foreach ([Limits::KEEP_SEC - 2, Limits::KEEP_SEC - 1, Limits::KEEP_SEC, Limits::KEEP_SEC + 1] as $off) {
+    $now = $sinceAt + $off;
+    $_SESSION = [];
+    if (OsmCache::get(YL::MEMBER_KIND, '564', '7881:1') !== null && Limits::refreshSince('564', '7881') === null) {
+        $sinceOk = false;
+    }
+}
+check($sinceOk && Limits::refreshSince('564', '7881') === null, 'S1: refresh.since outlives any member cached before it');
+$now = (int) ceil($now);
 
 // MF1: storage/yl-limits can't be written. Loading must fail closed: no OSM call (with a clear
 // message), and even the session fallback keeps the full pause, the cooldown and the too-large marker.
@@ -407,7 +437,7 @@ check(!Limits::canSave('570') && !Limits::looksSavable('570'), 'MF1: an unwritab
 check(Limits::setLastCallAt('570', 1.0) === false, 'MF1: saving a limit reports the failure (no silent return)');
 $_SESSION = ['osmUserId' => '570'];
 $mfLog = [];
-$mfClock = (float) $now; // same clock as the 24-hour pruning
+$mfClock = (float) $now; // same clock as the 2-hour pruning
 $mfCtx = ['sleep' => static function (int $us) use (&$mfClock): void { $mfClock += $us / 1e6; }, 'now' => static function () use (&$mfClock): float { return $mfClock; }];
 $responderMf = $responder;
 $responder = static function (RequestInterface $r, array $q) use (&$mfLog, &$mfClock, $responderMf): Response { $mfLog[] = $mfClock; return $responderMf($r, $q); };
@@ -547,7 +577,7 @@ $h3Out = stream_get_contents($h3Pipes[1]);
 proc_close($h3Child);
 [$h3Done, $h3Val] = explode(' ', $h3Out . ' ', 2);
 check((float) $h3Done >= $h3Unlocked && trim($h3Val) === var_export((float) $now, true), 'SF3: a read waits until the write lock is released, then reads the value');
-// Sweep: a file with nothing left after 24h is deleted on a later write (at most hourly).
+// Sweep: a file with nothing left after 2h is deleted on a later write (at most hourly).
 $_SESSION = [];
 Limits::setLastCallAt('601', (float) $now);
 $h3Before = count(glob($h3Dir . '/*.json') ?: []);
@@ -589,6 +619,20 @@ $n1Hold = $now;
 $now += 3600;
 Limits::sweep();
 check($n1Count() === 0, 'N1: and that empty file is swept an hour later');
+$now = $n1Hold;
+// The sweep also removes expired entries from a file that still has a fresh one.
+$_SESSION = [];
+Limits::startRefresh('606', '7881', (float) $now);
+Limits::endRefresh('606', '7881');
+$now += Limits::KEEP_SEC - 10;
+$_SESSION = [];
+Limits::setLastCallAt('606', (float) $now);
+$now += 3600;
+@unlink($h3Dir . '/.swept');
+Limits::sweep();
+$f606 = glob($h3Dir . '/*.json') ?: [];
+$raw606 = $f606 !== [] ? (string) file_get_contents($f606[0]) : '';
+check(count($f606) === 1 && str_contains($raw606, 'lastCallAt') && !str_contains($raw606, 'refresh'), 'N1: the sweep drops expired entries but keeps the fresh one (' . $raw606 . ')');
 $now = $n1Hold;
 foreach (array_diff(scandir($h3Dir) ?: [], ['.', '..']) as $f) { unlink($h3Dir . '/' . $f); }
 @rmdir($h3Dir);

@@ -197,7 +197,7 @@
          deleted 2h after fetch by the same sweep and at sign-out (forgetCurrentUser/forgetUser); an expired session only clears it on that
          browser's next request (App::enforceSessionMaxAge) and a new sign-in clears only the previous user in that
          browser (App::beginAuthenticatedSession); Young Leaders limits (storage/yl-limits, YoungLeaderLimits:
-         timestamps, section ids and counts, keyed-hash file names, 24h) and OSM rate state (storage/osm-rate:
+         timestamps, section ids and counts, keyed-hash file names, 2h = KEEP_SEC tied to KIND_TTLS, then an hourly sweep) and OSM rate state (storage/osm-rate:
          numbers and reason codes) are kept across sign-out on purpose;
          OSM user ids are stored with settings (waiting_field_maps.updated_by, wordpress_site_keys.osm_user_id);
          osm-errors.jsonl never stores OSM message text or member IDs and is pruned after 30 days on every
@@ -243,7 +243,7 @@
         <ul>
           <li>Every request to OSM uses part of your OSM allowance. OSMHelper shows how much you have left, and slows down or pauses if it runs low or OSM asks it to.</li>
           <li>To do that it keeps a timing record with no names or member details: how often OSM has been asked lately and, for Young Leaders, when you last loaded or pressed Refresh and the size of any section too big to load.</li>
-          <li>Young Leaders member details (names, ages and sections) are deleted when you sign out or within 2 hours of being fetched if you don’t. We keep only the Young Leaders timing record, with no names, for up to 24 hours so signing back in can’t skip the waits. It is deleted within about an hour after that.</li>
+          <li>Young Leaders member details (names, ages and sections) are deleted when you sign out or within 2 hours of being fetched if you don’t. We keep only the Young Leaders timing record, with no names, for up to 2 hours so signing back in can’t skip the waits. It is deleted within about an hour after that.</li>
         </ul>
       </div>
       <div>

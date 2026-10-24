@@ -244,7 +244,7 @@ final class YoungLeaders
      * $refreshSince after Refresh).
      *
      * tooLarge = member count when OSM's list was over MAX_MEMBERS (kept, so pressing Load again
-     * doesn't spend the list call again until Refresh or the 24 hours are up).
+     * doesn't spend the list call again until Refresh or the 2 hours are up).
      *
      * @return array{listCached:bool,listStale:bool,tooLarge:?int,rows:list<array<string, mixed>>,total:int,loaded:int,pending:int,options:list<array{name:string,count:int}>,fetchedAt:?int}
      */
@@ -458,7 +458,7 @@ final class YoungLeaders
             $members = self::slimList($res);
             if (count($members) > self::MAX_MEMBERS) {
                 // Remember only the count (no names), per OSM user, so the next press (even after
-                // signing in again) doesn't spend the list call again until Refresh or 24 hours.
+                // signing in again) doesn't spend the list call again until Refresh or 2 hours.
                 YoungLeaderLimits::setTooLarge($userId, $sectionId, count($members), $nowF);
                 return ['state' => 'stopped', 'total' => count($members), 'message' => self::tooLargeMessage($section['name'], count($members))] + $out;
             }

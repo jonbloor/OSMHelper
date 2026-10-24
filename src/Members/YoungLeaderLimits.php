@@ -11,14 +11,15 @@ use App\Osm\OsmCache;
  *  - lastCallAt: when this user's last Young Leaders OSM call went out (the pause between calls);
  *  - refresh[section]: when Refresh was last pressed (the 5-minute cooldown) and the moment the
  *    reload started from (members fetched before it are reloaded);
- *  - tooLarge[section]: the member count of a section over the 150 limit, for 24 hours, so Load
- *    doesn't spend the list call again.
+ *  - tooLarge[section]: the member count of a section over the 150 limit, for KEEP_SEC (2 hours),
+ *    so Load doesn't spend the list call again.
  * No names or member data: timestamps, section ids and counts only. One file per OSM user in
  * storage/yl-limits/ (dir 0700, files created 0600), named by a keyed hash of the OSM user id
  * (HMAC with SESSION_SECRET, or with a random per-install salt kept in yl-limits/.salt when no
  * real secret is set), so the names can't be matched to user ids. Reads and writes are locked.
- * Entries are dropped after KEEP_SEC; files left with nothing in them are deleted by a sweep that
- * runs at most hourly (on a write, or on any request via App::sweepPrivateCaches). Unlike the Young Leaders copy of members (OsmCache), this is
+ * Entries are dropped after KEEP_SEC (2 hours, the Young Leaders copy's TTL); a sweep that runs at
+ * most hourly (on a write, or on any request via App::sweepPrivateCaches) deletes files left with
+ * nothing in them and rewrites the rest without their expired entries. Unlike the Young Leaders copy of members (OsmCache), this is
  * NOT cleared at sign-out, by design.
  *
  * Fails closed: every change is also kept in this session (so a broken store never makes the pause,
@@ -35,8 +36,14 @@ final class YoungLeaderLimits
     /** A reserved slot more than this far ahead can only be a clock change, not queued tabs. */
     private const MAX_AHEAD_SEC = 60;
 
-    /** Timing entries (no names) older than this are dropped. Must be at least the Young Leaders copy TTL (2 hours), so refresh.since outlives any cached member. */
-    public const KEEP_SEC = 86400;
+    /**
+     * Timing entries (no names) older than this are dropped: 2 hours. Tied to the Young Leaders copy's
+     * TTL (OsmCache::KIND_TTLS, the longer of the two kinds), so it can never be shorter than it and a
+     * Refresh's "since" always outlives any member cached before it (that member expires first).
+     */
+    public const KEEP_SEC = OsmCache::KIND_TTLS[YoungLeaders::MEMBER_KIND] >= OsmCache::KIND_TTLS[YoungLeaders::LIST_KIND]
+        ? OsmCache::KIND_TTLS[YoungLeaders::MEMBER_KIND]
+        : OsmCache::KIND_TTLS[YoungLeaders::LIST_KIND];
 
     /** The sweep for files with nothing left in them runs at most this often. */
     private const SWEEP_EVERY_SEC = 3600;
@@ -404,7 +411,7 @@ final class YoungLeaderLimits
         }
     }
 
-    /** At most hourly: delete limits files that have nothing left in them after pruning. */
+    /** At most hourly: delete limits files that have nothing left in them after pruning; rewrite the rest without expired entries. */
     private static function sweepIfDue(): void
     {
         $dir = self::dir();
@@ -429,8 +436,17 @@ final class YoungLeaderLimits
             if (flock($h, LOCK_EX | LOCK_NB)) {
                 $raw = stream_get_contents($h);
                 $s = is_string($raw) && $raw !== '' ? json_decode($raw, true) : [];
-                if (self::prune(is_array($s) ? $s : []) === []) {
+                $s = is_array($s) ? $s : [];
+                $kept = self::prune($s);
+                if ($kept === []) {
                     @unlink($path);
+                } elseif ($kept !== $s) {
+                    // Expired entries leave the disk too, not just when this user next writes.
+                    $json = json_encode($kept);
+                    if (is_string($json) && ftruncate($h, 0) && rewind($h)) {
+                        fwrite($h, $json);
+                        fflush($h);
+                    }
                 }
                 flock($h, LOCK_UN);
             }
