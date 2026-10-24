@@ -58,8 +58,8 @@
       <h3>Young Leaders</h3>
       <p>Under <strong>People → Young Leaders</strong>: see which other sections each member of a section helps in, for example which Beavers, Cubs or Scouts sections your Young Leaders support. Choose a section from the ones on your sign-in (sections with “Young Leader” or “YLU” in their name are listed first). Choosing a section does not call OSM.</p>
       <p><strong>Load members</strong> reads the section’s member list once, then each member’s record once, with a pause of at least a second between requests and a progress bar, so a section of 20 uses about 21 OSM requests. Sections of more than 40 ask you to confirm first, and sections of more than 150 are not loaded. Loading stops straight away, keeping what has loaded, if your allowance gets low, if OSM says too many requests or at the first error. <strong>Continue loading</strong> carries on from where it stopped. You can also press <strong>Stop</strong> at any time.</p>
-      <p>The table shows each member’s name, age and other sections. Search covers names and section names, <strong>Helping in</strong> shows only the members in one section, and the table can be sorted and exported (CSV / Excel / PDF) with the same three columns. None of this calls OSM. OSMHelper keeps only names, ages and section names (no contact or medical details) on our server for up to 24 hours while you stay signed in, tied to your OSM login, so going back to the page doesn’t use your allowance either. That copy is deleted when you sign out. <strong>Refresh from OSM</strong> reloads everyone and can be used once every 5 minutes per section. Leaders in the Leaders patrol are left out.</p>
-      <p>The pause between requests and the wait before the next Refresh are tied to your OSM login, so signing out and back in doesn’t skip them. If a section is too big to load, OSMHelper remembers that until you choose <strong>Refresh from OSM</strong> or 24 hours pass. While OSMHelper is pausing for OSM (see <a href="#osm-busy">“OSM is busy”</a>), the Load and Refresh buttons are hidden.</p>
+      <p>The table shows each member’s name, age and other sections. Search covers names and section names. <strong>Helping in</strong> shows only the members in one section. The table can be sorted and exported (CSV / Excel / PDF) with the same three columns. None of this calls OSM. OSMHelper keeps only names, ages and section names (no contact or medical details) on our server for up to 24 hours while you stay signed in, tied to your OSM login, so going back to the page doesn’t use your allowance either. Signing out deletes all of these member details. <strong>Refresh from OSM</strong> reloads everyone and can be used once every 5 minutes per section. Leaders in the Leaders patrol are left out.</p>
+      <p>The pause between requests and the wait before the next Refresh are tied to your OSM login, so signing out and back in doesn’t skip them. For this OSMHelper keeps only a timing record with no names: when it last asked OSM, when you last pressed Refresh and the size of any section too big to load. It is kept for up to 24 hours, even after you sign out. If a section is too big to load, OSMHelper remembers that until you choose <strong>Refresh from OSM</strong> or 24 hours pass. While OSMHelper is pausing for OSM (see <a href="#osm-busy">“OSM is busy”</a>), the Load and Refresh buttons are hidden.</p>
     </section>
 
     <section class="help-section" id="nights-away">
@@ -145,7 +145,7 @@
         <li>In WordPress, open <strong>OSM Settings → Waiting List</strong>, enter <code>https://osmhelper.co.uk</code> as the OSM Helper base URL and paste the site key.</li>
         <li>Add <code>[osm_waiting_list]</code> to a page and publish it.</li>
       </ol>
-      <p>The form asks for the child’s name, date of birth and home address (address line 1, line 2, town, county, postcode), and up to two parents’ names, emails and phone numbers. Each parent can tick “Receive text messages from Leaders?”, which turns on OSM’s receive-texts setting for their phone. There’s an optional note box; the note is saved to the Notes field you chose under <a href="#waiting-rank">Rank and notes</a>, stamped “Parent (website form)”.</p>
+      <p>The form asks for the child’s name, date of birth and home address (address line 1, line 2, town, county, postcode) and up to two parents’ names, emails and phone numbers. Each parent can tick “Receive text messages from Leaders?”, which turns on OSM’s receive-texts setting for their phone. There’s an optional note box; the note is saved to the Notes field you chose under <a href="#waiting-rank">Rank and notes</a>, stamped “Parent (website form)”.</p>
       <p>In WordPress you can also turn on a confirmation email to the parents (with your own reply-to address), Google reCAPTCHA or Cloudflare Turnstile against spam and an address lookup: Google address search (needs a Google key) or a free postcode check with postcodes.io.</p>
       <p>OSMHelper passes each form straight to OSM and doesn’t keep a copy. To do that, it keeps an encrypted OSM access key for the form (not your password) on the server until you turn the form off on the Joining form page.</p>
     </section>
@@ -178,7 +178,7 @@
     <section class="help-section" id="privacy">
       <h3>Your data and privacy</h3>
       <p>OSM stays the record. Your OSM access token is held only in your session on our server.</p>
-      <p><strong>While you work</strong></p>
+      <h4>While you work</h4>
       <ul>
         <li>Most pages fetch fresh data from OSM when you open them. The exceptions are the short-term copies below.</li>
         <li>Anything a page holds for you (a member list, group numbers, events or the contacts Find a member searches) stays in your session only.</li>
@@ -186,21 +186,21 @@
         <li>The top of each page shows when your session ends (for example “Signed in until 23:40”). If it ends while you are working, sign in again and you go back to the page you were on.</li>
         <li>Find a member searches and the members you pick in Nights away are sent privately and never appear in web addresses or server logs.</li>
       </ul>
-      <p><strong>Short-term copies on our server</strong></p>
+      <h4>Short-term copies on our server</h4>
       <ul>
         <li><strong>Waiting list:</strong> to save OSM requests, the waiting list pages keep a copy of applicants’ names, dates of birth, dates joined, every one of your waiting list custom fields and the leaders’ notes, plus your section list. It is deleted 5 minutes after it was fetched, whether or not you come back, and when you sign out. It is deleted for everyone when OSMHelper saves a change to that waiting list. <strong>Refresh from OSM</strong> fetches it again straight away.</li>
-        <li><strong>Young Leaders:</strong> keeps only members’ names, ages and the names of the other sections they are in, for each section you load. It is deleted 24 hours after it was fetched or when you sign out, whichever comes first.</li>
+        <li><strong>Young Leaders:</strong> keeps only members’ names, ages and the names of the other sections they are in, for each section you load. It is deleted 24 hours after it was fetched or when you sign out, whichever comes first. Signing out deletes all of it.</li>
         <li><strong>Top awards:</strong> results are kept for up to 2 hours so the page loads faster, then deleted. Signing out deletes them sooner.</li>
         <li>Only you can see the waiting list and Young Leaders copies. They are tied to your OSM login.</li>
       </ul>
-      <p><strong>Kept for longer</strong></p>
+      <h4>What’s kept for longer</h4>
       <ul>
         <li>Your group settings (age cut-offs, capacity, which sections each tool uses, kit locations and your chosen waiting list fields), saved with your OSM user number so we know whose settings are whose.</li>
         <li>If you use the <a href="#wordpress-form">WordPress joining form</a>, an encrypted OSM access key for that form, kept until you turn the form off.</li>
-        <li>A few times and counts with no names, to protect your OSM allowance: how often OSM has been asked lately and, for Young Leaders, when you last loaded or pressed Refresh and the size of any section too big to load. The Young Leaders ones are kept for up to 24 hours, even after you sign out, so signing in again doesn’t skip the waits. See <a href="#osm-busy">“OSM is busy”</a>.</li>
+        <li>A timing record with no names or member details, to protect your OSM allowance: how often OSM has been asked lately and, for Young Leaders, when you last loaded or pressed Refresh and the size of any section too big to load. Signing out deletes all Young Leaders member details (names, ages and sections). We keep only the Young Leaders timing record, for up to 24 hours, so signing back in can’t skip the waits. See <a href="#osm-busy">“OSM is busy”</a>.</li>
         <li>A short error log to fix problems. It records what failed, the error code and which section, never OSM’s message text, names, contact details or member numbers. Entries are deleted after 30 days.</li>
       </ul>
-      <p><strong>Signing out</strong> (in the menu) ends your session straight away and deletes your waiting list and Young Leaders copies and the Top awards results you loaded. Your settings, the WordPress form key and the allowance records are kept.</p>
+      <p><strong>Signing out</strong> (in the menu) ends your session straight away. It deletes the Top awards results you loaded, your waiting list copy and all Young Leaders member details. We keep your settings, the WordPress form key and the timing records, which have no names.</p>
     </section>
 
     <section class="help-section" id="rate-limit">
@@ -217,7 +217,7 @@
         <li><strong>OSM has blocked OSMHelper:</strong> OSMHelper stops every request to OSM, for every user, including sign-in, saves and the WordPress joining form, and stays stopped until the site administrator clears the block. Continuing after a block could make it permanent.</li>
         <li><strong>Can’t save its pause record:</strong> if OSMHelper can’t save its record of the pause on our server, it stops all requests to OSM rather than risk your allowance, and tries again after 5 minutes.</li>
       </ul>
-      <p>The pause is shared by every page, so opening other pages won’t make it worse. The WordPress joining form is also limited to 20 submissions per 15 minutes from any one internet address (normally your WordPress website’s server).</p>
+      <p>The pause is shared by every page, so opening other pages won’t make it worse. Signing out doesn’t clear it, and the record behind it holds only times and counts, with no names or member details. The WordPress joining form is also limited to 20 submissions per 15 minutes from any one internet address (normally your WordPress website’s server).</p>
       <p>While the message shows, wait the number of minutes it gives, then reload the page. Waiting list pages you opened in the last 5 minutes may still show, from the copy OSMHelper kept.</p>
       <p>The waiting list reads the list and everyone’s waiting list fields in two requests, plus one request per applicant for their date of birth and date joined (from their own OSM record), up to 40 requests per page load. It keeps the result for 5 minutes, so reopening a page or switching between the list and ranking uses no extra requests. On a long list some applicants show as “not loaded yet”: reload the page within 5 minutes to load the next batch (what was already loaded is kept for 5 minutes, then deleted). <strong>Refresh from OSM</strong> ignores the kept copy and loads it again, still within the same limits.</p>
     </section>

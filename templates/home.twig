@@ -169,7 +169,7 @@
         <h4>It doesn't</h4>
         <ul>
           <li>Replace OSM. OSM stays the record, and anything OSMHelper saves goes into OSM.</li>
-          <li>Keep member data for long. See <a href="#home-data">Your data</a> below for what is held, where and for how long.</li>
+          <li>Keep member details after you sign out. See <a href="#home-data">Your data</a> below for what is held while you are signed in and for how long.</li>
           <li>Keep the forms parents send. If you use the WordPress joining form, each form is passed straight to OSM and not kept. To do that, OSMHelper keeps an encrypted OSM access key for the form (not your password) on the server until you turn the form off.</li>
           <li>Change your bank accounts. Finance pages are read-only.</li>
         </ul>
@@ -184,15 +184,17 @@
          sessions end 2 hours after sign-in even while in use (Config::sessionAbsoluteSeconds(), enforced in
          App::enforceSessionMaxAge(); logout calls session_destroy()); session files live in storage/sessions/
          with gc_maxlifetime 7200, so PHP's session GC deletes them shortly after;
-         Top awards caches are deleted after 2 hours and at logout (TopAwardsController::sweepExpiredCaches);
+         Top awards caches are deleted after 2 hours (TopAwardsController::sweepExpiredCaches(), run on every request from
+         App::sweepPrivateCaches()) and at logout (AuthController::logout() calls TopAwardsController::clearSessionCaches(),
+         which clears the sections that session used, then sweeps);
          the OSM read cache (storage/osm-cache, OsmCache: waiting-list applicants' names, dates of birth, dates
          joined, every waiting-list custom field incl. leaders' notes, plus the section list) is keyed to the
          OSM user who fetched it and only read back for them (OsmCache::get/put), each entry is deleted 5 minutes
          after it was fetched by OsmCache::sweep() on every request (App::sweepPrivateCaches), at sign-out
-         (OsmCache::forgetUser) and, for a waiting list, when OSMHelper writes to it (WaitingListService::invalidateCache);
+         (AuthController::logout() -> OsmCache::forgetCurrentUser() -> forgetUser()) and, for a waiting list, when OSMHelper writes to it (WaitingListService::invalidateCache);
          Young Leaders uses the same cache (kinds ylsection / ylmember, OsmCache::KIND_TTLS = 24h) holding only
          first/last name, age text and the names of other sections (YoungLeaders::slimMember), owner-only,
-         deleted 24h after fetch by the same sweep and at sign-out (forgetUser); an expired session only clears it on that
+         deleted 24h after fetch by the same sweep and at sign-out (forgetCurrentUser/forgetUser); an expired session only clears it on that
          browser's next request (App::enforceSessionMaxAge) and a new sign-in clears only the previous user in that
          browser (App::beginAuthenticatedSession); Young Leaders limits (storage/yl-limits, YoungLeaderLimits:
          timestamps, section ids and counts, keyed-hash file names, 24h) and OSM rate state (storage/osm-rate:
@@ -223,7 +225,7 @@
         <h4>Short-term copies on our server</h4>
         <ul>
           <li><strong>Waiting list:</strong> to save OSM requests, the waiting list pages keep a copy of applicants’ names, dates of birth, dates joined, all your waiting list custom fields and the leaders’ notes, plus your section list. It is deleted 5 minutes after it was fetched, when you sign out or when OSMHelper saves a change to that waiting list.</li>
-          <li><strong>Young Leaders:</strong> Young Leaders keeps a copy of members’ names, ages and the names of the other sections they are in, so going back to it doesn’t use your OSM allowance. It is deleted 24 hours after it was fetched or when you sign out.</li>
+          <li><strong>Young Leaders:</strong> Young Leaders keeps a copy of members’ names, ages and the names of the other sections they are in, so going back to it doesn’t use your OSM allowance. It is deleted 24 hours after it was fetched or when you sign out, whichever comes first. Signing out deletes all of it.</li>
           <li><strong>Top awards:</strong> results are kept for up to 2 hours so the page loads faster, then deleted. Signing out deletes them sooner.</li>
           <li>Only you can see the waiting list and Young Leaders copies. They are tied to your OSM login.</li>
         </ul>
@@ -240,16 +242,16 @@
         <h4>Protecting your OSM allowance</h4>
         <ul>
           <li>Every request to OSM uses part of your OSM allowance. OSMHelper shows how much you have left, and slows down or pauses if it runs low or OSM asks it to.</li>
-          <li>To do that it keeps a few times and counts, with no names: how often OSM has been asked lately, when you last loaded Young Leaders or pressed Refresh and the size of any section too big for Young Leaders.</li>
-          <li>The Young Leaders times and sizes are kept for up to 24 hours, even after you sign out, so signing in again doesn’t skip the waits. They are then deleted within about an hour.</li>
+          <li>To do that it keeps a timing record with no names or member details: how often OSM has been asked lately and, for Young Leaders, when you last loaded or pressed Refresh and the size of any section too big to load.</li>
+          <li>Signing out deletes all Young Leaders member details (names, ages and sections). We keep only the Young Leaders timing record, with no names, for up to 24 hours so signing back in can’t skip the waits. It is deleted within about an hour after that.</li>
         </ul>
       </div>
       <div>
         <h4>Signing out</h4>
         <ul>
           <li>Choose <strong>Sign out</strong> in the menu to end your session straight away.</li>
-          <li>Signing out deletes your session, your waiting list and Young Leaders copies and the Top awards results you loaded.</li>
-          <li>Your settings, the WordPress form key and the allowance records above are kept.</li>
+          <li>Signing out deletes your session and the Top awards results you loaded, plus your waiting list copy and all Young Leaders member details (names, ages and sections).</li>
+          <li>We keep your settings, the WordPress form key and the timing records above, which have no names.</li>
         </ul>
       </div>
     </div>
