@@ -4,6 +4,8 @@
 #   FAKE_OSM_429_AT=206 review/young-leaders/run.sh     fake OSM answers 429 for member 206
 #   FAKE_OSM_ERROR_AT=205 review/young-leaders/run.sh   fake OSM answers 500 for member 205
 #   FAKE_OSM_LIMIT=300 FAKE_OSM_REMAINING=66 review/young-leaders/run.sh   low allowance (stops at 60 left)
+#   REVIEW_YL_LIMITS=unwritable review/young-leaders/run.sh   limits can't be saved (Young Leaders refuses to call OSM)
+# Sessions, the OSM cache, OSM rate state and Young Leaders limits all live under $TMP, never storage/.
 # Then open http://127.0.0.1:8098/__review/sign-in  (Ctrl+C stops both servers)
 set -euo pipefail
 cd "$(dirname "$0")/../.."

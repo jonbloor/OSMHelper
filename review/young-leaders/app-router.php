@@ -8,7 +8,7 @@ declare(strict_types=1);
 $root = dirname(__DIR__, 2);
 $fakeBase = 'http://127.0.0.1:8099';
 $tmp = sys_get_temp_dir() . '/osmhelper-yl-review';
-foreach (['sessions', 'osm-cache', 'osm-rate'] as $d) {
+foreach (['sessions', 'osm-cache', 'osm-rate', 'yl-limits'] as $d) {
     @mkdir("$tmp/$d", 0700, true);
 }
 $env = [
@@ -33,6 +33,16 @@ if (!str_starts_with(\App\Config::osmApiBase(), 'http://127.0.0.1:')) {
 }
 \App\Osm\OsmCache::useDirectory("$tmp/osm-cache");
 \App\Osm\OsmRateGuard::useDirectory("$tmp/osm-rate");
+// Young Leaders limits in the temp dir too, never the repo's storage/yl-limits.
+// REVIEW_YL_LIMITS=unwritable points it at a plain file instead, to see the fail-closed refusal.
+if (getenv('REVIEW_YL_LIMITS') === 'unwritable') {
+    if (!is_file("$tmp/yl-limits-broken")) {
+        @file_put_contents("$tmp/yl-limits-broken", "not a directory\n");
+    }
+    \App\Members\YoungLeaderLimits::useDirectory("$tmp/yl-limits-broken");
+} else {
+    \App\Members\YoungLeaderLimits::useDirectory("$tmp/yl-limits");
+}
 
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 if ($path !== '/' && is_file($root . '/public' . $path)) {
