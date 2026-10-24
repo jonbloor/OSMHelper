@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\App;
 use App\Http\Auth;
 use App\Http\Csrf;
+use App\Members\YoungLeaderLimits;
 use App\Members\YoungLeaders;
 use App\Osm\LoginSections;
 use App\Osm\OsmApi;
@@ -21,9 +22,8 @@ use Throwable;
 final class YoungLeadersController
 {
     private const FLASH = 'ylFlash';
-    private const LAST_CALL = 'ylLastCallAt';
-    private const REFRESH_SINCE = 'ylRefreshSince';
-    private const LAST_REFRESH = 'ylLastRefresh';
+    // The pause, the Refresh cooldown and Refresh progress live in YoungLeaderLimits, per OSM user,
+    // so signing in again doesn't reset them. Only page messages stay in the session.
     private const AUTOSTART = 'ylAutoStart';
     /** Refresh at most once per 5 minutes per section. */
     public const REFRESH_COOLDOWN_SEC = 300;
@@ -39,7 +39,7 @@ final class YoungLeadersController
         $section = YoungLeaders::findChoice($choices, $sid);
         $userId = OsmCache::currentUserId();
         $view = $section !== null && $userId !== null
-            ? YoungLeaders::view($userId, (string) $section['id'], self::refreshSince((string) $section['id']))
+            ? YoungLeaders::view($userId, (string) $section['id'], YoungLeaderLimits::refreshSince($userId, (string) $section['id']))
             : null;
         $flash = $_SESSION[self::FLASH] ?? null;
         unset($_SESSION[self::FLASH]);
@@ -95,19 +95,18 @@ final class YoungLeadersController
             self::json(400, ['state' => 'stopped', 'message' => 'OSMHelper could not tell which OSM user you are, so it did not load anything. Sign out and sign in again.']);
         }
         $sid = (string) $section['id'];
-        $last = $_SESSION[self::LAST_CALL] ?? null;
         $r = YoungLeaders::step(new OsmApi(), $token, $section, $userId, [
-            'lastCallAt' => is_float($last) || is_int($last) ? (float) $last : null,
-            'refreshSince' => self::refreshSince($sid),
+            'lastCallAt' => YoungLeaderLimits::lastCallAt($userId),
+            'refreshSince' => YoungLeaderLimits::refreshSince($userId, $sid),
             'sleep' => static function (int $us): void { usleep($us); },
             'now' => static fn (): float => microtime(true),
             'confirmed' => ($_POST['confirmed'] ?? '') === '1',
         ]);
         if ($r['lastCallAt'] !== null) {
-            $_SESSION[self::LAST_CALL] = $r['lastCallAt'];
+            YoungLeaderLimits::setLastCallAt($userId, (float) $r['lastCallAt']);
         }
         if ($r['state'] === 'done') {
-            unset($_SESSION[self::REFRESH_SINCE][$sid]);
+            YoungLeaderLimits::endRefresh($userId, $sid);
             $_SESSION[self::FLASH] = ['section' => $sid, 'kind' => 'ok', 'message' => 'All ' . $r['total'] . ' members loaded. Search, Helping in, sorting and CSV use this copy (kept for up to 24 hours, deleted when you sign out) and don’t call OSM.'];
         } elseif ($r['state'] === 'stopped') {
             $_SESSION[self::FLASH] = ['section' => $sid, 'kind' => 'error', 'message' => (string) $r['message'] . ' Loaded ' . $r['loaded'] . ' of ' . $r['total'] . ' members.'];
@@ -134,26 +133,33 @@ final class YoungLeadersController
         }
         $sid = (string) $section['id'];
         $back = '/young-leaders/?section=' . rawurlencode($sid);
-        $lastAt = (int) ($_SESSION[self::LAST_REFRESH][$sid] ?? 0);
-        $wait = self::REFRESH_COOLDOWN_SEC - (time() - $lastAt);
-        if ($lastAt > 0 && $wait > 0) {
+        $userId = OsmCache::currentUserId();
+        if ($userId === null) {
+            header('Location: ' . $back, true, 303);
+            exit;
+        }
+        $wait = self::refreshWait($userId, $sid);
+        if ($wait > 0) {
             $_SESSION[self::FLASH] = ['section' => $sid, 'kind' => 'error', 'message' => 'This section was refreshed a moment ago. To protect your OSM allowance you can refresh again in ' . (int) ceil($wait / 60) . ' min.'];
             header('Location: ' . $back, true, 303);
             exit;
         }
-        $_SESSION[self::LAST_REFRESH][$sid] = time();
         // Older copies stay on screen until each member is reloaded (nothing is lost if loading stops).
         // Microseconds, so members fetched earlier in this same second still count as older.
-        $_SESSION[self::REFRESH_SINCE][$sid] = OsmCache::currentMicrotime();
+        YoungLeaderLimits::startRefresh($userId, $sid, OsmCache::currentMicrotime());
         $_SESSION[self::AUTOSTART] = $sid;
         header('Location: ' . $back, true, 303);
         exit;
     }
 
-    private static function refreshSince(string $sid): ?float
+    /** Seconds until this OSM user may press Refresh again for the section (0 = now). */
+    public static function refreshWait(string $userId, string $sid): int
     {
-        $v = $_SESSION[self::REFRESH_SINCE][$sid] ?? null;
-        return is_int($v) || is_float($v) ? (float) $v : null;
+        $lastAt = YoungLeaderLimits::lastRefreshAt($userId, $sid);
+        if ($lastAt <= 0) {
+            return 0;
+        }
+        return max(0, self::REFRESH_COOLDOWN_SEC - ((int) OsmCache::currentMicrotime() - $lastAt));
     }
 
     private static function sectionParam(mixed $v): string

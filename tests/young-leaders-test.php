@@ -8,7 +8,9 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/vendor/autoload.php';
 require __DIR__ . '/isolate-storage.php';
 
+use App\Http\Controllers\YoungLeadersController as YLC;
 use App\Members\Patrols;
+use App\Members\YoungLeaderLimits as Limits;
 use App\Members\YoungLeaders as YL;
 use App\Osm\OsmApi;
 use App\Osm\OsmCache;
@@ -336,6 +338,12 @@ check($v['tooLarge'] === YL::MAX_MEMBERS + 1 && $v['rows'] === [], 'S2: only the
 $raw550 = '';
 foreach (glob(OsmCache::dir() . '/ylsection-*.json') ?: [] as $f) { $raw550 .= file_get_contents($f); }
 check(!str_contains($raw550, 'F1"') && !str_contains($raw550, '5001'), 'S2: too-large marker stores no member names or ids');
+// S1: the too-large refusal is per OSM user, so signing out (which clears the YL copy) and in again doesn't reset it.
+OsmCache::forgetUser('550');
+$_SESSION = ['osmUserId' => '550'];
+$calls = [];
+$r = YL::step(ylApi(), 'tok', $sec, '550', ctx());
+check($r['state'] === 'stopped' && $calls === [] && $r['calls'] === 0, 'S1: after sign-out and sign-in the too-large refusal still makes no call');
 $now += 10;
 $r = YL::step(ylApi(), 'tok', $sec, '550', ctx(null, (float) $now));
 check(count($calls) === 1, 'S2: Refresh checks the list again (one call)');
@@ -350,6 +358,27 @@ $okPage = $twig->render('young-leaders.twig', $pageCtx + ['busy' => null]);
 $busyPage = $twig->render('young-leaders.twig', $pageCtx + ['busy' => $busy510]);
 check(str_contains($okPage, 'id="yl-start"') && str_contains($okPage, '/young-leaders/refresh/'), '(b): normally Continue and Refresh are shown');
 check(!str_contains($busyPage, 'id="yl-start"') && !str_contains($busyPage, '/young-leaders/refresh/') && str_contains($busyPage, 'id="yl-busy"'), '(b): during a backoff Continue and Refresh are hidden, with a message');
+
+// S1: pause, Refresh cooldown and Refresh progress are per OSM user and survive signing in again.
+$_SESSION = ['osmUserId' => '560'];
+check(YLC::refreshWait('560', '7881') === 0 && Limits::lastCallAt('560') === null, 'S1: nothing recorded yet');
+Limits::setLastCallAt('560', (float) $now);
+Limits::startRefresh('560', '7881', (float) $now);
+OsmCache::forgetCurrentUser();
+$_SESSION = [];
+$_SESSION = ['osmUserId' => '560'];
+check(YLC::refreshWait('560', '7881') > 0 && YLC::refreshWait('560', '7881') <= YLC::REFRESH_COOLDOWN_SEC, 'S1: Refresh cooldown survives sign-out and sign-in');
+check(Limits::lastCallAt('560') === (float) $now && Limits::refreshSince('560', '7881') === (float) $now, 'S1: last-call time (pause) and Refresh progress survive too');
+check(YLC::refreshWait('561', '7881') === 0 && Limits::lastCallAt('561') === null, 'S1: limits are per OSM user (another user is unaffected)');
+Limits::endRefresh('560', '7881');
+check(Limits::refreshSince('560', '7881') === null && YLC::refreshWait('560', '7881') > 0, 'S1: finishing the reload keeps the cooldown');
+$now += YLC::REFRESH_COOLDOWN_SEC + 1;
+check(YLC::refreshWait('560', '7881') === 0, 'S1: cooldown ends after 5 minutes');
+$limFiles = glob(Limits::dir() . '/*.json') ?: [];
+$limRaw = implode('', array_map('file_get_contents', $limFiles));
+check($limFiles !== [] && (fileperms($limFiles[0]) & 0777) === 0600 && !str_contains($limRaw, '560') && !preg_match('/[A-Za-z]{2,}[0-9]*"\s*:\s*"[A-Za-z]/', $limRaw), 'S1: limits files are 0600, keyed by hashed user id, no names');
+$now += Limits::KEEP_SEC + 1;
+check(Limits::lastCallAt('560') === null && YL::view('550', '7881')['tooLarge'] === null, 'S1: limits entries drop after 24 hours');
 
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

@@ -11,6 +11,7 @@ $__isoDir = sys_get_temp_dir() . '/osmh-iso-' . getmypid() . '-' . bin2hex(rando
 @mkdir($__isoDir, 0700, true);
 App\Osm\OsmRateGuard::useDirectory($__isoDir . '/osm-rate');
 App\Osm\OsmCache::useDirectory($__isoDir . '/osm-cache');
+App\Members\YoungLeaderLimits::useDirectory($__isoDir . '/yl-limits');
 register_shutdown_function(static function () use ($__isoDir): void {
     if (!is_dir($__isoDir)) {
         return;

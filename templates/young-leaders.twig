@@ -34,7 +34,7 @@
   <h3>{{ section.name }}</h3>
   {% if flash %}<div class="alert{% if flash.kind == 'error' %} alert-error{% endif %}" role="status">{{ flash.message }}</div>{% endif %}
 
-  {% if view.tooLarge is not null and not view.listStale %}
+  {% if view.tooLarge is not null %}
     <p class="alert alert-error">{{ section.name }} has {{ view.tooLarge }} members (more than {{ maxMembers }}). Loading each one would use too much of your OSM allowance, so this page only works for smaller sections.</p>
   {% elseif not view.listCached %}
     <p>Nothing loaded yet for this section. Loading reads the member list once, then each member’s record once ({{ pauseSeconds }} second pause between requests), so a section of 20 uses about 21 OSM requests.</p>
@@ -52,12 +52,12 @@
   <p class="alert alert-error" id="yl-busy">{{ busy }} Loading and Refresh come back when the wait is over. What has loaded is kept.</p>
   {% endif %}
   <p class="yl-actions">
-    {% if not busy and (not view.listCached or view.listStale or view.pending > 0) and (view.tooLarge is null or view.listStale) %}
+    {% if not busy and (not view.listCached or view.listStale or view.pending > 0) and view.tooLarge is null %}
     <button type="button" class="btn" id="yl-start">{% if view.listCached and view.loaded > 0 %}Continue loading{% else %}Load members{% endif %}</button>
     {% endif %}
     <button type="button" class="btn btn-secondary" id="yl-stop" hidden>Stop</button>
   </p>
-  {% if view.listCached and not busy %}
+  {% if (view.listCached or view.tooLarge is not null) and not busy %}
   <form method="post" action="/young-leaders/refresh/" class="inline-form">
     {% include '_csrf.twig' %}
     <input type="hidden" name="section_id" value="{{ section.id }}">
