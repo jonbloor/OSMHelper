@@ -83,6 +83,7 @@ check($out === null || $out === '', 'download() sends no body for HEAD');
 // ---- Templates render
 $twig = new Environment(new FilesystemLoader($root . '/templates'), ['strict_variables' => false]);
 $twig->addFunction(new TwigFunction('asset', static fn (string $p): string => '/assets/' . ltrim($p, '/')));
+$twig->addFunction(new TwigFunction('main_nav', static fn (bool $a): array => \App\Http\Nav::forRequest($a)));
 $base = ['authed' => true, 'csrfToken' => 'tok', 'plugin' => $info, 'wpEndpoint' => WordpressFormController::ENDPOINT, 'wpBaseUrl' => WordpressFormController::BASE_URL,
     'waitingLists' => [['id' => '60830', 'name' => 'Waiting list', 'groupName' => '4th Ashby']]];
 

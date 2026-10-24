@@ -360,6 +360,7 @@ $responder = $responder2;
 // (b): during a backoff the page hides Load/Continue and Refresh and says why.
 $twig = new \Twig\Environment(new \Twig\Loader\FilesystemLoader(dirname(__DIR__) . '/templates'), ['strict_variables' => false]);
 $twig->addFunction(new \Twig\TwigFunction('asset', static fn (string $p): string => '/assets/' . ltrim($p, '/')));
+$twig->addFunction(new \Twig\TwigFunction('main_nav', static fn (bool $a): array => \App\Http\Nav::forRequest($a)));
 $pageCtx = ['authed' => true, 'csrfToken' => 'tok', 'section' => $sec, 'ylChoices' => [$sec], 'otherChoices' => [], 'groupName' => 'G',
     'view' => YL::view('510', '7881'), 'confirmAbove' => YL::CONFIRM_ABOVE, 'maxMembers' => YL::MAX_MEMBERS, 'pauseSeconds' => 1, 'cooldownMinutes' => 5];
 $okPage = $twig->render('young-leaders.twig', $pageCtx + ['busy' => null]);
