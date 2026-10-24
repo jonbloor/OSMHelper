@@ -35,7 +35,7 @@ final class YoungLeaderLimits
     /** A reserved slot more than this far ahead can only be a clock change, not queued tabs. */
     private const MAX_AHEAD_SEC = 60;
 
-    /** Entries older than this are dropped (the cached data they refer to has expired). */
+    /** Timing entries (no names) older than this are dropped. Must be at least the Young Leaders copy TTL (2 hours), so refresh.since outlives any cached member. */
     public const KEEP_SEC = 86400;
 
     /** The sweep for files with nothing left in them runs at most this often. */
