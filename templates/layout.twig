@@ -21,16 +21,16 @@
       <nav id="app-nav" class="nav-links{% if not signedIn %} nav-public{% endif %}" aria-label="Main">
         {% for entry in main_nav(signedIn) %}
           {% if entry.type == 'group' %}
-        <details class="nav-group nav-{{ entry.key }}">
+        <details class="nav-group nav-{{ entry.key }}{% if entry.hasCurrent %} has-current{% endif %}">
           <summary>{{ navicon.icon(entry.icon) }} {{ entry.label }}</summary>
           <div class="nav-sub">
             {% for item in entry.items %}
-            <a href="{{ item.href }}">{{ item.label }}</a>
+            <a href="{{ item.href }}"{% if item.current %} aria-current="page"{% endif %}>{{ item.label }}</a>
             {% endfor %}
           </div>
         </details>
           {% else %}
-        <a class="nav-item nav-{{ entry.key }}" href="{{ entry.href }}">{{ navicon.icon(entry.icon) }} {{ entry.label }}</a>
+        <a class="nav-item nav-{{ entry.key }}" href="{{ entry.href }}"{% if entry.current %} aria-current="page"{% endif %}>{{ navicon.icon(entry.icon) }} {{ entry.label }}</a>
           {% endif %}
         {% endfor %}
       </nav>
@@ -58,8 +58,8 @@
           sync();
           // Dropdown groups (<details>): only one open at a time; close on outside click/tap,
           // Escape, choosing an item, closing the mobile menu, and when the page is restored from
-          // the back/forward cache. The group holding the current page is highlighted, not opened,
-          // so a menu never "sticks" open over the page on load.
+          // the back/forward cache. The group holding the current page is highlighted (server-side),
+          // not opened, so a menu never "sticks" open over the page on load.
           var groups = Array.prototype.slice.call(nav.querySelectorAll('details.nav-group'));
           function syncAria(d) {
             var s = d.querySelector('summary');
@@ -99,17 +99,7 @@
             if (!nav.classList.contains('is-open')) closeAll(null);
           });
           window.addEventListener('pageshow', function () { closeAll(null); });
-          var path = window.location.pathname.replace(/\/+$/, '') || '/';
-          nav.querySelectorAll('a[href]').forEach(function (a) {
-            try {
-              var p = new URL(a.href, window.location.href).pathname.replace(/\/+$/, '') || '/';
-              if (p === path || (p !== '/' && path.indexOf(p) === 0)) {
-                a.setAttribute('aria-current', 'page');
-                var g = a.closest('details.nav-group');
-                if (g) g.classList.add('has-current');
-              }
-            } catch (e) {}
-          });
+          // The current page is marked on the server (aria-current + .has-current), see src/Http/Nav.php.
         })();
       </script>
     </header>
