@@ -382,7 +382,7 @@ final class YoungLeaders
         }
         $what = $needList ? 'the member list' : trim($next['firstname'] . ' ' . $next['lastname']);
         $started = microtime(true);
-        $out['calls'] = 1;
+        $sentBefore = $api->requestsSent();
         try {
             $out['lastCallAt'] = ($ctx['now'])();
             if ($needList) {
@@ -403,17 +403,14 @@ final class YoungLeaders
                 ]);
             }
         } catch (OsmBusyException $e) {
+            // A 429 reply or a refusal by the shared guard (no request sent): calls says which.
+            $out['calls'] = $api->requestsSent() - $sentBefore;
             return ['state' => 'stopped', 'message' => $e->getMessage() . ' What has loaded is kept.'] + $out;
         } catch (Throwable $e) {
-            if ($e->getCode() === 429) {
-                $ra = $api->getRetryAfterSeconds();
-                $msg = 'OSM said too many requests, so OSMHelper stopped. What has loaded is kept. '
-                    . ($ra !== null ? 'Try again in about ' . ContactIndex::humanWait($ra) . '.' : 'Wait for your allowance to reset.');
-            } else {
-                $msg = 'OSM returned an error for ' . $what . ', so OSMHelper stopped without trying again. What has loaded is kept.';
-            }
-            return ['state' => 'stopped', 'message' => $msg] + $out;
+            $out['calls'] = $api->requestsSent() - $sentBefore;
+            return ['state' => 'stopped', 'message' => 'OSM returned an error for ' . $what . ', so OSMHelper stopped without trying again. What has loaded is kept.'] + $out;
         }
+        $out['calls'] = $api->requestsSent() - $sentBefore;
 
         $nowF = OsmCache::currentMicrotime();
         $now = (int) $nowF;

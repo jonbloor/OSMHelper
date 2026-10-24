@@ -227,6 +227,7 @@ check(YL::view('510', '7881')['loaded'] === 2, '429: the two members already loa
 $calls = [];
 $r2 = YL::step(ylApi(), 'tok', $sec, '510', ctx($last));
 check($r2['state'] === 'stopped' && $calls === [], 'after a 429 the shared guard refuses the next step with no call');
+check($r['calls'] === 1 && $r2['calls'] === 0, 'S6: the 429 step reports calls:1, the refused step calls:0');
 
 // Stop at the first error
 freshYlUser('520');
@@ -270,6 +271,7 @@ $r = YL::step(ylApi(), 'tok', $sec, '531', ctx());
 $calls = [];
 $r = YL::step(ylApi(), 'tok', $sec, '531', ctx($r['lastCallAt']));
 check($r['state'] === 'stopped' && $calls === [] && str_contains((string) $r['message'], 'allowance'), 'shared low-allowance guard: stopped, no call');
+check($r['calls'] === 0, 'S6: guard-refused step reports calls:0');
 $remaining = 900;
 
 // Refresh: older entries count as pending, are still shown, and get replaced

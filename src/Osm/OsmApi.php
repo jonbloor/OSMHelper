@@ -19,6 +19,8 @@ final class OsmApi
     private ?string $lastBodyKind = null;
     /** OSM user whose allowance this client spends; null = whoever is signed in to the session. */
     private ?string $osmUserId;
+    /** HTTP requests this client actually sent to OSM (refused calls don't count). */
+    private int $requestsSent = 0;
     /** When true, every call is treated as essential (a save the user confirmed, and its checks). */
     private bool $essentialScope = false;
     /** @var array<string, true> reason codes already logged in this PHP request */
@@ -239,6 +241,7 @@ final class OsmApi
         $options['headers'] = array_merge($options['headers'] ?? [], $headers);
         $ctx = self::requestContext($path, $options);
         $this->lastBodyKind = null;
+        $this->requestsSent++;
         try {
             $response = $this->http->request($method, $path, $options);
         } catch (\Throwable $e) {
@@ -458,6 +461,12 @@ final class OsmApi
     }
 
     /** Seconds to wait after a 429, if OSM sent Retry-After. */
+    /** How many HTTP requests this client has sent to OSM (a call the guard refused is not one). */
+    public function requestsSent(): int
+    {
+        return $this->requestsSent;
+    }
+
     public function getRetryAfterSeconds(): ?int
     {
         $v = $this->lastRateLimit['retryAfterSec'] ?? null;
