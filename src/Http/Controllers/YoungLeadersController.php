@@ -68,6 +68,8 @@ final class YoungLeadersController
             'pauseSeconds' => YoungLeaders::PAUSE_US / 1_000_000,
             'cooldownMinutes' => (int) (self::REFRESH_COOLDOWN_SEC / 60),
             'noUser' => $userId === null,
+            // During a backoff the Load/Continue and Refresh buttons are hidden (they'd only be refused).
+            'busy' => $section !== null && $userId !== null ? YoungLeaders::busyMessage($userId) : null,
         ]));
     }
 

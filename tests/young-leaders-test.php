@@ -228,6 +228,8 @@ $calls = [];
 $r2 = YL::step(ylApi(), 'tok', $sec, '510', ctx($last));
 check($r2['state'] === 'stopped' && $calls === [], 'after a 429 the shared guard refuses the next step with no call');
 check($r['calls'] === 1 && $r2['calls'] === 0, 'S6: the 429 step reports calls:1, the refused step calls:0');
+$busy510 = YL::busyMessage('510');
+check(is_string($busy510) && str_contains($busy510, 'OSM is busy') && YL::busyMessage('511') === null, '(b): busyMessage reports this user\'s backoff only');
 
 // Stop at the first error
 freshYlUser('520');
@@ -338,6 +340,16 @@ $now += 10;
 $r = YL::step(ylApi(), 'tok', $sec, '550', ctx(null, (float) $now));
 check(count($calls) === 1, 'S2: Refresh checks the list again (one call)');
 $responder = $responder2;
+
+// (b): during a backoff the page hides Load/Continue and Refresh and says why.
+$twig = new \Twig\Environment(new \Twig\Loader\FilesystemLoader(dirname(__DIR__) . '/templates'), ['strict_variables' => false]);
+$twig->addFunction(new \Twig\TwigFunction('asset', static fn (string $p): string => '/assets/' . ltrim($p, '/')));
+$pageCtx = ['authed' => true, 'csrfToken' => 'tok', 'section' => $sec, 'ylChoices' => [$sec], 'otherChoices' => [], 'groupName' => 'G',
+    'view' => YL::view('510', '7881'), 'confirmAbove' => YL::CONFIRM_ABOVE, 'maxMembers' => YL::MAX_MEMBERS, 'pauseSeconds' => 1, 'cooldownMinutes' => 5];
+$okPage = $twig->render('young-leaders.twig', $pageCtx + ['busy' => null]);
+$busyPage = $twig->render('young-leaders.twig', $pageCtx + ['busy' => $busy510]);
+check(str_contains($okPage, 'id="yl-start"') && str_contains($okPage, '/young-leaders/refresh/'), '(b): normally Continue and Refresh are shown');
+check(!str_contains($busyPage, 'id="yl-start"') && !str_contains($busyPage, '/young-leaders/refresh/') && str_contains($busyPage, 'id="yl-busy"'), '(b): during a backoff Continue and Refresh are hidden, with a message');
 
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

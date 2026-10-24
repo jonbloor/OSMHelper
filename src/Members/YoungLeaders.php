@@ -7,6 +7,7 @@ use App\Osm\OsmApi;
 use App\Osm\OsmBusyException;
 use App\Osm\OsmCache;
 use App\Osm\OsmLists;
+use App\Osm\OsmRateGuard;
 use Throwable;
 
 /**
@@ -315,6 +316,20 @@ final class YoungLeaders
     {
         $f = $entry['fetchedAtF'] ?? null;
         return is_float($f) || is_int($f) ? (float) $f : (float) (int) ($entry['fetchedAt'] ?? 0);
+    }
+
+    /**
+     * Why loading can't start right now (this user's shared OSM backoff, or an app-wide block),
+     * or null when it can. Reads the saved backoff state only: no OSM call.
+     */
+    public static function busyMessage(?string $userId): ?string
+    {
+        try {
+            OsmRateGuard::forUser($userId)->assertCanCall(false);
+            return null;
+        } catch (OsmBusyException $e) {
+            return $e->getMessage();
+        }
     }
 
     public static function tooLargeMessage(string $sectionName, int $count): string

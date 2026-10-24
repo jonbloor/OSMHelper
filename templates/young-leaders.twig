@@ -48,13 +48,16 @@
     <progress id="yl-progress" max="1" value="0" aria-describedby="yl-status"></progress>
     <span id="yl-status" role="status" aria-live="polite"></span>
   </div>
+  {% if busy %}
+  <p class="alert alert-error" id="yl-busy">{{ busy }} Loading and Refresh come back when the wait is over. What has loaded is kept.</p>
+  {% endif %}
   <p class="yl-actions">
-    {% if (not view.listCached or view.listStale or view.pending > 0) and (view.tooLarge is null or view.listStale) %}
+    {% if not busy and (not view.listCached or view.listStale or view.pending > 0) and (view.tooLarge is null or view.listStale) %}
     <button type="button" class="btn" id="yl-start">{% if view.listCached and view.loaded > 0 %}Continue loading{% else %}Load members{% endif %}</button>
     {% endif %}
     <button type="button" class="btn btn-secondary" id="yl-stop" hidden>Stop</button>
   </p>
-  {% if view.listCached %}
+  {% if view.listCached and not busy %}
   <form method="post" action="/young-leaders/refresh/" class="inline-form">
     {% include '_csrf.twig' %}
     <input type="hidden" name="section_id" value="{{ section.id }}">
