@@ -411,5 +411,8 @@ final class App
             $v = is_readable($file) ? (string) filemtime($file) : '1';
             return '/' . $path . '?v=' . rawurlencode($v);
         }));
+        self::$twig->addFunction(new TwigFunction('main_nav', static function (bool $authed): array {
+            return \App\Http\Nav::forRequest($authed);
+        }));
     }
 }
