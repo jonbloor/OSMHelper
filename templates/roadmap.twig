@@ -52,12 +52,12 @@
         <li class="rm-item rm-shipped">
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-12">12 Oct 2026</time> <span class="rm-area">Members</span></div>
           <h4 class="rm-title">Choose sections before loading members</h4>
-          <p>The member list shows the sections from your OSM sign-in. Tick the ones you need, then load. OSMHelper only fetches those sections. Checks still reads every section.</p>
+          <p>The member list shows the sections from your OSM sign-in. Tick the ones you need, then load. OSMHelper only fetches those sections. Member checks still reads every section.</p>
         </li>
         <li class="rm-item rm-shipped">
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-05">5 Oct 2026</time> <span class="rm-area">Waiting list</span></div>
           <h4 class="rm-title">WordPress joining form</h4>
-          <p>A waiting-list form for your group’s WordPress website. Parents fill it in and OSMHelper adds the child to your OSM waiting list with your OSM login, so there’s no OSM app to set up for each group. Includes a parent note, confirmation email, address lookup, text-message consent and optional captcha. Set it up under Members → Joining form.</p>
+          <p>A waiting-list form for your group’s WordPress website. Parents fill it in and OSMHelper adds the child to your OSM waiting list with your OSM login, so there’s no OSM app to set up for each group. Includes a parent note, confirmation email, address lookup, text-message consent and optional captcha. Set it up under Joining → Joining form.</p>
         </li>
         <li class="rm-item rm-shipped">
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-09-26">26 Sep 2026</time> <span class="rm-area">Waiting list</span></div>
@@ -122,7 +122,7 @@
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-22">22 Oct 2026</time></div>
           <h4 class="rm-title">Events list</h4>
           <ul>
-            <li><strong>Members → Events:</strong> choose a section to see its events by start date, oldest first, for a date range (dd/mm/yyyy) or all time. Archived events are included and marked Archived.</li>
+            <li><strong>Badges → Events:</strong> choose a section to see its events by start date, oldest first, for a date range (dd/mm/yyyy) or all time. Archived events are included and marked Archived.</li>
             <li><strong>Download CSV:</strong> Section, Start date, Event name and Archived (Yes/No) for the dates you chose, made from the loaded list.</li>
             <li>Load events uses 2 OSM requests per section, never one per event, at most once every 5 minutes per section, stopping straight away on any error or if your allowance runs low. Changing the dates, sorting and the CSV don’t call OSM.</li>
             <li>The list is held in your session for up to about 2 hours, and cleared when it expires or when you sign out.</li>
@@ -133,7 +133,7 @@
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-15">15 Oct 2026</time></div>
           <h4 class="rm-title">Find a member</h4>
           <ul>
-            <li><strong>Members → Find a member:</strong> find who a postcode, phone number or parent/contact name belongs to. Searches the member’s own details, Primary contacts 1 and 2 and the Emergency contact. Part of a value is enough; phone numbers match with or without +44 and spaces.</li>
+            <li><strong>People → Find a member:</strong> find who a postcode, phone number or parent/contact name belongs to. Searches the member’s own details, Primary contacts 1 and 2 and the Emergency contact. Part of a value is enough; phone numbers match with or without +44 and spaces.</li>
             <li>Tick sections and choose Load contacts: one OSM request per section, at most once every 5 minutes, stopping straight away on any error or if your allowance runs low. Searching never calls OSM.</li>
             <li>The contact details are held temporarily in your session on our server for up to about 2 hours, and cleared when they expire or when you sign out.</li>
           </ul>
@@ -161,7 +161,7 @@
           <ul>
             <li><strong>Members:</strong> the page lists the sections from your OSM sign-in. Tick the ones you need, then load. OSMHelper only fetches those sections.</li>
             <li>The list stays until you load a different set or sign out. Sign in again if a section is missing.</li>
-            <li><strong>Checks</strong> still reads every section on this login, so a young person in two sections still shows up.</li>
+            <li><strong>Member checks</strong> still reads every section on this login, so a young person in two sections still shows up.</li>
           </ul>
         </li>
         <li class="rm-item rm-shipped rm-history" id="2026-10-05">
@@ -173,7 +173,7 @@
             <li><strong>Text messages:</strong> each parent can tick “Receive text messages from Leaders?”, which turns on OSM’s receive-texts setting for their phone.</li>
             <li><strong>Parent note:</strong> an optional note is added to the waiting list’s Notes field (the one chosen in Rank &amp; notes) as a dated line marked “Parent (website form)”. If no Notes field is chosen, the child is still added.</li>
             <li><strong>In WordPress:</strong> a confirmation email to parents with your own reply-to address, Google reCAPTCHA or Cloudflare Turnstile against spam, and address lookup with Google address search or a free postcodes.io postcode check.</li>
-            <li><strong>Joining form page:</strong> a new <a href="/wordpress-form/">Members → Joining form</a> page has the plugin download, your site key and waiting-list choice (moved from Settings), step-by-step setup and troubleshooting.</li>
+            <li><strong>Joining form page:</strong> a new <a href="/wordpress-form/">Joining → Joining form</a> page has the plugin download, your site key and waiting-list choice (moved from Settings), step-by-step setup and troubleshooting.</li>
           </ul>
         </li>
         <li class="rm-item rm-shipped rm-history" id="2026-09-28">
@@ -215,6 +215,11 @@
     <section class="help-section" id="in-progress" aria-labelledby="in-progress-h">
       <h3 id="in-progress-h">In progress</h3>
       <ul class="rm-list">
+        <li class="rm-item rm-progress">
+          <div class="rm-head">{{ rm.status('progress') }} <span class="rm-area">Menu</span></div>
+          <h4 class="rm-title">Tidier menu</h4>
+          <p>The long Members menu splits into <strong>People</strong> (Group numbers, Member list, Find a member, Young Leaders, Member checks) and <strong>Joining</strong> (Waiting list, Joining form). Events moves into <strong>Badges</strong>, Equipment gets its own menu with shortcuts to Add an item and Locations, and Roadmap moves to the bottom of every page and the top of Help. Addresses don’t change, so bookmarks still work. The menu also works on phones without JavaScript, and an open menu fits on a small phone screen.</p>
+        </li>
         <li class="rm-item rm-progress">
           <div class="rm-head">{{ rm.status('progress') }} <span class="rm-area">Members</span></div>
           <h4 class="rm-title">Young Leaders</h4>

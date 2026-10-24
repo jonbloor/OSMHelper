@@ -1,7 +1,7 @@
 {% extends 'layout.twig' %}
 {% block body %}
 <div class="card">
-  <h2>Members — {{ groupName }}</h2>
+  <h2>Member list — {{ groupName }}</h2>
   <p class="muted">Tick the sections you need, then load the list. These are the sections from when you signed in. OSM is only asked for the ones you tick.</p>
   {% if sectionError %}<div class="alert alert-error">{{ sectionError }}</div>{% endif %}
 

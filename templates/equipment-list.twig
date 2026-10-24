@@ -14,7 +14,7 @@
   {% if parseHint %}<div class="alert alert-error">{{ parseHint }}</div>{% endif %}
 
   {% if equipmentLists is defined and equipmentLists|length > 0 %}
-  <form method="post" action="/equipment/add/" class="equipment-add">
+  <form method="post" action="/equipment/add/" class="equipment-add" id="add-item">
     {% include '_csrf.twig' %}
     <input type="hidden" name="step" value="review">
     <h3>Add an item</h3>

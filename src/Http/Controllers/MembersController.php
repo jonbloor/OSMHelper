@@ -383,7 +383,7 @@ final class MembersController
             : (string) ($_SESSION['groupName'] ?? 'OSM Helper');
         $groups = LoginSections::groupChoices($choices);
         App::render('members.twig', Auth::baseContext([
-            'title' => 'Members',
+            'title' => 'Member list',
             'groupName' => $groupName,
             'groups' => $groups,
             'choiceCount' => count($choices),

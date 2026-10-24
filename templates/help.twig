@@ -3,7 +3,8 @@
 {% block body %}
   <div class="card help-page">
     <h2>Help</h2>
-    <p class="lede">What each part of OSMHelper does, and how to use it. Most tools fetch fresh data from Online Scout Manager when you open them, so some take a moment. Members and Group numbers wait until you choose sections and load.</p>
+    <p class="lede">What each part of OSMHelper does, and how to use it. Most tools fetch fresh data from Online Scout Manager when you open them, so some take a moment. The Member list and Group numbers wait until you choose sections and load.</p>
+    <p class="muted">What’s planned and what changed recently: see the <a href="/roadmap/">Roadmap</a>. It’s also linked at the bottom of every page.</p>
 
     <section class="help-section" id="home">
       <h3>Home</h3>
@@ -11,50 +12,51 @@
     </section>
 
     <section class="help-section" id="dashboard">
-      <h3>Dashboard (group numbers)</h3>
+      <h3>Group numbers</h3>
+      <p class="muted">Under <strong>People → Group numbers</strong>.</p>
       <p>Tick the sections you need, then load the numbers. The ticks are the sections from when you signed in to OSM, so opening the page does not fetch counts. Explorers, Adults, waiting lists, and any section switched off under Settings → Section capacity &amp; visibility are left out. OSMHelper only asks OSM for the sections you ticked, plus the waiting list so the age bands can be filled in. The charts and tables stay until you load a different set or sign out. If a section is missing, sign out and connect again.</p>
       <p>Membership counts by section type (Beavers, Cubs, Scouts, and Squirrels when anyone of that age is on the waiting list). Shows leaders, capacity, spaces, and waiting subtotals. The header reconciles waiting-list size with <strong>Waiting of age</strong>, <strong>Squirrels</strong>, <strong>Too young</strong>, and <strong>Explorers / too old</strong>.</p>
       <p>At the top of the results, snapshot charts (same data as the tables, no extra OSM calls) show <strong>members vs spaces</strong> by section (including over capacity), <strong>waiting by age band</strong>, and <strong>fullness %</strong> by section type (sections without a set capacity are omitted). Labelled as of that load.</p>
     </section>
 
     <section class="help-section" id="members">
-      <h3>Members</h3>
-      <p>Tick the sections you need, then load the list. The ticks are the sections from when you signed in to OSM, so opening the page does not fetch members. OSMHelper only asks OSM for the sections you ticked. Age and date of birth are filled in where OSM needs an extra lookup. After the list loads, the section checkboxes above the table show or hide rows without another fetch. The table is sortable, searchable, and exportable (CSV / Excel / PDF). Leaders are not listed here. Each row has a <strong>Nights</strong> link into Nights away for that member. The list stays until you load again or sign out. If a section is missing, sign out and connect again.</p>
+      <h3>Member list</h3>
+      <p>Under <strong>People → Member list</strong>. Tick the sections you need, then load the list. The ticks are the sections from when you signed in to OSM, so opening the page does not fetch members. OSMHelper only asks OSM for the sections you ticked. Age and date of birth are filled in where OSM needs an extra lookup. After the list loads, the section checkboxes above the table show or hide rows without another fetch. The table is sortable, searchable, and exportable (CSV / Excel / PDF). Leaders are not listed here. Each row has a <strong>Nights</strong> link into Nights away for that member. The list stays until you load again or sign out. If a section is missing, sign out and connect again.</p>
     </section>
 
     <section class="help-section" id="find-member">
       <h3>Find a member</h3>
-      <p>Find who a postcode, phone number or parent belongs to. First tick the sections and choose <strong>Load contacts</strong>. That uses one OSM request per section and holds a copy of those contact details temporarily in your session, only on our server, for up to about 2 hours. It is cleared when it expires or when you sign out, after which you load contacts again. Then search as often as you like: searching never calls OSM. It looks at the member’s own contact details, Primary contacts 1 and 2 and the Emergency contact: postcodes, phone numbers and contact names. Your search is sent privately, so what you type is not saved in the web address, your browser history or our server logs, and it is forgotten after 2 hours or when you sign out. Part of a value is enough. Postcodes ignore spaces and capitals. Phone numbers ignore spaces, dashes and brackets, and +44, 0044 and a leading 0 count as the same. Each result shows the member, their section, and which contact and field matched, with a <strong>Nights</strong> link into Nights away. Refresh is limited to once every 5 minutes, and stops straight away if OSM returns an error, an unexpected reply, or your allowance runs low. If a load fails before any section is read, your earlier contacts are kept. Leaders in a Leaders patrol are left out, as on Members.</p>
+      <p>Under <strong>People → Find a member</strong>. Find who a postcode, phone number or parent belongs to. First tick the sections and choose <strong>Load contacts</strong>. That uses one OSM request per section and holds a copy of those contact details temporarily in your session, only on our server, for up to about 2 hours. It is cleared when it expires or when you sign out, after which you load contacts again. Then search as often as you like: searching never calls OSM. It looks at the member’s own contact details, Primary contacts 1 and 2 and the Emergency contact: postcodes, phone numbers and contact names. Your search is sent privately, so what you type is not saved in the web address, your browser history or our server logs, and it is forgotten after 2 hours or when you sign out. Part of a value is enough. Postcodes ignore spaces and capitals. Phone numbers ignore spaces, dashes and brackets, and +44, 0044 and a leading 0 count as the same. Each result shows the member, their section, and which contact and field matched, with a <strong>Nights</strong> link into Nights away. Refresh is limited to once every 5 minutes, and stops straight away if OSM returns an error, an unexpected reply, or your allowance runs low. If a load fails before any section is read, your earlier contacts are kept. Leaders in a Leaders patrol are left out, as on the Member list.</p>
     </section>
 
     <section class="help-section" id="events">
       <h3>Events</h3>
-      <p>Under <strong>Members → Events</strong>: list every event in one section by start date, oldest first, including events that have been archived in OSM. Events are marked <strong>Archived</strong> when OSM’s own archived flag on that event says so, or, if OSM sends no flag, when the event only came back from the archived request. Choose the section, then <strong>Load events</strong>. That uses two OSM requests for the section (its events, then a second request that asks OSM to include archived events), never one per event, and holds the list in your session for up to about 2 hours, or until you sign out.</p>
+      <p>Under <strong>Badges → Events</strong>: list every event in one section by start date, oldest first, including events that have been archived in OSM. Events are marked <strong>Archived</strong> when OSM’s own archived flag on that event says so, or, if OSM sends no flag, when the event only came back from the archived request. Choose the section, then <strong>Load events</strong>. That uses two OSM requests for the section (its events, then a second request that asks OSM to include archived events), never one per event, and holds the list in your session for up to about 2 hours, or until you sign out.</p>
       <p>Pick <strong>All time</strong>, or enter <strong>From</strong> and <strong>to</strong> dates as dd/mm/yyyy (both days included; leave one blank for “from” or “until” only), then <strong>Show events</strong>. Changing the dates does not call OSM. The table can be sorted, searched, printed and exported like other tables. <strong>Download CSV</strong> gives a file with Section, Start date (dd/mm/yyyy), Event name and Archived (Yes/No) for the dates you chose. It is made from the loaded list, so it never calls OSM; if nothing is loaded yet it asks you to load first.</p>
       <p>Events needs OSM’s permission to read events, which OSMHelper started asking for on 22 Oct 2026. If you signed in before then, or the page says OSM hasn’t given permission, <a href="/logout/">sign out</a>, sign in again, and allow Events when OSM asks. OSMHelper checks this before calling OSM, so nothing is used from your allowance.</p>
       <p><strong>Refresh events</strong> can be used once every 5 minutes per section. Loading stops straight away if OSM returns an error, an unexpected reply, says too many requests (with how long to wait), or your allowance runs low. If a refresh fails, the earlier list is kept.</p>
     </section>
 
     <section class="help-section" id="checks">
-      <h3>Checks</h3>
-      <p>Troubleshooting tables: youth in more than one section (excluding Leaders and Young Leaders patrols), Young Leaders checks, and Leaders checks. Status cells use green for OK and amber for issues. Each table supports sort, search and export. Checks still reads every section on this login, because a young person in two sections only shows up when both are loaded.</p>
+      <h3>Member checks</h3>
+      <p>Under <strong>People → Member checks</strong>. Troubleshooting tables: youth in more than one section (excluding Leaders and Young Leaders patrols), Young Leaders checks, and Leaders checks. Status cells use green for OK and amber for issues. Each table supports sort, search and export. Member checks still reads every section on this login, because a young person in two sections only shows up when both are loaded.</p>
     </section>
 
     <section class="help-section" id="young-leaders">
       <h3>Young Leaders</h3>
-      <p>Under <strong>Members → Young Leaders</strong>: see which other sections each member of a section helps in, for example which Beavers, Cubs or Scouts sections your Young Leaders support. Choose a section from the ones on your sign-in (sections with “Young Leader” or “YLU” in their name are listed first). Choosing a section does not call OSM.</p>
+      <p>Under <strong>People → Young Leaders</strong>: see which other sections each member of a section helps in, for example which Beavers, Cubs or Scouts sections your Young Leaders support. Choose a section from the ones on your sign-in (sections with “Young Leader” or “YLU” in their name are listed first). Choosing a section does not call OSM.</p>
       <p><strong>Load members</strong> reads the section’s member list once, then each member’s record once, with a pause of at least a second between requests and a progress bar, so a section of 20 uses about 21 OSM requests. Sections of more than 40 ask you to confirm first, and sections of more than 150 are not loaded. Loading stops straight away, keeping what has loaded, if your allowance gets low, if OSM says too many requests, or at the first error. <strong>Continue loading</strong> carries on from where it stopped. You can also press <strong>Stop</strong> at any time.</p>
       <p>The table shows each member’s name, age and other sections. Search covers names and section names, <strong>Helping in</strong> shows only the members in one section, and the table can be sorted and exported (CSV / Excel / PDF) with the same three columns. None of this calls OSM. OSMHelper keeps only names, ages and section names (no contact or medical details) on our server for up to 24 hours while you stay signed in, tied to your OSM login, so going back to the page doesn’t use your allowance either. That copy is deleted when you sign out. <strong>Refresh from OSM</strong> reloads everyone and can be used once every 5 minutes per section. Leaders in the Leaders patrol are left out.</p>
     </section>
 
     <section class="help-section" id="nights-away">
       <h3>Nights away</h3>
-      <p>Under <strong>Badges → Nights away</strong>: pick one or more youth members (Leaders and Young Leaders / YL patrols are omitted) and list the camps OSM has on the <strong>Nights Away staged badge</strong> (badge 94). Tick camps in the results to multi-select records. We read that badge in every Beavers / Cubs / Scouts / Explorers section this login can see, then call OSM’s <code>/v3/badges/records/other-sections</code> so camps from a previous section still appear after they move up. Each Members row also has a <strong>Nights</strong> link.</p>
+      <p>Under <strong>Badges → Nights away</strong>: pick one or more youth members (Leaders and Young Leaders / YL patrols are omitted) and list the camps OSM has on the <strong>Nights Away staged badge</strong> (badge 94). Tick camps in the results to multi-select records. We read that badge in every Beavers / Cubs / Scouts / Explorers section this login can see, then call OSM’s <code>/v3/badges/records/other-sections</code> so camps from a previous section still appear after they move up. Each Member list row also has a <strong>Nights</strong> link.</p>
     </section>
 
     <section class="help-section" id="waiting">
       <h3>Waiting list</h3>
-      <p>This page reads your group’s waiting list from OSM (<strong>Members → Waiting</strong>). If your group has more than one waiting list, choose one from the <strong>Waiting list</strong> menu at the top and select <strong>Show</strong>.</p>
+      <p>This page reads your group’s waiting list from OSM (<strong>Joining → Waiting list</strong>). If your group has more than one waiting list, choose one from the <strong>Waiting list</strong> menu at the top and select <strong>Show</strong>.</p>
       <p>Each applicant gets a score, and OSMHelper suggests which section they should join based on their age. The suggested section uses the age cut-offs in <strong>Settings</strong>, so check those match your group.</p>
       <p>The columns are:</p>
       <ul>
@@ -122,7 +124,7 @@
     <section class="help-section" id="wordpress-form">
       <h3>WordPress joining form</h3>
       <p>If your group website uses WordPress, you can add a “join our waiting list” form to it. When a parent sends the form, OSMHelper adds the child straight to your OSM waiting list using <strong>your</strong> OSM login. Parents don’t need an OSM login, and your group doesn’t need to set up its own OSM app or API keys.</p>
-      <p>Everything you need is under <strong>Members → Joining form</strong> once you’re signed in: the plugin download, your site key, step-by-step setup and troubleshooting. In short:</p>
+      <p>Everything you need is under <strong>Joining → Joining form</strong> once you’re signed in: the plugin download, your site key, step-by-step setup and troubleshooting. In short:</p>
       <ol>
         <li>Download the plugin from the Joining form page and install the zip in WordPress (<strong>Plugins → Add New → Upload Plugin</strong>), then activate it.</li>
         <li>On the Joining form page, choose your OSM waiting list and select Save to create a site key.</li>
@@ -141,11 +143,12 @@
 
     <section class="help-section" id="equipment">
       <h3>Equipment</h3>
-      <p>Quartermaster lists and items for the section you choose under Settings → Equipment. Pick the section that holds your kit (often Adults). Shows all OSM fields (name, quantity, description, condition, broken, location, purchase date, notes, renewal price). Rows with Broken &gt; 0 are highlighted. Select multiple items and move them to a location from Settings → Equipment locations. You always review the list before Confirm; OSMHelper then updates Location (column 3) via OSM’s <code>updateListItemColumnValue</code> (value=location), spaced ~150ms apart to stay rate-limit friendly. Add an item from the top of the page: name is required, broken is 0 if you leave it blank, and location can be typed or picked from your Settings list. Review, then Confirm creates one row via OSM’s <code>saveItemRowDetails</code>. Editing an existing item is not available yet. The table supports sort, search and export (CSV / Excel / PDF), same as Members, Checks and Waiting. If OSM blocks item detail for a list, the list names still show with a short note.</p>
+      <p>Quartermaster lists and items for the section you choose under Settings → Equipment. Pick the section that holds your kit (often Adults). Shows all OSM fields (name, quantity, description, condition, broken, location, purchase date, notes, renewal price). Rows with Broken &gt; 0 are highlighted. Select multiple items and move them to a location from Settings → Equipment locations. You always review the list before Confirm; OSMHelper then updates Location (column 3) via OSM’s <code>updateListItemColumnValue</code> (value=location), spaced ~150ms apart to stay rate-limit friendly. Add an item from the top of the page: name is required, broken is 0 if you leave it blank, and location can be typed or picked from your Settings list. Review, then Confirm creates one row via OSM’s <code>saveItemRowDetails</code>. The <strong>Equipment</strong> menu has shortcuts to the list, to <strong>Add an item</strong> and to <strong>Locations</strong> (in Settings). Editing an existing item is not available yet. The table supports sort, search and export (CSV / Excel / PDF), same as the Member list, Member checks and Waiting list. If OSM blocks item detail for a list, the list names still show with a short note.</p>
     </section>
 
     <section class="help-section" id="bank">
-      <h3>Bank</h3>
+      <h3>Bank accounts</h3>
+      <p class="muted">Under <strong>Finance → Bank accounts</strong>.</p>
       <p>Lists bank accounts for the finance section you pick in Settings (active accounts by default; optional show deleted). Balances are OSM pence ÷ 100. Click an account to see transactions (date, reference, amount, type/transfer, description) via OSM’s v3 accounting API. Sort, search and export on both tables. Read-only — no bank writes.</p>
     </section>
     <section class="help-section" id="all-transfers">
@@ -155,7 +158,7 @@
 
     <section class="help-section" id="settings">
       <h3>Settings</h3>
-      <p>Age cutoffs, capacity per section, which section Equipment uses, which section Bank uses, and a named <strong>Equipment locations</strong> list (add, edit, reorder, remove). Saves on this server (not only in your browser session) so they stick after logout. Unticking <strong>Show</strong> on a section leaves it off the Group numbers picker. Locations power the Equipment bulk-move destination list. The WordPress joining form has its own page, <strong>Members → Joining form</strong>; Settings links to it.</p>
+      <p>Age cutoffs, capacity per section, which section Equipment uses, which section Bank accounts uses, and a named <strong>Equipment locations</strong> list (add, edit, reorder, remove). Saves on this server (not only in your browser session) so they stick after logout. Unticking <strong>Show</strong> on a section leaves it off the Group numbers picker. Locations power the Equipment bulk-move destination list. The WordPress joining form has its own page, <strong>Joining → Joining form</strong>; Settings links to it.</p>
     </section>
 
     <section class="help-section" id="privacy">
@@ -168,7 +171,7 @@
 
     <section class="help-section" id="rate-limit">
       <h3>API rate limit</h3>
-      <p>OSM applies an API allowance <strong>per user</strong> (your OSM login) — it is not a “how busy OSM is” meter. Home and the hub show your limit, remaining requests, and when the window resets. A banner appears site-wide when you are nearing the limit (and again when remaining is critical). Open fewer heavy pages until it refreshes. Members and Group numbers use quota only when you load the sections you ticked. Group numbers also reads the waiting list at that point. Checks, Waiting, Equipment, Bank, Top awards and Nights away each use quota when you open them. Young Leaders uses quota only when you press Load or Refresh: one request for the member list plus one per member, paced, and nothing for 24 hours after that.</p>
+      <p>OSM applies an API allowance <strong>per user</strong> (your OSM login) — it is not a “how busy OSM is” meter. Home and the hub show your limit, remaining requests, and when the window resets. A banner appears site-wide when you are nearing the limit (and again when remaining is critical). Open fewer heavy pages until it refreshes. The Member list and Group numbers use quota only when you load the sections you ticked. Group numbers also reads the waiting list at that point. Member checks, Waiting list, Equipment, Bank accounts, Top awards and Nights away each use quota when you open them. Young Leaders uses quota only when you press Load or Refresh: one request for the member list plus one per member, paced, and nothing for 24 hours after that.</p>
     </section>
 
     <section class="help-section" id="osm-busy">
@@ -187,7 +190,7 @@
 
     <section class="help-section" id="tables">
       <h3>Tables (sort, search, export)</h3>
-      <p>On <strong>Members</strong>, <strong>Checks</strong>, <strong>Young Leaders</strong>, <strong>Waiting</strong>, <strong>Equipment</strong>, <strong>Top awards</strong> and <strong>Nights away</strong>, click a column header to sort, use Search to filter rows, and export (most pages export the rows you can see; the Waiting list and ranking pages export every row) as <strong>CSV</strong>, <strong>Excel</strong> (.xls), or <strong>PDF</strong> (opens the print dialog — choose Save as PDF). Data tables use gentle alternating row colours for readability.</p>
+      <p>On <strong>Member list</strong>, <strong>Member checks</strong>, <strong>Young Leaders</strong>, <strong>Waiting list</strong>, <strong>Equipment</strong>, <strong>Top awards</strong> and <strong>Nights away</strong>, click a column header to sort, use Search to filter rows, and export (most pages export the rows you can see; the Waiting list and ranking pages export every row) as <strong>CSV</strong>, <strong>Excel</strong> (.xls), or <strong>PDF</strong> (opens the print dialog — choose Save as PDF). Data tables use gentle alternating row colours for readability.</p>
     </section>
 
     <section class="help-section" id="roadmap">

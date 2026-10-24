@@ -223,23 +223,44 @@ a.nav-home .nav-svg { color: #0b6e4f; }
 a.nav-home:hover { border-bottom-color: #0b6e4f; }
 a.nav-home[aria-current="page"] { border-bottom-color: #0b6e4f; }
 
-/* Members #2b6cb0 */
-.nav-group.nav-members > summary .nav-svg { color: #2b6cb0; }
-.nav-group.nav-members > summary:hover,
-.nav-group.nav-members[open] > summary {
+/* People #2b6cb0 */
+.nav-group.nav-people > summary .nav-svg { color: #2b6cb0; }
+.nav-group.nav-people > summary:hover,
+.nav-group.nav-people[open] > summary {
   border-bottom-color: #2b6cb0;
 }
-.nav-group.nav-members .nav-sub {
+.nav-group.nav-people .nav-sub {
   border-left: 3px solid #2b6cb0;
 }
-.nav-group.nav-members .nav-sub a[aria-current="page"] {
+.nav-group.nav-people .nav-sub a[aria-current="page"] {
+  border-bottom-color: #0b6e4f;
+}
+
+/* Joining #2c7a7b */
+.nav-group.nav-joining > summary .nav-svg { color: #2c7a7b; }
+.nav-group.nav-joining > summary:hover,
+.nav-group.nav-joining[open] > summary {
+  border-bottom-color: #2c7a7b;
+}
+.nav-group.nav-joining .nav-sub {
+  border-left: 3px solid #2c7a7b;
+}
+.nav-group.nav-joining .nav-sub a[aria-current="page"] {
   border-bottom-color: #0b6e4f;
 }
 
 /* Equipment #c05621 */
-a.nav-equipment .nav-svg { color: #c05621; }
-a.nav-equipment:hover { border-bottom-color: #c05621; }
-a.nav-equipment[aria-current="page"] { border-bottom-color: #0b6e4f; }
+.nav-group.nav-equipment > summary .nav-svg { color: #c05621; }
+.nav-group.nav-equipment > summary:hover,
+.nav-group.nav-equipment[open] > summary {
+  border-bottom-color: #c05621;
+}
+.nav-group.nav-equipment .nav-sub {
+  border-left: 3px solid #c05621;
+}
+.nav-group.nav-equipment .nav-sub a[aria-current="page"] {
+  border-bottom-color: #0b6e4f;
+}
 
 /* Finance #2f855a */
 .nav-group.nav-finance > summary .nav-svg { color: #2f855a; }
@@ -278,11 +299,6 @@ a.nav-settings[aria-current="page"] { border-bottom-color: #0b6e4f; }
 a.nav-help .nav-svg { color: #6b46c1; }
 a.nav-help:hover { border-bottom-color: #6b46c1; }
 a.nav-help[aria-current="page"] { border-bottom-color: #0b6e4f; }
-
-/* Roadmap muted slate */
-a.nav-roadmap .nav-svg { color: #4b5563; }
-a.nav-roadmap:hover { border-bottom-color: #4b5563; }
-a.nav-roadmap[aria-current="page"] { border-bottom-color: #0b6e4f; }
 
 a.nav-logout {
   margin-left: auto;
@@ -331,15 +347,17 @@ a.nav-logout:hover { border-bottom-color: #5c6570; }
     cursor: pointer;
   }
 
+  /* Without JS (html.no-js) the menu stays open so every link can be reached; with JS the
+     Menu button collapses it (html.js, toggled by .is-open). */
   .nav-links {
-    display: none;
+    display: flex;
     flex-direction: column;
     align-items: stretch;
     gap: 0;
     width: 100%;
   }
 
-  .nav-links.is-open { display: flex; }
+  html.js .nav-links:not(.is-open) { display: none; }
 
   .nav-links a,
   .nav-links summary {
@@ -361,6 +379,20 @@ a.nav-logout:hover { border-bottom-color: #5c6570; }
     background: transparent;
   }
   .nav-sub a { border-bottom: 1px solid var(--border); }
+  /* Open group items sit two to a row, so the tallest group (People, 5) adds 3 rows, not 5,
+     and the whole menu plus Sign out still fits a 375x667 screen. */
+  .nav-group[open] > .nav-sub {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 0.75rem;
+  }
+  /* Safety net for short screens: the open menu scrolls inside itself. */
+  html.js .nav-links.is-open {
+    max-height: calc(100vh - 5.5rem);
+    max-height: calc(100dvh - 5.5rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
 
   a.nav-logout { margin-left: 0; }
 }
@@ -473,7 +505,7 @@ input[type=number], select {
 /* Desktop: hide Menu toggle via CSS so nav stays usable if JS fails */
 .nav-toggle { display: none; }
 @media (max-width: 720px) {
-  .nav-toggle { display: inline-block; }
+  html.js .nav-toggle { display: inline-block; }
 }
 
 /* Signed-in home */
