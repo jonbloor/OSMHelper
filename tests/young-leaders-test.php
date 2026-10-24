@@ -512,5 +512,49 @@ $_SESSION = []; // a second tab/session pressing Refresh at the same moment
 check(Limits::startRefreshIfDue('596', '7881', $rT + 0.2, 300) === false && Limits::lastRefreshAt('596', '7881') === (int) $rT, 'SF1: a second Refresh at the same moment is refused and the first is kept');
 check(Limits::startRefreshIfDue('596', '7881', $rT + 301, 300) === true, 'SF1: Refresh is allowed again after the cooldown');
 
+// Should-fix 3: files private from creation, keyed names, locked reads, stale files swept.
+$h3Dir = sys_get_temp_dir() . '/osmh-yl-h3-' . getmypid();
+Limits::useDirectory($h3Dir);
+$oldUmask = umask(0022);
+$_SESSION = [];
+check(Limits::setLastCallAt('600', (float) $now), 'SF3: saves to a new directory');
+umask($oldUmask);
+$h3Files = glob($h3Dir . '/*.json') ?: [];
+check(count($h3Files) === 1 && (fileperms($h3Files[0]) & 0777) === 0600 && (fileperms($h3Dir) & 0777) === 0700, 'SF3: under a loose umask the file is still created 0600 in a 0700 dir');
+check(is_file($h3Dir . '/.salt') && (fileperms($h3Dir . '/.salt') & 0777) === 0600, 'SF3: with no real SESSION_SECRET a per-install salt is generated, 0600');
+check(basename($h3Files[0]) !== hash('sha256', 'yl-limits|600') . '.json', 'SF3: the file name is not a plain hash of the user id');
+$_ENV['SESSION_SECRET'] = 'test-only-secret';
+check(Limits::setLastCallAt('600', (float) $now) && is_file($h3Dir . '/' . hash_hmac('sha256', 'yl-limits|600', 'test-only-secret') . '.json'), 'SF3: with SESSION_SECRET set the name is keyed with it');
+unset($_ENV['SESSION_SECRET']);
+$_SESSION = [];
+check(Limits::lastCallAt('600') === (float) $now, 'SF3: the salted file reads back (fresh session)');
+// A reader waits for a writer's lock rather than reading a half-written file.
+$h3Lock = fopen($h3Files[0], 'r+');
+flock($h3Lock, LOCK_EX);
+$h3Child = proc_open([PHP_BINARY, '-r', 'require ' . var_export(dirname(__DIR__) . '/vendor/autoload.php', true) . '; App\Members\YoungLeaderLimits::useDirectory(' . var_export($h3Dir, true) . '); App\Osm\OsmCache::useClock(fn () => ' . $now . '); $v = App\Members\YoungLeaderLimits::lastCallAt("600"); printf("%.6f %s", microtime(true), var_export($v, true));'], [1 => ['pipe', 'w']], $h3Pipes);
+usleep(500_000);
+$h3Unlocked = microtime(true);
+flock($h3Lock, LOCK_UN);
+fclose($h3Lock);
+$h3Out = stream_get_contents($h3Pipes[1]);
+proc_close($h3Child);
+[$h3Done, $h3Val] = explode(' ', $h3Out . ' ', 2);
+check((float) $h3Done >= $h3Unlocked && trim($h3Val) === var_export((float) $now, true), 'SF3: a read waits until the write lock is released, then reads the value');
+// Sweep: a file with nothing left after 24h is deleted on a later write (at most hourly).
+$_SESSION = [];
+Limits::setLastCallAt('601', (float) $now);
+$h3Before = count(glob($h3Dir . '/*.json') ?: []);
+$h3Saved = $now;
+$now += Limits::KEEP_SEC + 3600;
+$_SESSION = [];
+Limits::setLastCallAt('602', (float) $now);
+$h3After = glob($h3Dir . '/*.json') ?: [];
+check($h3Before === 3 && count($h3After) === 1, 'SF3: stale users\' files are swept on a later write (' . $h3Before . ' -> ' . count($h3After) . ')');
+$_SESSION = [];
+check(Limits::lastCallAt('602') === (float) $now && Limits::lastCallAt('600') === null, 'SF3: the fresh one is kept; the stale one is gone');
+$now = $h3Saved;
+foreach (array_diff(scandir($h3Dir) ?: [], ['.', '..']) as $f) { unlink($h3Dir . '/' . $f); }
+@rmdir($h3Dir);
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);
