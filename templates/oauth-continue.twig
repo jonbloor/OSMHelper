@@ -5,6 +5,8 @@
     <h2>Sign in with OSM</h2>
     {% if retry %}
       <p>Press the button to sign in with Online Scout Manager again. Stay in this browser until you're back here.</p>
+    {% elseif repeated %}
+      <p>You've signed in several times in the last few minutes, but this browser doesn't seem to be keeping you signed in, so we haven't sent you straight back to OSM. Check that cookies are allowed for this site, then press the button to try again.</p>
     {% else %}
       <p>It looks like signing in didn't finish just now, so we haven't sent you straight back to OSM. Press the button to try again.</p>
     {% endif %}

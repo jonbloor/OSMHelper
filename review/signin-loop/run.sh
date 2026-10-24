@@ -4,6 +4,7 @@
 #     http://127.0.0.1:8097/callback?code=x&state=y          retry page (sign-in started elsewhere)
 #     http://127.0.0.1:8097/callback?error=access_denied     retry page (cancelled or refused)
 #     http://127.0.0.1:8097/auth/?retry=1                    "Continue to OSM" page
+# tests/signin-loop-test.php also runs review/signin-loop/fake-osm.php (made-up local OSM) for whole sign-ins.
 # Do NOT press "Continue to OSM" expecting OSM: it points at a placeholder on 127.0.0.1:8099.
 set -euo pipefail
 cd "$(dirname "$0")/../.."

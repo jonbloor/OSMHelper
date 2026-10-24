@@ -105,7 +105,8 @@ final class OAuthState
         return $keys === [];
     }
 
-    private static function setCookie(string $value, int $expires): void
+    /** Secure flag for our own cookies: always on osmhelper.co.uk, else only when the request is HTTPS. */
+    public static function cookieShouldBeSecure(): bool
     {
         $https = true;
         $host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
@@ -113,10 +114,16 @@ final class OAuthState
             $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
                 || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
         }
+
+        return $https;
+    }
+
+    private static function setCookie(string $value, int $expires): void
+    {
         setcookie(self::COOKIE, $value, [
             'expires' => $expires,
             'path' => '/',
-            'secure' => $https,
+            'secure' => self::cookieShouldBeSecure(),
             'httponly' => true,
             'samesite' => 'Lax',
         ]);

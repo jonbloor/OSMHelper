@@ -34,16 +34,19 @@ final class AuthController
         }
 
         // Loop guard: a second /auth visit within a few minutes with no successful sign-in (or a
-        // "Try again here" link) shows a "Continue to OSM" button instead of going straight to OSM.
+        // "Try again here" link), or several successful sign-ins in a few minutes that didn't stick,
+        // shows a "Continue to OSM" button instead of going straight to OSM.
         // The button (?go=1) always starts the normal flow below.
         $attempts = SignInGuard::recordAttempt($_SESSION);
+        $successes = SignInGuard::recentSuccesses();
         $retry = ($_GET['retry'] ?? '') === '1';
         $go = ($_GET['go'] ?? '') === '1';
-        if (SignInGuard::shouldPause($attempts, $retry, $go)) {
+        if (SignInGuard::shouldPause($attempts, $retry, $go, $successes)) {
             header('Cache-Control: no-store, no-cache, must-revalidate');
             App::render('oauth-continue.twig', [
                 'title' => 'Sign in with OSM',
                 'retry' => $retry,
+                'repeated' => !$retry && $successes >= SignInGuard::MAX_RECENT_SUCCESSES,
             ]);
             return;
         }
@@ -160,6 +163,8 @@ final class AuthController
             $oauth = new OsmOAuth();
             $token = $oauth->getAccessToken($code);
             $accessToken = $token->getToken();
+            // Count it now (the OSM calls are spent), so a sign-in that keeps not sticking is caught.
+            SignInGuard::noteSuccess();
 
             // New session ID on sign-in (no session fixation; cookie re-sent so it counts from now),
             // and the session limit (2 hours by default) runs from here. See App::enforceSessionMaxAge().
@@ -263,6 +268,7 @@ final class AuthController
             'httponly' => true,
             'samesite' => 'Lax',
         ]);
+        SignInGuard::forgetSuccesses();
         session_destroy();
         header('Location: /');
         exit;

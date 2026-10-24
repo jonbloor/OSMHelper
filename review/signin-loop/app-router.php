@@ -12,8 +12,11 @@ $tmp = getenv('SIGNIN_REVIEW_TMP') ?: (sys_get_temp_dir() . '/osmhelper-signin-r
 foreach (['sessions', 'osm-cache', 'osm-rate', 'yl-limits'] as $d) {
     @mkdir("$tmp/$d", 0700, true);
 }
+// Tests can run review/signin-loop/fake-osm.php on another local port; it is always 127.0.0.1.
+$osmPort = (string) getenv('SIGNIN_REVIEW_OSM_PORT');
+$osmPort = ctype_digit($osmPort) && (int) $osmPort > 0 && (int) $osmPort < 65536 ? $osmPort : '8099';
 $env = [
-    'OSM_API_BASE' => 'http://127.0.0.1:8099',
+    'OSM_API_BASE' => 'http://127.0.0.1:' . $osmPort,
     'APP_ENV' => 'dev',
     'OSMHELPER_SESSION_PATH' => "$tmp/sessions",
     // Made-up values so the app boots; nothing here is a real credential.
