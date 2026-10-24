@@ -216,6 +216,11 @@
       <h3 id="in-progress-h">In progress</h3>
       <ul class="rm-list">
         <li class="rm-item rm-progress">
+          <div class="rm-head">{{ rm.status('progress') }} <span class="rm-area">Members</span></div>
+          <h4 class="rm-title">Young Leaders</h4>
+          <p>See which other sections each Young Leader helps in, with a <strong>Helping in</strong> filter, search, sorting and CSV export. Loading is paced (one request for the list, then one per member) and stops straight away if your allowance runs low or OSM objects. Only names, ages and section names are kept, for 24 hours, so filtering and coming back later don’t use your allowance. <a href="/help/#young-leaders">More in Help</a>.</p>
+        </li>
+        <li class="rm-item rm-progress">
           <div class="rm-head">{{ rm.status('progress') }} <span class="rm-area">OSM allowance</span></div>
           <h4 class="rm-title">Protect your OSM allowance</h4>
           <p>The waiting list loads in a couple of OSM requests instead of two per applicant, and is kept for 5 minutes. When your allowance runs low, or OSM asks us to slow down, OSMHelper pauses and shows “OSM is busy, try again in N minutes” instead of risking a lockout. <a href="/help/#osm-busy">More in Help</a>.</p>
