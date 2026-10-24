@@ -146,7 +146,7 @@ final class AuthController
             // Never redirect from here (that is how a sign-in loop starts): explain and offer a button.
             self::renderRetry(
                 'Sign-in didn\'t finish',
-                'Sign-in started in a different browser or app (for example the OSM app), so we can\'t finish it here. Please try again in this browser.',
+                'Sign-in couldn\'t be finished in this browser. This usually happens when it started in a different browser or app (for example the OSM app). Please try again here.',
                 OAuthState::detail($reason)
             );
             return;

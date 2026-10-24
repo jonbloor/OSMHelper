@@ -130,13 +130,20 @@ if ($up) {
     $r = req("$base/callback?code=fake-code&state=fake-state", $other);
     check($r['status'] === 400, 'callback state missing: HTTP 400');
     check(!autoRedirects($r), 'callback state missing: no redirect of any kind');
-    check(str_contains($r['body'], 'Sign-in started in a different browser or app (for example the OSM app), so we can&#039;t finish it here. Please try again in this browser.'), 'callback state missing: explains different browser or app');
+    check(str_contains($r['body'], 'Sign-in couldn&#039;t be finished in this browser. This usually happens when it started in a different browser or app (for example the OSM app). Please try again here.'), 'callback state missing: explains the usual cause (different browser or app) without claiming it is the only one');
+    check(!str_contains($r['body'], 'Sign-in started in a different browser'), 'callback state missing: no longer states one cause as fact');
     check(str_contains($r['body'], 'href="/auth/?retry=1"') && str_contains($r['body'], 'Try again here'), 'callback state missing: Try again here → /auth/?retry=1');
     check(str_contains($r['body'], 'Open supported links') && str_contains($r['body'], 'Open links in apps'), 'callback state missing: app tip shown');
     check(str_contains($r['body'], 'Open links in apps</strong> and choose <strong>Never</strong>'), 'app tip: Firefox/Fennec told to choose Never (not a switch)');
     check(str_contains($r['body'], '(or whatever the OSM icon is called)') && str_contains($r['body'], 'Set as default'), 'app tip: Android route names the OSM icon and Samsung\'s "Set as default"');
     check(str_contains($r['body'], "Chrome doesn't have a setting like this") && !str_contains($r['body'], "this browser's settings"), 'app tip: Chrome users not sent looking for a setting that isn\'t there');
-    check(str_contains($r['body'], 'Details:'), 'callback state missing: reason detail shown');
+    check(str_contains($r['body'], 'Details: This browser had no sign-in in progress.'), 'callback state missing (fresh browser): plain-English detail shown');
+    // Same browser that has been here before (has a session cookie) but no saved state: Jon's Chrome case.
+    $seen = $tmp . '/jar-seen.txt';
+    req("$base/", $seen);
+    $r = req("$base/callback?code=fake-code&state=fake-state", $seen);
+    check($r['status'] === 400 && str_contains($r['body'], 'Details: Your browser came back from OSM without the sign-in details we saved.'), 'callback state missing (known browser): plain-English detail');
+    check(!str_contains($r['body'], 'login state'), 'callback state missing: no developer wording ("login state")');
 
     // 1b. State mismatch in the same browser (a real /auth first, then a wrong state).
     $jar = $tmp . '/jar-mismatch.txt';
@@ -145,7 +152,7 @@ if ($up) {
     check(str_contains($a['body'], 'http://127.0.0.1:8099/oauth/authorize'), 'auth: authorize URL points at the local placeholder only');
     $r = req("$base/callback?code=fake-code&state=wrong-state", $jar);
     check($r['status'] === 400 && !autoRedirects($r), 'callback state mismatch: 400, no redirect');
-    check(str_contains($r['body'], 'saved login state did not match') && str_contains($r['body'], 'href="/auth/?retry=1"'), 'callback state mismatch: retry page with detail');
+    check(str_contains($r['body'], 'with a different sign-in from the one we were expecting') && str_contains($r['body'], 'href="/auth/?retry=1"'), 'callback state mismatch: retry page with detail');
 
     // 2. OSM error=… : cancelled or refused page with the same retry button.
     $r = req("$base/callback?error=access_denied&error_description=nope&state=x", $tmp . '/jar-err.txt');

@@ -61,14 +61,14 @@ final class OAuthState
         return 'state_mismatch';
     }
 
-    /** Short plain-English reason for the retry page's "Details" line, or null. */
+    /** Short plain-English reason for the retry page's "Details" line, or null. The reason code itself only goes to the log. */
     public static function detail(string $reason): ?string
     {
         return match ($reason) {
-            'state_param_missing' => 'missing state from OSM.',
-            'empty_session' => 'this browser had no sign-in in progress (it may have started in another browser or app, or cookies were blocked).',
-            'state_missing' => 'no saved login state on return.',
-            'state_mismatch' => 'saved login state did not match.',
+            'state_param_missing' => 'OSM sent your browser back without the sign-in details we need.',
+            'empty_session' => 'This browser had no sign-in in progress. It may have started in another browser or app, or cookies may be blocked.',
+            'state_missing' => 'Your browser came back from OSM without the sign-in details we saved.',
+            'state_mismatch' => 'Your browser came back from OSM with a different sign-in from the one we were expecting (for example from another tab, or the button was pressed twice).',
             default => null,
         };
     }
