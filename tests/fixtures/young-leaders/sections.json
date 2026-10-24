@@ -1,0 +1,44 @@
+[
+ {
+  "section_id": "7881",
+  "section_name": "Group Young Leaders",
+  "section_type": "explorers",
+  "group_name": "4th Ashby de la Zouch",
+  "current_term_id": "900"
+ },
+ {
+  "section_id": "7001",
+  "section_name": "Beavers",
+  "section_type": "beavers",
+  "group_name": "4th Ashby de la Zouch",
+  "current_term_id": "901"
+ },
+ {
+  "section_id": "7002",
+  "section_name": "Cubs",
+  "section_type": "cubs",
+  "group_name": "4th Ashby de la Zouch",
+  "current_term_id": "902"
+ },
+ {
+  "section_id": "7003",
+  "section_name": "Scouts",
+  "section_type": "scouts",
+  "group_name": "4th Ashby de la Zouch",
+  "current_term_id": "903"
+ },
+ {
+  "section_id": "7900",
+  "section_name": "ACES YLU",
+  "section_type": "unknown",
+  "group_name": "Ashby & Coalville District",
+  "current_term_id": "904"
+ },
+ {
+  "section_id": "7999",
+  "section_name": "Waiting list",
+  "section_type": "waiting",
+  "group_name": "4th Ashby de la Zouch",
+  "current_term_id": "-1"
+ }
+]
