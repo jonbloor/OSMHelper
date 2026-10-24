@@ -347,15 +347,17 @@ a.nav-logout:hover { border-bottom-color: #5c6570; }
     cursor: pointer;
   }
 
+  /* Without JS (html.no-js) the menu stays open so every link can be reached; with JS the
+     Menu button collapses it (html.js, toggled by .is-open). */
   .nav-links {
-    display: none;
+    display: flex;
     flex-direction: column;
     align-items: stretch;
     gap: 0;
     width: 100%;
   }
 
-  .nav-links.is-open { display: flex; }
+  html.js .nav-links:not(.is-open) { display: none; }
 
   .nav-links a,
   .nav-links summary {
@@ -489,7 +491,7 @@ input[type=number], select {
 /* Desktop: hide Menu toggle via CSS so nav stays usable if JS fails */
 .nav-toggle { display: none; }
 @media (max-width: 720px) {
-  .nav-toggle { display: inline-block; }
+  html.js .nav-toggle { display: inline-block; }
 }
 
 /* Signed-in home */

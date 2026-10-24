@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="en-GB">
+<html lang="en-GB" class="no-js">
 <head>
   <meta charset="utf-8">
+  <script>document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/, 'js');</script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{% if pageTitle is defined and pageTitle %}{{ pageTitle }}{% else %}{% if title and title != 'OSMHelper' %}{{ title }} · {% endif %}OSMHelper{% endif %}{% endblock %}</title>
   {% block meta %}{% if metaDescription is defined and metaDescription %}<meta name="description" content="{{ metaDescription }}">{% endif %}{% endblock %}
