@@ -18,7 +18,9 @@ namespace App\Osm;
  *  - Files live in storage/osm-cache/ (dir 0700, files 0600, owned by the PHP-FPM user).
  *  - Never put tokens in here.
  *  - File names are hashes, so they carry no section or member ids.
- *  - Cleared for the user at sign-out / session expiry; cleared for every user of a section when
+ *  - Cleared for the user at sign-out, and for an expired session on that browser's next request
+ *    (App::enforceSessionMaxAge) - not at the moment it expires; a new sign-in clears only the
+ *    previous user in that browser. Cleared for every user of a section when
  *    OSMHelper writes to that section (rank, notes, new applicant).
  *
  * Long-lived kinds (KIND_TTLS): Young Leaders keeps, per section and per member, ONLY the member's
@@ -26,7 +28,8 @@ namespace App\Osm;
  * (no dates of birth, contact or medical details: YoungLeaders::slimMember() strips them before
  * put()). These last up to 24 hours while you stay signed in, so filters and repeat views spend no
  * OSM allowance (owner-only). Like everything else here they are deleted for the user at sign-out
- * and session expiry; the page's Refresh button forgets them early.
+ * (an expired session: on that browser's next request; otherwise the 24-hour sweep); the page's
+ * Refresh button forgets them early.
  */
 final class OsmCache
 {
@@ -240,7 +243,8 @@ final class OsmCache
     }
 
     /**
-     * Forget everything cached for a user (sign-out / session expiry / new sign-in), including the
+     * Forget everything cached for a user (sign-out; an expired session on its next request; a new
+     * sign-in, for the user previously signed in on that browser), including the
      * 24-hour Young Leaders kinds. Other users' files and section invalidation markers are untouched.
      */
     public static function forgetUser(?string $userId): void

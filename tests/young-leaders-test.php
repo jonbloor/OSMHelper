@@ -45,7 +45,8 @@ OsmCache::sweep();
 check(OsmCache::get('ylmember', 'u1', '10:1') !== null, 'sweep keeps a 1-hour-old Young Leaders entry');
 check(OsmCache::get('waiting', 'u1', '10') === null, 'sweep still drops 5-minute kinds');
 check(OsmCache::get('ylmember', 'u2', '10:1') === null, 'entry is owner-only');
-// Sign-out (logout, session expiry and a new sign-in all call forgetCurrentUser) clears this
+// Sign-out (logout, an expired session on its next request, and a new sign-in for the previous
+// user in that browser all call forgetCurrentUser) clears this
 // user's Young Leaders copy, but not other users' files or other cache types.
 OsmCache::put('ylsection', 'u1', '10', ['members' => []]);
 OsmCache::put('ylmember', 'u2', '10:1', ['others' => ['A: B']]);
