@@ -290,19 +290,27 @@ $calls = [];
 do { $r = YL::step(ylApi(), 'tok', $sec, '540', ctx($last, $refreshSince)); $last = $r['lastCallAt']; } while ($r['state'] === 'running');
 check($r['state'] === 'done' && count($calls) === 7, 'Refresh reloads list + each member once');
 
-// (c) Refresh pressed in the same second as the last fetch must still reload every member.
+// (c) Geoffrey's case: a load where the last member (203, Testcase) is fetched in the same whole
+// second that Refresh is pressed. Before the fix 203 was skipped by the reload (whole-second compare).
 freshYlUser('541');
 $now = 1_800_100_000.2;
+$responderC = $responder;
+$responder = static function (RequestInterface $r, array $q) use (&$now, $responderC): Response {
+    $now += 1.0; // each OSM call lands in the next whole second (.2 past it)
+    return $responderC($r, $q);
+};
 $last = null;
 do { $r = YL::step(ylApi(), 'tok', $sec, '541', ctx($last)); $last = $r['lastCallAt']; } while ($r['state'] === 'running');
-$refreshSince = 1_800_100_000.7; // same whole second as every fetch above
-check((int) $refreshSince === (int) $now, 'same-second Refresh: fetches and Refresh share one whole second');
+check($r['state'] === 'done' && end($calls) === 'getIndividual 203', '(c) setup: 203 is the last member fetched');
+$now += 0.5; // Refresh pressed straight after, same whole second as 203's fetch
+$refreshSince = OsmCache::currentMicrotime(); // what Refresh stores (YoungLeaderLimits::startRefresh)
+check((int) $refreshSince === (int) ($now - 0.5), '(c) setup: Refresh and 203 share one whole second');
 $v = YL::view('541', '7881', $refreshSince);
-check($v['listStale'] && $v['pending'] === 6, 'same-second Refresh: every member counts as older (none skipped)');
-$now = 1_800_100_001.1;
+check($v['listStale'] && $v['pending'] === 6, '(c) same-second Refresh: every member counts as older (none skipped)');
 $calls = [];
 do { $r = YL::step(ylApi(), 'tok', $sec, '541', ctx($last, $refreshSince)); $last = $r['lastCallAt']; } while ($r['state'] === 'running');
-check($r['state'] === 'done' && count($calls) === 7 && in_array('getIndividual 203', $calls, true), 'same-second Refresh: list + all 6 members reloaded');
+check($r['state'] === 'done' && count($calls) === 7 && in_array('getIndividual 203', $calls, true), '(c) same-second Refresh: list + all 6 members reloaded, 203 included');
+$responder = $responderC;
 $now = 1_800_100_100;
 
 // S3: more than CONFIRM_ABOVE to load needs confirmed=1 on the server, not only in the browser.
