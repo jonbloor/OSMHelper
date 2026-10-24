@@ -44,9 +44,9 @@ mkdir -p "$TMP/app"
 # the server .env (secrets, WAITING_RANK_TEST_MEMBER etc.) and storage/ (settings, osmhelper.sqlite) must survive.
 # storage/ itself is excluded too (not just its contents): unpacking a storage/ dir entry would reset the
 # live dir from 2770 to 2755. The storage step below creates it if missing.
-# review/ (local fake-OSM review harness) is never shipped.
+# review/ (local fake-OSM review harness), tests/ and fixtures/ (fake data for tests) are never shipped.
 APP_SRC="$ROOT"; [ -d "$ROOT/app" ] && APP_SRC="$ROOT/app"
-tar -C "$APP_SRC" --exclude=./.env --exclude=.env --exclude=./vendor --exclude=./.git --exclude=./storage --exclude=./review -cf - . | tar -C "$TMP/app" -xf -
+tar -C "$APP_SRC" --exclude=./.env --exclude=.env --exclude=./vendor --exclude=./.git --exclude=./storage --exclude=./review --exclude=./tests --exclude=./fixtures -cf - . | tar -C "$TMP/app" -xf -
 tar -C "$TMP" -czf "$TMP/app.tgz" app
 "${SSH[@]}" 'mkdir -p /home/osmhelper/app /home/osmhelper/htdocs/osmhelper.co.uk /home/osmhelper/tmp'
 scp -i "$SSH_KEY" -o IdentitiesOnly=yes "$TMP/app.tgz" "${REMOTE}:/home/osmhelper/tmp/osmhelper-app.tgz"
