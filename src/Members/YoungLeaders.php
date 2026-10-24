@@ -16,7 +16,7 @@ use Throwable;
  * OSM budget for one section: 1 getListOfMembers + 1 getIndividual per member (1 + N), one call per
  * step() so the browser can show progress. Every call is paced (PAUSE_US, longer when OSM sends no
  * rate headers), and loading stops, keeping what has loaded, when the allowance is low
- * (RATE_LOW_REMAINING), at the first 429 or at the first error. Results are cached (cleared at sign-out) for up to 24 hours per
+ * (RATE_LOW_REMAINING), at the first 429 or at the first error. Results are cached (cleared at sign-out) for up to 2 hours per
  * section and per member (OsmCache KIND_TTLS), so filters, CSV and repeat views make no calls.
  *
  * Privacy: only first name, last name, age and the "Group: Section" names OSM lists in `others` are

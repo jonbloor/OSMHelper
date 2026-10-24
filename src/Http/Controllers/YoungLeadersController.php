@@ -15,7 +15,7 @@ use Throwable;
 
 /**
  * Young Leaders: the other sections each member of a section helps in.
- * GET  /young-leaders/?section=ID  shows the 24-hour cached copy only (0 OSM calls).
+ * GET  /young-leaders/?section=ID  shows the 2-hour cached copy only (0 OSM calls).
  * POST /young-leaders/load         JSON, one step = at most ONE OSM call (see YoungLeaders::step()).
  * POST /young-leaders/refresh      marks the section's copy for reloading, then the page reloads it.
  */
@@ -141,7 +141,7 @@ final class YoungLeadersController
         ]);
         if ($r['state'] === 'done') {
             YoungLeaderLimits::endRefresh($userId, $sid);
-            $_SESSION[self::FLASH] = ['section' => $sid, 'kind' => 'ok', 'message' => 'All ' . $r['total'] . ' members loaded. Search, Helping in, sorting and CSV use this copy (kept for up to 24 hours, deleted when you sign out) and don’t call OSM.'];
+            $_SESSION[self::FLASH] = ['section' => $sid, 'kind' => 'ok', 'message' => 'All ' . $r['total'] . ' members loaded. Search, Helping in, sorting and CSV use this copy (kept for up to 2 hours, deleted when you sign out) and don’t call OSM.'];
         } elseif ($r['state'] === 'stopped') {
             $_SESSION[self::FLASH] = ['section' => $sid, 'kind' => 'error', 'message' => (string) $r['message'] . ' Loaded ' . $r['loaded'] . ' of ' . $r['total'] . ' members.'];
         }

@@ -36,7 +36,7 @@ $now = 1_800_000_000;
 OsmCache::useClock(static function () use (&$now): int|float { return $now; });
 
 // --- OsmCache: per-kind TTL ---------------------------------------------------------------
-check(OsmCache::ttlFor('ylmember') === 86400 && OsmCache::ttlFor('ylsection') === 86400, 'Young Leaders kinds last 24 hours');
+check(OsmCache::ttlFor('ylmember') === 7200 && OsmCache::ttlFor('ylsection') === 7200, 'Young Leaders kinds last 2 hours');
 check(OsmCache::ttlFor('waiting') === OsmCache::TTL_SECONDS, 'other kinds keep the 5-minute TTL');
 OsmCache::put('ylmember', 'u1', '10:1', ['others' => ['A: B']]);
 OsmCache::put('waiting', 'u1', '10', ['rows' => []]);
@@ -65,17 +65,21 @@ check(count(glob(OsmCache::dir() . '/*.json') ?: []) === $before - 2, 'sign-out 
 $_SESSION = [];
 OsmCache::forgetUser('u2');
 OsmCache::put('ylmember', 'u1', '10:1', ['others' => []]);
-$now += 86400;
+$now += 7199;
 OsmCache::sweep();
-check(glob(OsmCache::dir() . '/ylmember-*') === [], 'sweep deletes Young Leaders files after 24 hours');
+check(glob(OsmCache::dir() . '/ylmember-*') !== [], 'sweep keeps Young Leaders files just under 2 hours');
+$now += 1;
+OsmCache::sweep();
+check(glob(OsmCache::dir() . '/ylmember-*') === [], 'sweep deletes Young Leaders files after 2 hours');
 
 // --- Privacy copy names the Young Leaders copy and that sign-out deletes it ----------------
 $homeTpl = (string) file_get_contents(dirname(__DIR__) . '/templates/home.twig');
 $readme = (string) file_get_contents(dirname(__DIR__) . '/README.md');
 $helpTpl = (string) file_get_contents(dirname(__DIR__) . '/templates/help.twig');
-check(str_contains($homeTpl, 'Young Leaders keeps a copy of members’ names, ages and the names of the other sections') && str_contains($homeTpl, 'deleted 24 hours after it was fetched or when you sign out'), 'home privacy copy covers the Young Leaders copy and sign-out');
-check(str_contains($readme, 'Young Leaders copy, up to 24 hours') && str_contains($readme, 'deleted at sign-out'), 'README storage list covers the Young Leaders copy');
+check(str_contains($homeTpl, 'Young Leaders keeps a copy of members’ names, ages and the names of the other sections') && str_contains($homeTpl, 'Signing out deletes it straight away. If you don’t sign out (for example you close the browser or your session runs out), it is deleted within 2 hours of being fetched.'), 'home privacy copy covers the Young Leaders copy, sign-out and an abandoned session');
+check(str_contains($readme, 'Young Leaders copy, up to 2 hours') && str_contains($readme, 'deleted at sign-out'), 'README storage list covers the Young Leaders copy');
 check(!str_contains($helpTpl, 'kept when you sign out'), 'Help no longer says the copy survives sign-out');
+check(!str_contains($helpTpl . $homeTpl, 'while you stay signed in') && substr_count($helpTpl, 'deleted within 2 hours of being fetched') >= 2, 'Help says what happens without signing out (no "while you stay signed in")');
 
 // --- Patrols helper ---------------------------------------------------------------------
 check(Patrols::isYoungLeaderPatrolName('Young Leaders') && Patrols::isYoungLeaderPatrolName('YL Team') && Patrols::isYoungLeaderPatrolName('yls'), 'Young Leaders patrol by name');
@@ -204,7 +208,7 @@ check(count($sleeps) === 7 && min($sleeps) >= 1 && $sleeps[0] === YL::PAUSE_UNKN
 $calls = [];
 $r = YL::step(ylApi(), 'tok', $sec, '500', ctx($last));
 $v = YL::view('500', '7881');
-check($r['state'] === 'done' && $calls === [] && $r['calls'] === 0, 'repeat load: 0 calls (24-hour cache)');
+check($r['state'] === 'done' && $calls === [] && $r['calls'] === 0, 'repeat load: 0 calls (2-hour cache)');
 check($v['loaded'] === 6 && $v['pending'] === 0 && count($v['options']) === 5, 'view from cache: 6 loaded, Helping in options built');
 check($v['options'][0]['name'] === '4th Ashby de la Zouch: Beavers' && $v['options'][0]['count'] === 2, 'option counts');
 $raw = '';
@@ -232,6 +236,7 @@ $r2 = YL::step(ylApi(), 'tok', $sec, '510', ctx($last));
 check($r2['state'] === 'stopped' && $calls === [], 'after a 429 the shared guard refuses the next step with no call');
 check($r['calls'] === 1 && $r2['calls'] === 0, 'S6: the 429 step reports calls:1, the refused step calls:0');
 $busy510 = YL::busyMessage('510');
+$view510 = YL::view('510', '7881'); // for (b) below, taken now: later tests move the clock past the 2-hour copy
 check(is_string($busy510) && str_contains($busy510, 'OSM is busy') && YL::busyMessage('511') === null, '(b): busyMessage reports this user\'s backoff only');
 
 // Stop at the first error
@@ -363,7 +368,7 @@ $twig = new \Twig\Environment(new \Twig\Loader\FilesystemLoader(dirname(__DIR__)
 $twig->addFunction(new \Twig\TwigFunction('asset', static fn (string $p): string => '/assets/' . ltrim($p, '/')));
 $twig->addFunction(new \Twig\TwigFunction('main_nav', static fn (bool $a): array => \App\Http\Nav::forRequest($a)));
 $pageCtx = ['authed' => true, 'csrfToken' => 'tok', 'section' => $sec, 'ylChoices' => [$sec], 'otherChoices' => [], 'groupName' => 'G',
-    'view' => YL::view('510', '7881'), 'confirmAbove' => YL::CONFIRM_ABOVE, 'maxMembers' => YL::MAX_MEMBERS, 'pauseSeconds' => 1, 'cooldownMinutes' => 5];
+    'view' => $view510, 'confirmAbove' => YL::CONFIRM_ABOVE, 'maxMembers' => YL::MAX_MEMBERS, 'pauseSeconds' => 1, 'cooldownMinutes' => 5];
 $okPage = $twig->render('young-leaders.twig', $pageCtx + ['busy' => null]);
 $busyPage = $twig->render('young-leaders.twig', $pageCtx + ['busy' => $busy510]);
 check(str_contains($okPage, 'id="yl-start"') && str_contains($okPage, '/young-leaders/refresh/'), '(b): normally Continue and Refresh are shown');

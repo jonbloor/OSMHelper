@@ -26,10 +26,11 @@ namespace App\Osm;
  * Long-lived kinds (KIND_TTLS): Young Leaders keeps, per section and per member, ONLY the member's
  * first name, last name, age text and the "Group: Section" names OSM lists as their other sections
  * (no dates of birth, contact or medical details: YoungLeaders::slimMember() strips them before
- * put()). These last up to 24 hours while you stay signed in, so filters and repeat views spend no
- * OSM allowance (owner-only). Like everything else here they are deleted for the user at sign-out
- * (an expired session: on that browser's next request; otherwise the 24-hour sweep); the page's
- * Refresh button forgets them early.
+ * put()). These last up to 2 hours (the default session length), so filters and repeat views in a
+ * session spend no OSM allowance (owner-only). Like everything else here they are deleted for the
+ * user at sign-out (an expired session: on that browser's next request; otherwise the 2-hour sweep,
+ * so an abandoned session doesn't leave names here for longer); the page's Refresh button forgets
+ * them early.
  */
 final class OsmCache
 {
@@ -42,8 +43,8 @@ final class OsmCache
      * @var array<string, int>
      */
     public const KIND_TTLS = [
-        'ylsection' => 86400,
-        'ylmember' => 86400,
+        'ylsection' => 7200,
+        'ylmember' => 7200,
     ];
 
     /** Expiry for a kind: KIND_TTLS entry, else TTL_SECONDS. */
@@ -245,7 +246,7 @@ final class OsmCache
     /**
      * Forget everything cached for a user (sign-out; an expired session on its next request; a new
      * sign-in, for the user previously signed in on that browser), including the
-     * 24-hour Young Leaders kinds. Other users' files and section invalidation markers are untouched.
+     * 2-hour Young Leaders kinds. Other users' files and section invalidation markers are untouched.
      */
     public static function forgetUser(?string $userId): void
     {

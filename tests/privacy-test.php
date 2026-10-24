@@ -432,7 +432,7 @@ check(!str_contains((string) file_get_contents(dirname(__DIR__) . '/templates/eq
 $copy = (string) file_get_contents(dirname(__DIR__) . '/templates/home.twig') . file_get_contents(dirname(__DIR__) . '/templates/help.twig');
 check(substr_count($copy, 'Every session ends 2 hours after you sign in, or when you sign out') >= 2, 'copy: 2-hour wording on home + help');
 check(substr_count($copy, 'OSM user number so we know whose settings are whose') >= 2, 'copy: OSM user number mentioned on home + help');
-check(substr_count($copy, 'cleaned up shortly after') >= 2 && str_contains($copy, 'never OSM’s message text'), 'copy: file cleanup + no OSM message text');
+check(substr_count($copy, 'Signing out deletes its file on our server straight away. Otherwise the file stays until the server’s regular clean-up removes it') >= 2 && !str_contains($copy, 'cleaned up shortly after') && str_contains($copy, 'never OSM’s message text'), 'copy: file cleanup (honest about abandoned sessions) + no OSM message text');
 $deploy2 = (string) file_get_contents(dirname(__DIR__) . '/deploy/deploy.sh');
 $posKey = strpos($deploy2, 'ensure-token-key.php');
 $posEnc = strpos($deploy2, '(umask 007; php bin/encrypt-site-tokens.php)');
