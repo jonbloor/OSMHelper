@@ -18,7 +18,7 @@ use App\Osm\OsmCache;
  * (HMAC with SESSION_SECRET, or with a random per-install salt kept in yl-limits/.salt when no
  * real secret is set), so the names can't be matched to user ids. Reads and writes are locked.
  * Entries are dropped after KEEP_SEC; files left with nothing in them are deleted by a sweep that
- * runs at most hourly on a write. Unlike the Young Leaders copy of members (OsmCache), this is
+ * runs at most hourly (on a write, or on any request via App::sweepPrivateCaches). Unlike the Young Leaders copy of members (OsmCache), this is
  * NOT cleared at sign-out, by design.
  *
  * Fails closed: every change is also kept in this session (so a broken store never makes the pause,
@@ -311,6 +311,10 @@ final class YoungLeaderLimits
                     unset($s[$k][$sid]);
                 }
             }
+            // No empty containers left behind, so a file with nothing in date is [] and gets swept.
+            if ($s[$k] === []) {
+                unset($s[$k]);
+            }
         }
         return $s;
     }
@@ -387,6 +391,17 @@ final class YoungLeaderLimits
             fclose($h);
         }
         return false;
+    }
+
+    /**
+     * Called on every request (App::sweepPrivateCaches), so expired users' files go even when
+     * nobody saves anything: does nothing more than once an hour, or if the directory doesn't exist.
+     */
+    public static function sweep(): void
+    {
+        if (is_dir(self::dir())) {
+            self::sweepIfDue();
+        }
     }
 
     /** At most hourly: delete limits files that have nothing left in them after pruning. */

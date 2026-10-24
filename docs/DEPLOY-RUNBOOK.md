@@ -101,11 +101,13 @@ Don't back them up.
 | Path | Holds | Lifetime |
 |---|---|---|
 | `storage/osm-cache/` | **Personal data.** Per OSM user and section: waiting-list applicants' names, dates of birth, dates joined, every waiting-list custom field and the leaders' notes; the user's section list. Owner-only (keyed to the OSM user who fetched it). Plus `inv-*.mark` invalidation markers (a timestamp only). | Each entry is deleted 5 minutes after it was fetched by `OsmCache::sweep()` on every request (`App::sweepPrivateCaches()`), at sign-out, and for a waiting list whenever OSMHelper writes to it. Markers: 1 hour. |
-| `storage/yl-limits/<hash>.json` | Young Leaders limits per OSM user (`sha256("yl-limits|<id>")`): last call time, Refresh cooldown and progress per section, the count of a section over 150. No names. | Entries ignored and dropped after 24 hours; survives sign-out on purpose. |
+| `storage/yl-limits/<hash>.json` (+ `.swept`, and `.salt` if no real `SESSION_SECRET`) | Young Leaders limits per OSM user (file name = HMAC of the OSM user id with `SESSION_SECRET`, or with the `.salt` file): last call time, Refresh cooldown and progress per section, the count of a section over 150. No names. | Each entry is dropped 24 hours after it was written; a file with nothing left is deleted by `YoungLeaderLimits::sweep()` (at most hourly, on any request). Survives sign-out on purpose. If the dir can't be written, Young Leaders refuses to contact OSM. |
 | `storage/osm-rate/<hash>.json` (+ `.lock`) | Per-OSM-user backoff: numbers and a reason code (`osm_backoff_429`, `osm_backoff_exhausted`, `osm_rate_low`). File name = first 40 hex chars of `sha256("osm-user:<id>")`. | Until the backoff ends (then ignored). |
 | `storage/osm-rate/app-blocked.json` | App-wide stop, written when OSM sends `X-Blocked`. While it exists **every** OSM call is refused for every user: page loads, saves, sign-in, token refresh and the WordPress joining form. | **Until cleared by hand** (below). Never expires on its own. |
 | `storage/osm-rate/intake-<hash>.json` | Joining-form per-IP throttle (20 submits / 15 min; keyed hash of the IP, timestamps only). | Swept 15 minutes after the last submit. |
 
+- Changing `SESSION_SECRET` resets everyone's saved Young Leaders limits once (the files get new names, so the
+  1-second pause, Refresh wait and too-large markers start afresh); the old files are swept within about a day.
 - Fail closed: if `storage/osm-rate/` can't be created or written, the app refuses all OSM calls (sign-in included),
   shows "OSMHelper is not contacting OSM right now", and logs `osm_rate_state_unwritable`. Fix ownership
   (`chown -R osmhelper:osmhelper storage/osm-rate; chmod 700 storage/osm-rate`) and it recovers on the next request.

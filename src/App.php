@@ -394,6 +394,7 @@ final class App
         TopAwardsController::sweepExpiredCaches();
         \App\Osm\OsmCache::sweep();
         \App\Waiting\IntakeThrottle::sweep();
+        \App\Members\YoungLeaderLimits::sweep(); // at most hourly: users whose limits have all expired
     }
 
     private function bootTwig(): void

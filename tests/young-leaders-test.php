@@ -554,6 +554,36 @@ check($h3Before === 3 && count($h3After) === 1, 'SF3: stale users\' files are sw
 $_SESSION = [];
 check(Limits::lastCallAt('602') === (float) $now && Limits::lastCallAt('600') === null, 'SF3: the fresh one is kept; the stale one is gone');
 $now = $h3Saved;
+// N1: a user with only an expired Refresh, or only an expired too-large marker, is swept too
+// (no empty containers left behind), and the per-request sweep does it without any write.
+array_map('unlink', glob($h3Dir . '/*.json') ?: []); // start this part with no users
+$_SESSION = [];
+Limits::startRefresh('603', '7881', (float) $now);
+Limits::endRefresh('603', '7881');
+$_SESSION = [];
+Limits::setTooLarge('604', '7881', 180, (float) $now);
+$_SESSION = [];
+check(Limits::lastRefreshAt('603', '7881') === (int) $now && Limits::tooLarge('604', '7881') !== null, 'N1: Refresh-only and too-large-only users saved');
+$n1Count = static fn (): int => count(glob($h3Dir . '/*.json') ?: []);
+$n1Before = $n1Count();
+$now += Limits::KEEP_SEC + 3600;
+$_SESSION = [];
+Limits::sweep();
+check($n1Before === 2 && $n1Count() === 0, 'N1: once expired, both files are deleted by the sweep, with no write needed (' . $n1Before . ' -> ' . $n1Count() . ')');
+$_SESSION = [];
+Limits::startRefresh('605', '7881', (float) $now);
+Limits::endRefresh('605', '7881');
+$n1Raw = (string) file_get_contents((glob($h3Dir . '/*.json') ?: [''])[0]);
+$now += Limits::KEEP_SEC + 1;
+$_SESSION = [];
+Limits::setTooLarge('605', '7881', null, (float) $now); // any write prunes
+$n1Left = glob($h3Dir . '/*.json') ?: [];
+check(str_contains($n1Raw, 'refresh') && Limits::lastRefreshAt('605', '7881') === 0 && ($n1Left === [] || trim((string) file_get_contents($n1Left[0])) === '[]'), 'N1: an expired Refresh leaves no empty container (the file is [] or already swept)');
+$n1Hold = $now;
+$now += 3600;
+Limits::sweep();
+check($n1Count() === 0, 'N1: and that empty file is swept an hour later');
+$now = $n1Hold;
 foreach (array_diff(scandir($h3Dir) ?: [], ['.', '..']) as $f) { unlink($h3Dir . '/' . $f); }
 @rmdir($h3Dir);
 
