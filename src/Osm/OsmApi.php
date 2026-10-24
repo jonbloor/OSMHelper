@@ -460,13 +460,13 @@ final class OsmApi
         return $this->lastHadRateHeaders;
     }
 
-    /** Seconds to wait after a 429, if OSM sent Retry-After. */
     /** How many HTTP requests this client has sent to OSM (a call the guard refused is not one). */
     public function requestsSent(): int
     {
         return $this->requestsSent;
     }
 
+    /** Seconds to wait after a 429, if OSM sent Retry-After. */
     public function getRetryAfterSeconds(): ?int
     {
         $v = $this->lastRateLimit['retryAfterSec'] ?? null;
