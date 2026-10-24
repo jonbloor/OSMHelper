@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\App;
 use App\Http\Auth;
 use App\Http\Csrf;
+use App\Members\Patrols;
 use App\Osm\LoginSections;
 use App\Osm\OsmApi;
 use App\Osm\OsmLists;
@@ -14,22 +15,12 @@ final class MembersController
 
     private static function isYoungLeaderPatrol(string $patrol): bool
     {
-        $p = strtolower($patrol);
-        if ($p === '') {
-            return false;
-        }
-        if (str_contains($p, 'young leader')) {
-            return true;
-        }
-        if ($p === 'yl' || $p === 'yls' || str_starts_with($p, 'yl ')) {
-            return true;
-        }
-        return false;
+        return Patrols::isYoungLeader($patrol);
     }
 
     private static function isLeaderPatrol(string $patrol): bool
     {
-        return trim($patrol) === 'Leaders';
+        return Patrols::isLeader($patrol);
     }
 
     /** @param array<string, mixed> $ind @return array<string, mixed> */

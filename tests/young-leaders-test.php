@@ -8,6 +8,7 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/vendor/autoload.php';
 require __DIR__ . '/isolate-storage.php';
 
+use App\Members\Patrols;
 use App\Osm\OsmCache;
 
 if (session_status() !== PHP_SESSION_ACTIVE) {
@@ -42,6 +43,12 @@ OsmCache::put('ylmember', 'u1', '10:1', ['others' => []]);
 $now += 86400;
 OsmCache::sweep();
 check(glob(OsmCache::dir() . '/ylmember-*') === [], 'sweep deletes Young Leaders files after 24 hours');
+
+// --- Patrols helper ---------------------------------------------------------------------
+check(Patrols::isYoungLeader('', '-3') && Patrols::isYoungLeader('', -3), 'patrol id -3 is the Young Leaders patrol');
+check(Patrols::isYoungLeader('Young Leaders') && Patrols::isYoungLeader('YL Team') && Patrols::isYoungLeader('yls'), 'Young Leaders patrol by name');
+check(!Patrols::isYoungLeader('Yellow') && !Patrols::isYoungLeader('', '-2') && !Patrols::isYoungLeader(''), 'other patrols are not Young Leaders');
+check(Patrols::isLeader('Leaders') && Patrols::isLeader('', '-2') && !Patrols::isLeader('Young Leaders', '-3'), 'Leaders patrol by name or id -2');
 
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);
