@@ -12,7 +12,7 @@
 {% import _self as rm %}
   <div class="card roadmap-page">
     <h2>Roadmap</h2>
-    <p class="lede">Here are the things on our to do list. If there is something that bugs you about OSM or something which is missing, let us know and we can see if it is possible.</p>
+    <p class="lede">What’s live, what’s coming next and what’s on the to-do list. If something about OSM bugs you, or something is missing, let me know and I’ll see if it’s possible.</p>
     <p class="muted">This page is also the changelog: what went live and when is listed under <a href="#history">Changelog</a>, newest first.</p>
 
     <div class="rm-legend" aria-label="Status key">
@@ -29,6 +29,26 @@
       <h3 id="shipped-h">Shipped</h3>
       <p class="muted">Newest first. The <a href="#history">Changelog</a> below has the details.</p>
       <ul class="rm-list">
+        <li class="rm-item rm-shipped">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-24">24 Oct 2026</time> <span class="rm-area">Sign-in</span></div>
+          <h4 class="rm-title">Signing in on phones</h4>
+          <p>If signing in doesn’t finish, OSMHelper no longer sends you straight back to OSM again and again. It shows a <strong>Continue to OSM</strong> button instead, plain pages that say what probably went wrong and a tip for phones where the OSM app takes over the sign-in. <a href="/help/#signing-in">More in Help</a>.</p>
+        </li>
+        <li class="rm-item rm-shipped">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-24">24 Oct 2026</time> <span class="rm-area">Menu</span></div>
+          <h4 class="rm-title">Tidier menu</h4>
+          <p>The menu is now grouped as <strong>People</strong>, <strong>Joining</strong>, <strong>Badges</strong>, <strong>Equipment</strong> and <strong>Finance</strong>. Roadmap is linked at the bottom of every page and from Help. Addresses haven’t changed, so bookmarks still work.</p>
+        </li>
+        <li class="rm-item rm-shipped">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-24">24 Oct 2026</time> <span class="rm-area">People</span></div>
+          <h4 class="rm-title">Young Leaders</h4>
+          <p>See which other sections each Young Leader helps in, with a <strong>Helping in</strong> filter, search, sorting and export. Leaders are left out. Loading is paced and stops straight away if your allowance runs low or OSM says too many requests. <a href="/help/#young-leaders">More in Help</a>.</p>
+        </li>
+        <li class="rm-item rm-shipped">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-24">24 Oct 2026</time> <span class="rm-area">OSM allowance</span></div>
+          <h4 class="rm-title">Protect your OSM allowance</h4>
+          <p>The waiting list uses fewer OSM requests and is kept for 5 minutes. When your allowance runs low, or OSM asks OSMHelper to slow down, it pauses and says how long to wait instead of risking a lockout. <a href="/help/#osm-busy">More in Help</a>.</p>
+        </li>
         <li class="rm-item rm-shipped">
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-22">22 Oct 2026</time> <span class="rm-area">Members</span></div>
           <h4 class="rm-title">Events list</h4>
@@ -47,7 +67,7 @@
         <li class="rm-item rm-shipped">
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-12">12 Oct 2026</time> <span class="rm-area">Group numbers</span></div>
           <h4 class="rm-title">Choose sections before loading group numbers</h4>
-          <p>Group numbers lists the sections from your OSM sign-in. Tick the ones you need, then load. OSMHelper only fetches those sections, plus the waiting list for the age bands. Explorers, Adults, and sections switched off in Settings are left out.</p>
+          <p>Group numbers lists the sections from your OSM sign-in. Tick the ones you need, then load. OSMHelper only fetches those sections, plus the waiting list for the age bands. Explorers, Adults and sections switched off in Settings are left out.</p>
         </li>
         <li class="rm-item rm-shipped">
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-12">12 Oct 2026</time> <span class="rm-area">Members</span></div>
@@ -72,7 +92,7 @@
         <li class="rm-item rm-shipped">
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-09-21">21 Sep 2026</time> <span class="rm-area">Badges</span></div>
           <h4 class="rm-title">Nights Away tracker</h4>
-          <p>Pick one or more members with search (Leaders and Young Leaders are left out) to see nights away per camp from OSM, including named Discovery camps. Sort across members, filter by year, and export to PDF with the scout’s name and totals.</p>
+          <p>Pick one or more members with search (Leaders and Young Leaders are left out) to see nights away per camp from OSM, including named Discovery camps. Sort across members, filter by year and export to PDF with the scout’s name and totals.</p>
         </li>
         <li class="rm-item rm-shipped">
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-09-06">6 Sep 2026</time> <span class="rm-area">Badges</span></div>
@@ -87,17 +107,17 @@
         <li class="rm-item rm-shipped">
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-09-06">6 Sep 2026</time> <span class="rm-area">Equipment</span></div>
           <h4 class="rm-title">Equipment list, bulk move and locations</h4>
-          <p>All your OSM equipment columns in one searchable table, broken items highlighted, and bulk moves to locations you set up in Settings.</p>
+          <p>All your OSM equipment columns in one searchable table, broken items highlighted and bulk moves to locations you set up in Settings.</p>
         </li>
         <li class="rm-item rm-shipped">
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-09-06">6 Sep 2026</time> <span class="rm-area">Members</span></div>
           <h4 class="rm-title">Members, member checks and group numbers</h4>
-          <p>Youth members and young leaders in the sections you choose, checks for young people in more than one section, the waiting list, and group numbers for the sections you choose, with bar charts.</p>
+          <p>Youth members and young leaders in the sections you choose, checks for young people in more than one section, the waiting list and group numbers for the sections you choose, with bar charts.</p>
         </li>
         <li class="rm-item rm-shipped">
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-09-06">6 Sep 2026</time> <span class="rm-area">Site</span></div>
           <h4 class="rm-title">Menus, tables, Help and Roadmap</h4>
-          <p>Grouped menus with icons, tables you can sort, search and export, the OSM rate limit shown on screen, and the Help and Roadmap pages.</p>
+          <p>Grouped menus with icons, tables you can sort, search and export, the OSM rate limit shown on screen and the Help and Roadmap pages.</p>
         </li>
       </ul>
     </section>
@@ -106,6 +126,45 @@
       <h3 id="history-h">Changelog</h3>
       <p class="muted">What changed, newest first. Each entry went live on the date shown.</p>
       <ul class="rm-list">
+        <li class="rm-item rm-shipped rm-history" id="2026-10-24-signin">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-24">24 Oct 2026</time></div>
+          <h4 class="rm-title">Signing in on phones</h4>
+          <ul>
+            <li><strong>No more sign-in loop:</strong> if you come back to sign in twice within a few minutes without it finishing, OSMHelper shows a <strong>Continue to OSM</strong> button instead of sending you straight back to OSM. The same happens if you sign in several times in a few minutes but this browser doesn’t keep you signed in, with a reminder to check that cookies are allowed.</li>
+            <li><strong>Plainer retry pages:</strong> if sign-in seems to have started in a different browser or app, or OSM cancelled or refused it, a short page says what usually causes it and has a <strong>Try again here</strong> button.</li>
+            <li><strong>Phone tip:</strong> these pages explain how to stop the OSM app opening the sign-in link on Android, or in Firefox. Chrome has no setting for this.</li>
+          </ul>
+        </li>
+        <li class="rm-item rm-shipped rm-history" id="2026-10-24-menu">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-24">24 Oct 2026</time></div>
+          <h4 class="rm-title">Tidier menu</h4>
+          <ul>
+            <li><strong>People:</strong> Group numbers, Member list, Find a member, Young Leaders and Member checks.</li>
+            <li><strong>Joining:</strong> Waiting list and Joining form.</li>
+            <li><strong>Badges:</strong> Events, Nights away and Top awards.</li>
+            <li><strong>Equipment:</strong> the Equipment list, with shortcuts to Add an item and Locations.</li>
+            <li><strong>Finance:</strong> Bank accounts and All transfers.</li>
+            <li>Roadmap has moved to the bottom of every page and the top of Help. The page you’re on is highlighted in the menu. On phones the menu works without JavaScript, and an open menu fits on a small screen. Addresses haven’t changed, so bookmarks still work.</li>
+          </ul>
+        </li>
+        <li class="rm-item rm-shipped rm-history" id="2026-10-24-young-leaders">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-24">24 Oct 2026</time></div>
+          <h4 class="rm-title">Young Leaders</h4>
+          <ul>
+            <li><strong>People → Young Leaders:</strong> choose a section to see which other sections each member helps in, with a <strong>Helping in</strong> filter, search, sorting and CSV, Excel or PDF export. Leaders in the Leaders patrol are left out.</li>
+            <li><strong>Paced loading:</strong> one OSM request for the member list, then one per member, with at least a second between requests and a progress bar. Sections of more than 40 ask you to confirm first and sections of more than 150 aren’t loaded. Loading stops straight away if your allowance runs low, OSM says too many requests or anything goes wrong.</li>
+            <li><strong>Kept briefly:</strong> only names, ages and section names are kept, for up to 24 hours, and deleted when you sign out. Going back to the page or filtering doesn’t use your allowance. <strong>Refresh from OSM</strong> can be used once every 5 minutes per section.</li>
+          </ul>
+        </li>
+        <li class="rm-item rm-shipped rm-history" id="2026-10-24-osm-allowance">
+          <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-24">24 Oct 2026</time></div>
+          <h4 class="rm-title">Protect your OSM allowance</h4>
+          <ul>
+            <li><strong>Waiting list:</strong> reads everyone’s waiting list fields in one request, plus one per applicant for their dates (up to 40 per page load), instead of two per applicant. The result is kept for 5 minutes, so switching between the list and ranking pages doesn’t use more of your allowance.</li>
+            <li><strong>Pausing:</strong> when your allowance runs low OSMHelper pauses page loads for your login until it resets. If OSM says too many requests it stops everything for your login, shows “OSM is busy, try again in N minutes” and never retries on its own.</li>
+            <li>See <a href="/help/#osm-busy">Help → “OSM is busy”</a> for the details.</li>
+          </ul>
+        </li>
         <li class="rm-item rm-shipped rm-history" id="2026-10-22-privacy">
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-10-22">22 Oct 2026</time></div>
           <h4 class="rm-title">Privacy tightening</h4>
@@ -151,7 +210,7 @@
           <h4 class="rm-title">Choose sections before loading group numbers</h4>
           <ul>
             <li><strong>Group numbers:</strong> the page lists the sections from your OSM sign-in. Tick the ones you need, then load. OSMHelper only fetches those sections.</li>
-            <li>The waiting list is still read on that load, so the age bands can be filled in. Explorers, Adults, and sections switched off in Settings are not offered.</li>
+            <li>The waiting list is still read on that load, so the age bands can be filled in. Explorers, Adults and sections switched off in Settings are not offered.</li>
             <li>The charts and tables stay until you load a different set or sign out. Sign in again if a section is missing.</li>
           </ul>
         </li>
@@ -172,7 +231,7 @@
             <li><strong>What’s saved in OSM:</strong> the child’s name, date of birth and home address (line 1, line 2, town, county, postcode), and up to two parents as Primary Contacts 1 and 2.</li>
             <li><strong>Text messages:</strong> each parent can tick “Receive text messages from Leaders?”, which turns on OSM’s receive-texts setting for their phone.</li>
             <li><strong>Parent note:</strong> an optional note is added to the waiting list’s Notes field (the one chosen in Rank &amp; notes) as a dated line marked “Parent (website form)”. If no Notes field is chosen, the child is still added.</li>
-            <li><strong>In WordPress:</strong> a confirmation email to parents with your own reply-to address, Google reCAPTCHA or Cloudflare Turnstile against spam, and address lookup with Google address search or a free postcodes.io postcode check.</li>
+            <li><strong>In WordPress:</strong> a confirmation email to parents with your own reply-to address, Google reCAPTCHA or Cloudflare Turnstile against spam and address lookup with Google address search or a free postcodes.io postcode check.</li>
             <li><strong>Joining form page:</strong> a new <a href="/wordpress-form/">Joining → Joining form</a> page has the plugin download, your site key and waiting-list choice (moved from Settings), step-by-step setup and troubleshooting.</li>
           </ul>
         </li>
@@ -180,11 +239,11 @@
           <div class="rm-head">{{ rm.status('shipped') }} <time datetime="2026-09-28">28 Sep 2026</time></div>
           <h4 class="rm-title">Clearer homepage, one Roadmap and changelog page</h4>
           <ul>
-            <li><strong>New homepage:</strong> a plainer, first-person homepage with real screenshots of the tools (all using made-up names), a short note on why OSMHelper exists, and a clear “Before you connect” section.</li>
+            <li><strong>New homepage:</strong> a plainer, first-person homepage with real screenshots of the tools (all using made-up names), a short note on why OSMHelper exists and a clear “Before you connect” section.</li>
             <li><strong>One page for plans and changes:</strong> the Changelog is now part of this Roadmap page. Old <code>/changelog/</code> links bring you here.</li>
             <li><strong>Menu on phones:</strong> when you’re not signed in, the Menu button now shows on small screens, so Home, Help and Roadmap can be reached.</li>
-            <li><strong>Footer and contact:</strong> the footer now says who runs OSMHelper and that it isn’t made or endorsed by Online Scout Manager or The Scout Association. The contact address is now hello@jonbloor.co.uk.</li>
-            <li><strong>Less kept on the server:</strong> Top awards results are deleted from the server after 2 hours and when you log out, debug files are off, and the error log strips names and contact details.</li>
+            <li><strong>Footer and contact:</strong> the footer now says who runs OSMHelper and that it isn’t made or endorsed by Online Scout Manager or The Scout Association. It also gives an email address for questions.</li>
+            <li><strong>Less kept on the server:</strong> Top awards results are deleted from the server after 2 hours and when you log out, debug files are off and the error log strips names and contact details.</li>
           </ul>
         </li>
         <li class="rm-item rm-shipped rm-history" id="2026-09-27">
@@ -214,23 +273,7 @@
 
     <section class="help-section" id="in-progress" aria-labelledby="in-progress-h">
       <h3 id="in-progress-h">In progress</h3>
-      <ul class="rm-list">
-        <li class="rm-item rm-progress">
-          <div class="rm-head">{{ rm.status('progress') }} <span class="rm-area">Menu</span></div>
-          <h4 class="rm-title">Tidier menu</h4>
-          <p>The long Members menu splits into <strong>People</strong> (Group numbers, Member list, Find a member, Young Leaders, Member checks) and <strong>Joining</strong> (Waiting list, Joining form). Events moves into <strong>Badges</strong>, Equipment gets its own menu with shortcuts to Add an item and Locations, and Roadmap moves to the bottom of every page and the top of Help. Addresses don’t change, so bookmarks still work. The menu also works on phones without JavaScript, and an open menu fits on a small phone screen.</p>
-        </li>
-        <li class="rm-item rm-progress">
-          <div class="rm-head">{{ rm.status('progress') }} <span class="rm-area">Members</span></div>
-          <h4 class="rm-title">Young Leaders</h4>
-          <p>See which other sections each Young Leader helps in, with a <strong>Helping in</strong> filter, search, sorting and CSV export. Loading is paced (one request for the list, then one per member) and stops straight away if your allowance runs low or OSM objects. Only names, ages and section names are kept, for up to 24 hours and deleted when you sign out, so filtering and going back to the page don’t use your allowance. <a href="/help/#young-leaders">More in Help</a>.</p>
-        </li>
-        <li class="rm-item rm-progress">
-          <div class="rm-head">{{ rm.status('progress') }} <span class="rm-area">OSM allowance</span></div>
-          <h4 class="rm-title">Protect your OSM allowance</h4>
-          <p>The waiting list loads in a couple of OSM requests instead of two per applicant, and is kept for 5 minutes. When your allowance runs low, or OSM asks us to slow down, OSMHelper pauses and shows “OSM is busy, try again in N minutes” instead of risking a lockout. <a href="/help/#osm-busy">More in Help</a>.</p>
-        </li>
-      </ul>
+      <p class="muted">Nothing is being built right now. Equipment improvements are next.</p>
     </section>
 
     <section class="help-section" id="planned" aria-labelledby="planned-h">
@@ -238,8 +281,8 @@
       <ul class="rm-list">
         <li class="rm-item rm-planned">
           <div class="rm-head">{{ rm.status('planned') }} <span class="rm-area">Equipment</span></div>
-          <h4 class="rm-title">Edit equipment items</h4>
-          <p>Update an existing quartermaster item in OSM from OSMHelper.</p>
+          <h4 class="rm-title">Equipment improvements</h4>
+          <p>Coming next. The first step is editing an existing quartermaster item in OSM from OSMHelper.</p>
         </li>
         <li class="rm-item rm-planned">
           <div class="rm-head">{{ rm.status('planned') }} <span class="rm-area">Badges</span></div>
@@ -277,7 +320,7 @@
 
     <section class="help-section" id="requests">
       <h3>Feature requests</h3>
-      <p>Got an idea? Email <a href="mailto:hello@jonbloor.co.uk">hello@jonbloor.co.uk</a>.</p>
+      <p>Got an idea? Email <a href="mailto:bloory@bloory.com">bloory@bloory.com</a>.</p>
       <p class="muted"><a href="/help/">Help</a> explains what works today, and the <a href="#history">Changelog</a> above lists what’s new.</p>
     </section>
   </div>

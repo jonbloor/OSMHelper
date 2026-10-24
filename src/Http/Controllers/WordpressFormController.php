@@ -27,7 +27,7 @@ final class WordpressFormController
     public const ENDPOINT = 'https://osmhelper.co.uk/api/waiting-list/submit';
     public const BASE_URL = 'https://osmhelper.co.uk';
 
-    public const KEY_MISSING_MESSAGE = 'Saving the joining form is switched off for now because a server security setting is missing. Nothing was saved. Email hello@jonbloor.co.uk.';
+    public const KEY_MISSING_MESSAGE = 'Saving the joining form is switched off for now because a server security setting is missing. Nothing was saved. Email bloory@bloory.com.';
 
     public function index(): void
     {
@@ -90,7 +90,7 @@ final class WordpressFormController
             http_response_code(404);
             App::render('error.twig', [
                 'title' => 'Not found',
-                'message' => 'The WordPress plugin download is not available right now. Email hello@jonbloor.co.uk.',
+                'message' => 'The WordPress plugin download is not available right now. Email bloory@bloory.com.',
             ]);
             return;
         }

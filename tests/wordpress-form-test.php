@@ -98,7 +98,7 @@ check(!str_contains($fresh, 'Clear the OSM block') && !str_contains($fresh, 'Tur
 check(str_contains($fresh, 'Places API (New)') && str_contains($fresh, 'postcodes.io') && str_contains($fresh, 'reCAPTCHA') && str_contains($fresh, 'Reply-to'), 'page: options (address lookup, captcha, reply-to)');
 check(str_contains($fresh, 'href="/waiting-list/fields/"'), 'page: link to Rank & notes settings');
 check(str_contains($fresh, 'id="troubleshooting"') && str_contains($fresh, 'Invalid site key') && str_contains($fresh, 'OSM blocked this application'), 'page: troubleshooting');
-check(str_contains($fresh, 'hello@jonbloor.co.uk'), 'page: contact email');
+check(str_contains($fresh, 'bloory@bloory.com'), 'page: contact email');
 
 $set = $twig->render('wordpress-form.twig', $base + ['wpSiteKey' => 'KEY-abc', 'wpSectionId' => '60830', 'wpSectionName' => 'Waiting list', 'notesLabel' => 'HNotes', 'wpBlocked' => true,
     'wpFlash' => ['type' => 'success', 'message' => 'Saved.']]);
