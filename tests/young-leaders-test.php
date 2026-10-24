@@ -75,9 +75,9 @@ check(str_contains($readme, 'Young Leaders copy, up to 24 hours') && str_contain
 check(!str_contains($helpTpl, 'kept when you sign out'), 'Help no longer says the copy survives sign-out');
 
 // --- Patrols helper ---------------------------------------------------------------------
-check(Patrols::isYoungLeader('', '-3') && Patrols::isYoungLeader('', -3), 'patrol id -3 is the Young Leaders patrol');
-check(Patrols::isYoungLeader('Young Leaders') && Patrols::isYoungLeader('YL Team') && Patrols::isYoungLeader('yls'), 'Young Leaders patrol by name');
-check(!Patrols::isYoungLeader('Yellow') && !Patrols::isYoungLeader('', '-2') && !Patrols::isYoungLeader(''), 'other patrols are not Young Leaders');
+check(Patrols::isYoungLeaderPatrolName('Young Leaders') && Patrols::isYoungLeaderPatrolName('YL Team') && Patrols::isYoungLeaderPatrolName('yls'), 'Young Leaders patrol by name');
+check(!Patrols::isYoungLeaderPatrolName('Yellow') && !Patrols::isYoungLeaderPatrolName(''), 'other patrols are not Young Leaders');
+check(!method_exists(Patrols::class, 'isYoungLeader') && !defined(Patrols::class . '::YOUNG_LEADERS_ID'), 'S4/M1: one Young Leader patrol rule only (no trimmed variant, unused -3 constant removed)');
 // Members / Checks must classify exactly as before the Young Leaders branch (6e2732c),
 // including whitespace-padded names. Old rule copied verbatim; Geoffrey's 25 inputs.
 $oldYoungLeaderPatrol = static function (string $patrol): bool {
@@ -103,7 +103,7 @@ foreach ($geoffInputs as $in) {
     }
 }
 check($diffs === [], 'Members/Checks Young Leader patrol rule matches the old rule on all 25 inputs' . ($diffs ? ' (differs: ' . implode(', ', $diffs) . ')' : ''));
-check(!$membersRule(' yl') && !$membersRule("yl\t") && Patrols::isYoungLeader(' yl'), 'padded names: Members/Checks unchanged (no), Young Leaders page trims (yes)');
+check(!$membersRule(' yl') && !$membersRule("yl\t") && !Patrols::isYoungLeaderPatrolName(' yls'), 'padded names stay ordinary patrols everywhere (old untrimmed rule)');
 check(Patrols::isLeader('Leaders') && Patrols::isLeader('', '-2') && !Patrols::isLeader('Young Leaders', '-3'), 'Leaders patrol by name or id -2');
 
 // --- Fixtures (fake people only) ---------------------------------------------------------

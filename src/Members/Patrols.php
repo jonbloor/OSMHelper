@@ -4,33 +4,16 @@ namespace App\Members;
 
 /**
  * OSM's special patrols, shared by Members, Checks and Young Leaders.
- * OSM uses patrol id -2 for the Leaders patrol and -3 for the Young Leaders patrol.
+ * OSM uses patrol id -2 for the Leaders patrol. Young Leader patrols are matched by name only,
+ * with the same rule everywhere (no trimming), exactly as Members / Checks always did.
  */
 final class Patrols
 {
     public const LEADERS_ID = '-2';
-    public const YOUNG_LEADERS_ID = '-3';
-
-    /** Young Leaders patrol, by OSM's patrol id (-3) when given, else by its name. */
-    public static function isYoungLeader(string $patrolName, int|string|null $patrolId = null): bool
-    {
-        if ($patrolId !== null && trim((string) $patrolId) === self::YOUNG_LEADERS_ID) {
-            return true;
-        }
-        $p = strtolower(trim($patrolName));
-        if ($p === '') {
-            return false;
-        }
-        if (str_contains($p, 'young leader')) {
-            return true;
-        }
-        return $p === 'yl' || $p === 'yls' || str_starts_with($p, 'yl ');
-    }
 
     /**
-     * The Members / Checks rule, kept exactly as it was before the Young Leaders page:
-     * name only and NOT trimmed, so " yl" or "yl\t" stay ordinary patrols there.
-     * Young Leaders page code uses isYoungLeader() above (trimmed, and patrol id -3).
+     * Young Leader patrol: the Members / Checks rule, kept exactly as it was before the Young
+     * Leaders page. Name only and NOT trimmed, so " yl" or "yl\t" are ordinary patrols.
      */
     public static function isYoungLeaderPatrolName(string $patrolName): bool
     {
