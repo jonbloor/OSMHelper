@@ -27,6 +27,23 @@ final class Patrols
         return $p === 'yl' || $p === 'yls' || str_starts_with($p, 'yl ');
     }
 
+    /**
+     * The Members / Checks rule, kept exactly as it was before the Young Leaders page:
+     * name only and NOT trimmed, so " yl" or "yl\t" stay ordinary patrols there.
+     * Young Leaders page code uses isYoungLeader() above (trimmed, and patrol id -3).
+     */
+    public static function isYoungLeaderPatrolName(string $patrolName): bool
+    {
+        $p = strtolower($patrolName);
+        if ($p === '') {
+            return false;
+        }
+        if (str_contains($p, 'young leader')) {
+            return true;
+        }
+        return $p === 'yl' || $p === 'yls' || str_starts_with($p, 'yl ');
+    }
+
     /** Leaders patrol, by OSM's patrol id (-2) when given, else by its exact name. */
     public static function isLeader(string $patrolName, int|string|null $patrolId = null): bool
     {

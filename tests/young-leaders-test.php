@@ -56,6 +56,32 @@ check(glob(OsmCache::dir() . '/ylmember-*') === [], 'sweep deletes Young Leaders
 check(Patrols::isYoungLeader('', '-3') && Patrols::isYoungLeader('', -3), 'patrol id -3 is the Young Leaders patrol');
 check(Patrols::isYoungLeader('Young Leaders') && Patrols::isYoungLeader('YL Team') && Patrols::isYoungLeader('yls'), 'Young Leaders patrol by name');
 check(!Patrols::isYoungLeader('Yellow') && !Patrols::isYoungLeader('', '-2') && !Patrols::isYoungLeader(''), 'other patrols are not Young Leaders');
+// Members / Checks must classify exactly as before the Young Leaders branch (6e2732c),
+// including whitespace-padded names. Old rule copied verbatim; Geoffrey's 25 inputs.
+$oldYoungLeaderPatrol = static function (string $patrol): bool {
+    $p = strtolower($patrol);
+    if ($p === '') {
+        return false;
+    }
+    if (str_contains($p, 'young leader')) {
+        return true;
+    }
+    if ($p === 'yl' || $p === 'yls' || str_starts_with($p, 'yl ')) {
+        return true;
+    }
+    return false;
+};
+$membersRule = (new ReflectionMethod(\App\Http\Controllers\MembersController::class, 'isYoungLeaderPatrol'))->getClosure(null);
+$geoffInputs = ['', 'yl', 'YL', 'yls', 'Yls', 'yl a', 'YL Team', 'Young Leaders', 'young leader', 'Young Leaders ', ' yl', 'yl ', ' yls', 'yls ', '  yl team', 'Leaders', 'yla', 'YLU', 'ylx', "yl\t", "\tyl", 'Explorers YL', 'None', 'Lions', "yl\n"];
+check(count($geoffInputs) === 25, 'Members/Checks comparison uses all 25 inputs');
+$diffs = [];
+foreach ($geoffInputs as $in) {
+    if ($membersRule($in) !== $oldYoungLeaderPatrol($in) || Patrols::isYoungLeaderPatrolName($in) !== $oldYoungLeaderPatrol($in)) {
+        $diffs[] = json_encode($in);
+    }
+}
+check($diffs === [], 'Members/Checks Young Leader patrol rule matches the old rule on all 25 inputs' . ($diffs ? ' (differs: ' . implode(', ', $diffs) . ')' : ''));
+check(!$membersRule(' yl') && !$membersRule("yl\t") && Patrols::isYoungLeader(' yl'), 'padded names: Members/Checks unchanged (no), Young Leaders page trims (yes)');
 check(Patrols::isLeader('Leaders') && Patrols::isLeader('', '-2') && !Patrols::isLeader('Young Leaders', '-3'), 'Leaders patrol by name or id -2');
 
 // --- Fixtures (fake people only) ---------------------------------------------------------

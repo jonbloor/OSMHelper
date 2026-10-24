@@ -13,9 +13,10 @@ final class MembersController
 {
     private const INDIVIDUAL_CONCURRENCY = 5;
 
+    /** Unchanged Members / Checks rule (untrimmed name match); see Patrols::isYoungLeaderPatrolName. */
     private static function isYoungLeaderPatrol(string $patrol): bool
     {
-        return Patrols::isYoungLeader($patrol);
+        return Patrols::isYoungLeaderPatrolName($patrol);
     }
 
     private static function isLeaderPatrol(string $patrol): bool
