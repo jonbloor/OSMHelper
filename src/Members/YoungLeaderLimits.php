@@ -27,6 +27,9 @@ final class YoungLeaderLimits
     public const UNAVAILABLE_MESSAGE = 'OSMHelper can’t save its Young Leaders limits on the server right now (the pause between OSM requests and the Refresh wait), so it hasn’t contacted OSM. What has loaded is kept. Please tell whoever runs OSMHelper.';
     private const SESSION_KEY = 'ylLimits';
 
+    /** A reserved slot more than this far ahead can only be a clock change, not queued tabs. */
+    private const MAX_AHEAD_SEC = 60;
+
     /** Entries older than this are dropped (the cached data they refer to has expired). */
     public const KEEP_SEC = 86400;
 
@@ -56,6 +59,28 @@ final class YoungLeaderLimits
         });
     }
 
+    /**
+     * Reserve this user's next Young Leaders call slot: read the last slot, work out the next one
+     * (at least $wantUs after it; the full $wantUs when none is known) and save it, all under the
+     * file's lock, so two tabs or PHP workers can't both take the same second.
+     * Returns how long to wait (microseconds) before calling, or null when the slot couldn't be
+     * saved (then don't call OSM).
+     */
+    public static function reserveCall(string $userId, int $wantUs, float $now): ?int
+    {
+        $wait = null;
+        $ok = self::update($userId, static function (array $s) use ($wantUs, $now, &$wait): array {
+            $last = $s['lastCallAt'] ?? null;
+            $want = $wantUs / 1_000_000;
+            // None known, or further ahead than any real queue of tabs could be (clock change): the full pause.
+            $slot = $last === null || (float) $last > $now + self::MAX_AHEAD_SEC ? $now + $want : max($now, (float) $last + $want);
+            $wait = (int) round(($slot - $now) * 1_000_000);
+            $s['lastCallAt'] = $slot;
+            return $s;
+        });
+        return $ok ? $wait : null;
+    }
+
     /** Unix time Refresh was last pressed for this section, or 0. */
     public static function lastRefreshAt(string $userId, string $sectionId): int
     {
@@ -75,6 +100,27 @@ final class YoungLeaderLimits
             $s['refresh'][$sectionId] = ['at' => (int) $since, 'since' => $since];
             return $s;
         });
+    }
+
+    /**
+     * Start a Refresh only if the last one for this section was at least $cooldownSec ago, checked
+     * and saved under the file's lock (so two tabs can't both start one).
+     * true = started, false = still cooling down, null = couldn't be saved.
+     */
+    public static function startRefreshIfDue(string $userId, string $sectionId, float $since, int $cooldownSec): ?bool
+    {
+        $started = false;
+        $ok = self::update($userId, static function (array $s) use ($sectionId, $since, $cooldownSec, &$started): array {
+            $started = false;
+            $lastAt = (int) ($s['refresh'][$sectionId]['at'] ?? 0);
+            if ($lastAt > 0 && (int) $since - $lastAt < $cooldownSec) {
+                return $s;
+            }
+            $s['refresh'][$sectionId] = ['at' => (int) $since, 'since' => $since];
+            $started = true;
+            return $s;
+        });
+        return $ok ? $started : null;
     }
 
     /** The reload finished: keep the cooldown, forget the "reload from" moment. */
@@ -206,9 +252,7 @@ final class YoungLeaderLimits
      */
     private static function update(string $userId, callable $fn, bool $mirror = true): bool
     {
-        if ($mirror) {
-            $_SESSION[self::SESSION_KEY][$userId] = $fn(self::prune(self::sessionCopy($userId)));
-        }
+        $session = self::prune(self::sessionCopy($userId));
         $dir = self::dir();
         if (!is_dir($dir)) {
             @mkdir($dir, 0700, true);
@@ -216,19 +260,27 @@ final class YoungLeaderLimits
         $path = self::file($userId);
         $h = @fopen($path, 'c+');
         if ($h === false) {
+            // Not saved: still keep it in this session (the caller refuses OSM calls anyway).
+            if ($mirror) {
+                $_SESSION[self::SESSION_KEY][$userId] = $fn($session);
+            }
             return false;
         }
         @chmod($path, 0600);
         try {
-            if (!flock($h, LOCK_EX)) {
-                return false;
-            }
-            $raw = stream_get_contents($h);
-            if ($raw === false) {
+            if (!flock($h, LOCK_EX) || ($raw = stream_get_contents($h)) === false) {
+                if ($mirror) {
+                    $_SESSION[self::SESSION_KEY][$userId] = $fn($session);
+                }
                 return false;
             }
             $s = $raw !== '' ? json_decode($raw, true) : [];
-            $s = $fn(self::prune(is_array($s) ? $s : []));
+            // Decide once, on the stricter of the saved copy and this session's copy, and keep the
+            // result in both.
+            $s = $fn(self::stricter(self::prune(is_array($s) ? $s : []), $mirror ? $session : []));
+            if ($mirror) {
+                $_SESSION[self::SESSION_KEY][$userId] = $s;
+            }
             $json = (string) json_encode($s);
             $ok = ftruncate($h, 0) && rewind($h) && fwrite($h, $json) === strlen($json) && fflush($h);
             flock($h, LOCK_UN);

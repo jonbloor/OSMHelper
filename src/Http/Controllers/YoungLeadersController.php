@@ -129,16 +129,16 @@ final class YoungLeadersController
             $_SESSION[self::FLASH] = ['section' => $sid, 'kind' => 'error', 'message' => YoungLeaderLimits::UNAVAILABLE_MESSAGE];
             return $r;
         }
+        $now = $clock['now'] ?? static fn (): float => microtime(true);
         $r = YoungLeaders::step($api, $token, $section, $userId, [
             'lastCallAt' => YoungLeaderLimits::lastCallAt($userId),
             'refreshSince' => YoungLeaderLimits::refreshSince($userId, $sid),
             'sleep' => $clock['sleep'] ?? static function (int $us): void { usleep($us); },
-            'now' => $clock['now'] ?? static fn (): float => microtime(true),
+            'now' => $now,
             'confirmed' => $confirmed,
+            // The next call slot is reserved (and saved) before the pause, under the limits file's lock.
+            'reserve' => static fn (int $wantUs): ?int => YoungLeaderLimits::reserveCall($userId, $wantUs, $now()),
         ]);
-        if ($r['lastCallAt'] !== null) {
-            YoungLeaderLimits::setLastCallAt($userId, (float) $r['lastCallAt']);
-        }
         if ($r['state'] === 'done') {
             YoungLeaderLimits::endRefresh($userId, $sid);
             $_SESSION[self::FLASH] = ['section' => $sid, 'kind' => 'ok', 'message' => 'All ' . $r['total'] . ' members loaded. Search, Helping in, sorting and CSV use this copy (kept for up to 24 hours, deleted when you sign out) and don’t call OSM.'];
@@ -191,8 +191,13 @@ final class YoungLeadersController
         }
         // Older copies stay on screen until each member is reloaded (nothing is lost if loading stops).
         // Microseconds, so members fetched earlier in this same second still count as older.
-        if (!YoungLeaderLimits::startRefresh($userId, $sid, OsmCache::currentMicrotime())) {
+        // Checked again and saved under the lock, in case another tab started one just now.
+        $started = YoungLeaderLimits::startRefreshIfDue($userId, $sid, OsmCache::currentMicrotime(), self::REFRESH_COOLDOWN_SEC);
+        if ($started === null) {
             return YoungLeaderLimits::UNAVAILABLE_MESSAGE;
+        }
+        if (!$started) {
+            return 'This section was refreshed a moment ago. To protect your OSM allowance you can refresh again in ' . (int) ceil(max(1, self::refreshWait($userId, $sid)) / 60) . ' min.';
         }
         return null;
     }

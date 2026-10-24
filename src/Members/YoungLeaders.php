@@ -365,7 +365,8 @@ final class YoungLeaders
      * At most ONE OSM call. Never retries.
      *
      * @param array{id:string,name:string,type:string,groupName:string,termId:mixed} $section
-     * @param array{lastCallAt:?float,refreshSince:?float,sleep:callable(int):void,now:callable():float,confirmed?:bool} $ctx
+     * @param array{lastCallAt:?float,refreshSince:?float,sleep:callable(int):void,now:callable():float,confirmed?:bool,reserve?:callable(int):?int} $ctx
+     *        reserve: given the pause wanted, reserves the next call slot and returns the wait (null = refuse)
      * @return array{state:string,total:int,loaded:int,calls:int,message:?string,lastCallAt:?float,confirm:bool}
      */
     public static function step(OsmApi $api, string $token, array $section, string $userId, array $ctx): array
@@ -404,7 +405,15 @@ final class YoungLeaders
         }
         $snap = OsmApi::sessionSnapshot();
         $rateKnown = is_array($snap) && ($snap['remaining'] ?? null) !== null;
-        $wait = self::pauseUs($ctx['lastCallAt'], ($ctx['now'])(), $rateKnown);
+        if (isset($ctx['reserve'])) {
+            // The slot is read, checked and saved in one locked step (YoungLeaderLimits::reserveCall).
+            $wait = ($ctx['reserve'])($rateKnown ? self::PAUSE_US : self::PAUSE_UNKNOWN_US);
+            if ($wait === null) {
+                return ['state' => 'stopped', 'message' => YoungLeaderLimits::UNAVAILABLE_MESSAGE] + $out;
+            }
+        } else {
+            $wait = self::pauseUs($ctx['lastCallAt'], ($ctx['now'])(), $rateKnown);
+        }
         if ($wait > 0) {
             ($ctx['sleep'])($wait);
         }

@@ -455,5 +455,62 @@ check(Limits::lastCallAt('572') === $now - 100.0, 'MF1: the later last-call time
 $_SESSION = ['osmUserId' => '572', 'ylLimits' => ['572' => ['lastCallAt' => $now - 50.0]]];
 check(Limits::lastCallAt('572') === $now - 50.0, 'MF1: the later last-call time wins (session over an older file)');
 
+// Should-fix 1: the pacing slot is reserved under the lock, so two tabs / PHP workers can't share it.
+$_SESSION = ['osmUserId' => '580'];
+$T = (float) $now;
+$w1 = Limits::reserveCall('580', YL::PAUSE_US, $T);
+$w2 = Limits::reserveCall('580', YL::PAUSE_US, $T); // a second tab asking at the same moment
+$w3 = Limits::reserveCall('580', YL::PAUSE_US, $T + 0.5);
+check($w1 === 1_000_000 && $w2 === 2_000_000 && $w3 === 2_500_000, 'SF1: same-moment reservations get slots 1s apart (waits 1s, 2s, then 2.5s half a second later)');
+$_SESSION = ['osmUserId' => '580']; // another browser: only the file
+check(Limits::reserveCall('580', YL::PAUSE_US, $T + 0.5) === 3_500_000, 'SF1: another session of the same user queues behind the saved slot');
+check(Limits::reserveCall('580', YL::PAUSE_US, $T + 1000) === 0 && Limits::reserveCall('581', YL::PAUSE_US, $T) === 1_000_000, 'SF1: no wait once the slot has passed; other users are separate');
+check(Limits::reserveCall('582', YL::PAUSE_US, $T - 3600) === 1_000_000, 'SF1: a saved slot far in the future (clock change) still means at most the full pause');
+// Real processes at the same time (as PHP-FPM workers would be): slots must be >= 1s apart.
+$procDir = sys_get_temp_dir() . '/osmh-yl-proc-' . getmypid();
+@mkdir($procDir, 0700, true);
+$script = '<?php require ' . var_export(dirname(__DIR__) . '/vendor/autoload.php', true) . '; App\Members\YoungLeaderLimits::useDirectory(' . var_export($procDir, true) . ');'
+    . ' $t = microtime(true); $w = App\Members\YoungLeaderLimits::reserveCall("590", 1000000, $t); echo $w === null ? "null" : sprintf("%.6f", $t + $w / 1e6);';
+$sf = $procDir . '/reserve.php';
+file_put_contents($sf, $script);
+$procs = [];
+for ($i = 0; $i < 4; $i++) {
+    $procs[] = proc_open([PHP_BINARY, $sf], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes[$i]);
+}
+$slots = [];
+foreach ($procs as $i => $p) { $slots[] = (float) stream_get_contents($pipes[$i][1]); proc_close($p); }
+sort($slots);
+$gaps = [];
+for ($i = 1; $i < count($slots); $i++) { $gaps[] = $slots[$i] - $slots[$i - 1]; }
+check(count($slots) === 4 && min($slots) > 0 && min($gaps) >= 0.999, 'SF1: 4 processes reserving at once get slots >= 1s apart (min gap ' . sprintf('%.3f', $gaps ? min($gaps) : 0) . 's)');
+array_map('unlink', glob($procDir . '/*') ?: []);
+@rmdir($procDir);
+// loadStep uses the reservation: two tabs taking turns step by step still make calls >= 1s apart.
+freshYlUser('595');
+$tabLog = [];
+$tabClock = (float) $now;
+$tabCtx = ['sleep' => static function (int $us) use (&$tabClock): void { $tabClock += $us / 1e6; }, 'now' => static function () use (&$tabClock): float { return $tabClock; }];
+$responderTab = $responder;
+$responder = static function (RequestInterface $r, array $q) use (&$tabLog, &$tabClock, $responderTab): Response { $tabLog[] = $tabClock; return $responderTab($r, $q); };
+$sec2 = $sec;
+for ($i = 0; $i < 8; $i++) {
+    $_SESSION = ['osmUserId' => '595', 'tab' => $i % 2]; // alternate between two sessions
+    $tabClock -= 0.9; // the other tab asks before this one's pause ended
+    $r = YLC::loadStep(ylApi(), 'tok', $i % 2 ? $sec2 : $sec, '595', true, $tabCtx);
+    if ($r['state'] === 'done') break;
+}
+$responder = $responderTab;
+$gaps = [];
+for ($i = 1; $i < count($tabLog); $i++) { $gaps[] = $tabLog[$i] - $tabLog[$i - 1]; }
+check(count($tabLog) === 7 && min($gaps) >= 0.999, 'SF1: two interleaved tabs: 7 calls, all >= 1s apart (min gap ' . sprintf('%.3f', $gaps ? min($gaps) : 0) . 's)');
+
+// Refresh's cooldown is checked and saved in one locked step too.
+$_SESSION = [];
+$rT = (float) $now;
+check(Limits::startRefreshIfDue('596', '7881', $rT, 300) === true, 'SF1: first Refresh starts');
+$_SESSION = []; // a second tab/session pressing Refresh at the same moment
+check(Limits::startRefreshIfDue('596', '7881', $rT + 0.2, 300) === false && Limits::lastRefreshAt('596', '7881') === (int) $rT, 'SF1: a second Refresh at the same moment is refused and the first is kept');
+check(Limits::startRefreshIfDue('596', '7881', $rT + 301, 300) === true, 'SF1: Refresh is allowed again after the cooldown');
+
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);
