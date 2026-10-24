@@ -46,6 +46,10 @@ final class YoungLeadersController
         if (!is_array($flash) || ($section !== null && ($flash['section'] ?? '') !== (string) $section['id'])) {
             $flash = null;
         }
+        $limitsError = $section !== null && $userId !== null && !YoungLeaderLimits::looksSavable($userId) ? YoungLeaderLimits::UNAVAILABLE_MESSAGE : null;
+        if ($limitsError !== null && is_array($flash) && ($flash['message'] ?? '') === $limitsError) {
+            $flash = null; // said once, below the progress bar
+        }
         $autostart = $section !== null && ($_SESSION[self::AUTOSTART] ?? '') === (string) $section['id'];
         unset($_SESSION[self::AUTOSTART]);
         $fetchedAt = $view['fetchedAt'] ?? null;
@@ -70,6 +74,8 @@ final class YoungLeadersController
             'noUser' => $userId === null,
             // During a backoff the Load/Continue and Refresh buttons are hidden (they'd only be refused).
             'busy' => $section !== null && $userId !== null ? YoungLeaders::busyMessage($userId) : null,
+            // The limits can't be saved: loading is refused (fail closed), so the buttons are hidden too.
+            'limitsError' => $limitsError,
         ]));
     }
 
@@ -94,13 +100,41 @@ final class YoungLeadersController
         if ($userId === null) {
             self::json(400, ['state' => 'stopped', 'message' => 'OSMHelper could not tell which OSM user you are, so it did not load anything. Sign out and sign in again.']);
         }
+        $r = self::loadStep(new OsmApi(), $token, $section, $userId, ($_POST['confirmed'] ?? '') === '1');
+        self::json(200, [
+            'state' => $r['state'],
+            'total' => $r['total'],
+            'loaded' => $r['loaded'],
+            'calls' => $r['calls'],
+            'confirm' => $r['confirm'],
+            'message' => $r['message'],
+        ]);
+    }
+
+    /**
+     * One loading step for this OSM user, with the limits read from and saved to YoungLeaderLimits.
+     * Fails closed: if the limits can't be saved, OSM is not contacted (calls 0) and the page says why.
+     *
+     * @param array<string, mixed> $section
+     * @param array{sleep?:callable(int):void, now?:callable():float} $clock tests only
+     * @return array{state:string,total:int,loaded:int,calls:int,message:?string,lastCallAt:?float,confirm:bool}
+     */
+    public static function loadStep(OsmApi $api, string $token, array $section, string $userId, bool $confirmed, array $clock = []): array
+    {
         $sid = (string) $section['id'];
-        $r = YoungLeaders::step(new OsmApi(), $token, $section, $userId, [
+        if (!YoungLeaderLimits::canSave($userId)) {
+            $v = YoungLeaders::view($userId, $sid, YoungLeaderLimits::refreshSince($userId, $sid));
+            $r = ['state' => 'stopped', 'total' => $v['total'], 'loaded' => $v['total'] - $v['pending'], 'calls' => 0,
+                'message' => YoungLeaderLimits::UNAVAILABLE_MESSAGE, 'lastCallAt' => null, 'confirm' => false];
+            $_SESSION[self::FLASH] = ['section' => $sid, 'kind' => 'error', 'message' => YoungLeaderLimits::UNAVAILABLE_MESSAGE];
+            return $r;
+        }
+        $r = YoungLeaders::step($api, $token, $section, $userId, [
             'lastCallAt' => YoungLeaderLimits::lastCallAt($userId),
             'refreshSince' => YoungLeaderLimits::refreshSince($userId, $sid),
-            'sleep' => static function (int $us): void { usleep($us); },
-            'now' => static fn (): float => microtime(true),
-            'confirmed' => ($_POST['confirmed'] ?? '') === '1',
+            'sleep' => $clock['sleep'] ?? static function (int $us): void { usleep($us); },
+            'now' => $clock['now'] ?? static fn (): float => microtime(true),
+            'confirmed' => $confirmed,
         ]);
         if ($r['lastCallAt'] !== null) {
             YoungLeaderLimits::setLastCallAt($userId, (float) $r['lastCallAt']);
@@ -111,14 +145,7 @@ final class YoungLeadersController
         } elseif ($r['state'] === 'stopped') {
             $_SESSION[self::FLASH] = ['section' => $sid, 'kind' => 'error', 'message' => (string) $r['message'] . ' Loaded ' . $r['loaded'] . ' of ' . $r['total'] . ' members.'];
         }
-        self::json(200, [
-            'state' => $r['state'],
-            'total' => $r['total'],
-            'loaded' => $r['loaded'],
-            'calls' => $r['calls'],
-            'confirm' => $r['confirm'],
-            'message' => $r['message'],
-        ]);
+        return $r;
     }
 
     public function refresh(): void
@@ -138,18 +165,36 @@ final class YoungLeadersController
             header('Location: ' . $back, true, 303);
             exit;
         }
+        $msg = self::startRefreshFor($userId, $sid);
+        if ($msg !== null) {
+            $_SESSION[self::FLASH] = ['section' => $sid, 'kind' => 'error', 'message' => $msg];
+        } else {
+            $_SESSION[self::AUTOSTART] = $sid;
+        }
+        header('Location: ' . $back, true, 303);
+        exit;
+    }
+
+    /**
+     * Start a Refresh for this OSM user and section, or say why not (null = started). Fails closed:
+     * refused while the 5-minute cooldown runs, and refused when the limits can't be saved (so the
+     * cooldown can't be skipped).
+     */
+    public static function startRefreshFor(string $userId, string $sid): ?string
+    {
+        if (!YoungLeaderLimits::canSave($userId)) {
+            return YoungLeaderLimits::UNAVAILABLE_MESSAGE;
+        }
         $wait = self::refreshWait($userId, $sid);
         if ($wait > 0) {
-            $_SESSION[self::FLASH] = ['section' => $sid, 'kind' => 'error', 'message' => 'This section was refreshed a moment ago. To protect your OSM allowance you can refresh again in ' . (int) ceil($wait / 60) . ' min.'];
-            header('Location: ' . $back, true, 303);
-            exit;
+            return 'This section was refreshed a moment ago. To protect your OSM allowance you can refresh again in ' . (int) ceil($wait / 60) . ' min.';
         }
         // Older copies stay on screen until each member is reloaded (nothing is lost if loading stops).
         // Microseconds, so members fetched earlier in this same second still count as older.
-        YoungLeaderLimits::startRefresh($userId, $sid, OsmCache::currentMicrotime());
-        $_SESSION[self::AUTOSTART] = $sid;
-        header('Location: ' . $back, true, 303);
-        exit;
+        if (!YoungLeaderLimits::startRefresh($userId, $sid, OsmCache::currentMicrotime())) {
+            return YoungLeaderLimits::UNAVAILABLE_MESSAGE;
+        }
+        return null;
     }
 
     /** Seconds until this OSM user may press Refresh again for the section (0 = now). */

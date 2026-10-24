@@ -134,7 +134,7 @@ check($slim['others'] === ['Ashby & Coalville District: ACES Young Leaders', 'As
 $enc = json_encode($slim);
 check(!str_contains($enc, 'example.invalid') && !str_contains($enc, '07700') && !str_contains($enc, 'FAKE-') && !str_contains($enc, '2011-01-01'), 'no contact, medical or date of birth kept');
 check(YL::splitOther('A: B: C') === ['A', 'B: C'] && YL::splitOther('Solo') === ['', 'Solo'], 'Group: Section split on first colon');
-check(YL::pauseUs(null, 10.0, true) === 0 && YL::pauseUs(9.5, 10.0, true) === 500000 && YL::pauseUs(9.5, 10.0, false) === 1500000 && YL::pauseUs(5.0, 10.0, true) === 0, 'pause between calls (1s, 2s when allowance unknown)');
+check(YL::pauseUs(null, 10.0, true) === 1_000_000 && YL::pauseUs(null, 10.0, false) === 2_000_000 && YL::pauseUs(9.5, 10.0, true) === 500000 && YL::pauseUs(9.5, 10.0, false) === 1500000 && YL::pauseUs(5.0, 10.0, true) === 0, 'pause between calls (1s, 2s when allowance unknown; the full pause when no last-call time is known)');
 
 // --- Loading: 1 + N calls, paced, cached, stops -------------------------------------------
 $calls = [];
@@ -199,7 +199,7 @@ for ($i = 0; $i < 20; $i++) {
 }
 check(end($states) === 'done' && count($calls) === 7, 'full load = 1 list + 6 members (1 + N), Leaders skipped');
 check($calls[0] === 'getListOfMembers' && $calls[1] === 'getIndividual 201', 'list first, then one getIndividual per member');
-check(count($sleeps) === 6 && min($sleeps) >= 1 && $r['loaded'] === 6 && $r['total'] === 6, 'paused before every call after the first');
+check(count($sleeps) === 7 && min($sleeps) >= 1 && $sleeps[0] === YL::PAUSE_UNKNOWN_US && $r['loaded'] === 6 && $r['total'] === 6, 'paused before every call (the first too: no last-call time known yet)');
 $calls = [];
 $r = YL::step(ylApi(), 'tok', $sec, '500', ctx($last));
 $v = YL::view('500', '7881');
@@ -387,6 +387,73 @@ $limRaw = implode('', array_map('file_get_contents', $limFiles));
 check($limFiles !== [] && (fileperms($limFiles[0]) & 0777) === 0600 && !str_contains($limRaw, '560') && !preg_match('/[A-Za-z]{2,}[0-9]*"\s*:\s*"[A-Za-z]/', $limRaw), 'S1: limits files are 0600, keyed by hashed user id, no names');
 $now += Limits::KEEP_SEC + 1;
 check(Limits::lastCallAt('560') === null && YL::view('550', '7881')['tooLarge'] === null, 'S1: limits entries drop after 24 hours');
+
+// MF1: storage/yl-limits can't be written. Loading must fail closed: no OSM call (with a clear
+// message), and even the session fallback keeps the full pause, the cooldown and the too-large marker.
+$limitsDir = Limits::dir();
+$brokenDir = sys_get_temp_dir() . '/osmh-yl-broken-' . getmypid();
+@unlink($brokenDir);
+file_put_contents($brokenDir, 'not a directory'); // as Geoffrey's r2-nolimits run: a plain file where the dir should be
+Limits::useDirectory($brokenDir);
+freshYlUser('570');
+check(!Limits::canSave('570') && !Limits::looksSavable('570'), 'MF1: an unwritable yl-limits dir is detected');
+check(Limits::setLastCallAt('570', 1.0) === false, 'MF1: saving a limit reports the failure (no silent return)');
+$_SESSION = ['osmUserId' => '570'];
+$mfLog = [];
+$mfClock = (float) $now; // same clock as the 24-hour pruning
+$mfCtx = ['sleep' => static function (int $us) use (&$mfClock): void { $mfClock += $us / 1e6; }, 'now' => static function () use (&$mfClock): float { return $mfClock; }];
+$responderMf = $responder;
+$responder = static function (RequestInterface $r, array $q) use (&$mfLog, &$mfClock, $responderMf): Response { $mfLog[] = $mfClock; return $responderMf($r, $q); };
+$states = [];
+for ($i = 0; $i < 7; $i++) {
+    $r = YLC::loadStep(ylApi(), 'tok', $sec, '570', true, $mfCtx);
+    $states[] = $r['state'];
+}
+check($calls === [] && $mfLog === [] && $r['calls'] === 0, 'MF1: 7 Load steps with an unwritable yl-limits dir make 0 OSM calls');
+check(array_unique($states) === ['stopped'] && $r['message'] === Limits::UNAVAILABLE_MESSAGE && str_contains($r['message'], 'hasn’t contacted OSM'), 'MF1: each step is refused with a clear message');
+check(($_SESSION['ylFlash']['message'] ?? '') === Limits::UNAVAILABLE_MESSAGE, 'MF1: the page shows the refusal after reloading');
+$pageMf = $twig->render('young-leaders.twig', $pageCtx + ['busy' => null, 'limitsError' => Limits::UNAVAILABLE_MESSAGE]);
+check(str_contains($pageMf, 'id="yl-limits-error"') && !str_contains($pageMf, 'id="yl-start"') && !str_contains($pageMf, '/young-leaders/refresh/'), 'MF1: the page says why and hides Load and Refresh');
+$m = YLC::startRefreshFor('570', '7881');
+check($m === Limits::UNAVAILABLE_MESSAGE && Limits::refreshSince('570', '7881') === null, 'MF1: Refresh is refused too (the cooldown can\'t be skipped)');
+// The session fallback on its own (as if the step were let through): calls stay >= 1s apart.
+$calls = [];
+$mfLog = [];
+$sleeps = [];
+for ($i = 0; $i < 20; $i++) {
+    $r = YL::step(ylApi(), 'tok', $sec, '570', ['lastCallAt' => Limits::lastCallAt('570'), 'refreshSince' => null] + $mfCtx);
+    if ($r['lastCallAt'] !== null) { Limits::setLastCallAt('570', (float) $r['lastCallAt']); }
+    if ($r['state'] !== 'running') break;
+}
+$gaps = [];
+for ($i = 1; $i < count($mfLog); $i++) { $gaps[] = $mfLog[$i] - $mfLog[$i - 1]; }
+check(count($mfLog) === 7 && min($gaps) >= 1.0 && Limits::lastCallAt('570') !== null, 'MF1: with only the session copy, 7 calls are still >= 1s apart (min gap ' . (count($gaps) ? sprintf('%.2f', min($gaps)) : '-') . 's)');
+$_SESSION = ['osmUserId' => '570'];
+$calls = [];
+$mfLog = [];
+$mfStart = $mfClock + 60;
+$mfClock = $mfStart;
+Limits::useDirectory($brokenDir);
+YL::step(ylApi(), 'tok', $sec, '570', ['lastCallAt' => Limits::lastCallAt('570'), 'refreshSince' => (float) $now + 1] + $mfCtx);
+check(count($mfLog) === 1 && $mfLog[0] >= 1.0 + $mfStart, 'MF1: a new session with nothing saved still gets the full pause before its first call');
+$responder = $responderMf;
+// Cooldown and too-large marker hold in the session while the file can't be written.
+$_SESSION = ['osmUserId' => '571'];
+Limits::startRefresh('571', '7881', (float) $now);
+Limits::setTooLarge('571', '7881', YL::MAX_MEMBERS + 5, (float) $now);
+check(YLC::refreshWait('571', '7881') > 0 && Limits::tooLarge('571', '7881')['count'] === YL::MAX_MEMBERS + 5, 'MF1: cooldown and too-large marker hold for the session while the file can\'t be written');
+$calls = [];
+$r = YL::step(ylApi(), 'tok', $sec, '571', ctx(null));
+check($r['state'] === 'stopped' && $calls === [] && str_contains((string) $r['message'], 'more than'), 'MF1: too-large marker from the session still refuses with no call');
+@unlink($brokenDir);
+// The file and the session disagree: the stricter value wins.
+Limits::useDirectory($limitsDir);
+$_SESSION = ['osmUserId' => '572'];
+Limits::setLastCallAt('572', $now - 100.0);
+$_SESSION = ['osmUserId' => '572', 'ylLimits' => ['572' => ['lastCallAt' => $now - 150.0]]];
+check(Limits::lastCallAt('572') === $now - 100.0, 'MF1: the later last-call time wins (file over an older session copy)');
+$_SESSION = ['osmUserId' => '572', 'ylLimits' => ['572' => ['lastCallAt' => $now - 50.0]]];
+check(Limits::lastCallAt('572') === $now - 50.0, 'MF1: the later last-call time wins (session over an older file)');
 
 echo "\n$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

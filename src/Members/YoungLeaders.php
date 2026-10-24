@@ -347,12 +347,15 @@ final class YoungLeaders
         return $sectionName . ' has ' . $count . ' members (more than ' . self::MAX_MEMBERS . '). Loading each one would use too much of your OSM allowance, so this page only works for smaller sections.';
     }
 
-    /** Pause before the next call, given when this user's previous Young Leaders call went out. */
+    /**
+     * Pause before the next call, given when this user's previous Young Leaders call went out.
+     * No last-call time known (first call, or it couldn't be saved) = the full pause, never none.
+     */
     public static function pauseUs(?float $lastCallAt, float $now, bool $rateKnown): int
     {
         $want = $rateKnown ? self::PAUSE_US : self::PAUSE_UNKNOWN_US;
         if ($lastCallAt === null || $lastCallAt > $now) {
-            return $lastCallAt === null ? 0 : $want;
+            return $want;
         }
         return max(0, $want - (int) round(($now - $lastCallAt) * 1_000_000));
     }

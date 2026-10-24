@@ -50,14 +50,16 @@
   </div>
   {% if busy %}
   <p class="alert alert-error" id="yl-busy">{{ busy }} Loading and Refresh come back when the wait is over. What has loaded is kept.</p>
+  {% elseif limitsError %}
+  <p class="alert alert-error" id="yl-limits-error">{{ limitsError }}</p>
   {% endif %}
   <p class="yl-actions">
-    {% if not busy and (not view.listCached or view.listStale or view.pending > 0) and view.tooLarge is null %}
+    {% if not busy and not limitsError and (not view.listCached or view.listStale or view.pending > 0) and view.tooLarge is null %}
     <button type="button" class="btn" id="yl-start">{% if view.listCached and view.loaded > 0 %}Continue loading{% else %}Load members{% endif %}</button>
     {% endif %}
     <button type="button" class="btn btn-secondary" id="yl-stop" hidden>Stop</button>
   </p>
-  {% if (view.listCached or view.tooLarge is not null) and not busy %}
+  {% if (view.listCached or view.tooLarge is not null) and not busy and not limitsError %}
   <form method="post" action="/young-leaders/refresh/" class="inline-form">
     {% include '_csrf.twig' %}
     <input type="hidden" name="section_id" value="{{ section.id }}">
