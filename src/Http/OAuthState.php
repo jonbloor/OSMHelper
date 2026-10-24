@@ -14,6 +14,9 @@ final class OAuthState
 {
     public const COOKIE = 'osmhelper_oauth';
 
+    /** Session keys every request sets (App::bootSession / enforceSessionMaxAge, Csrf): not a sign-in in progress. */
+    private const HOUSEKEEPING_KEYS = ['_init', '_csrf', '_startedAt', '_lastSeen'];
+
     public static function persist(string $state): void
     {
         $_SESSION['oauth2state'] = $state;
@@ -62,13 +65,20 @@ final class OAuthState
     {
         $base = 'Invalid OAuth state. Please try connecting again.';
         $hint = ' If this keeps happening, allow cookies for osmhelper.co.uk and retry.';
+        $detail = self::detail($reason);
 
+        return $base . ($detail !== null ? ' (' . $detail . ')' : '') . $hint;
+    }
+
+    /** Short plain-English reason for the retry page's "Details" line, or null. */
+    public static function detail(string $reason): ?string
+    {
         return match ($reason) {
-            'state_param_missing' => $base . ' (missing state from OSM.)' . $hint,
-            'empty_session' => $base . ' (login session was empty on return — often blocked or dropped cookies.)' . $hint,
-            'state_missing' => $base . ' (no saved login state on return.)' . $hint,
-            'state_mismatch' => $base . ' (saved login state did not match.)' . $hint,
-            default => $base . $hint,
+            'state_param_missing' => 'missing state from OSM.',
+            'empty_session' => 'this browser had no sign-in in progress (it may have started in another browser or app, or cookies were blocked).',
+            'state_missing' => 'no saved login state on return.',
+            'state_mismatch' => 'saved login state did not match.',
+            default => null,
         };
     }
 
@@ -99,7 +109,7 @@ final class OAuthState
             return false;
         }
         $keys = array_keys($_SESSION);
-        $keys = array_values(array_filter($keys, static fn ($k) => $k !== '_init' && $k !== '_csrf'));
+        $keys = array_values(array_filter($keys, static fn ($k) => !in_array($k, self::HOUSEKEEPING_KEYS, true)));
 
         return $keys === [];
     }

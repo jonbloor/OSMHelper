@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\App;
 use App\Config;
 use App\Http\OAuthState;
+use App\Http\SignInGuard;
 use App\Osm\LoginSections;
 use App\Osm\OsmApi;
 use App\Osm\OsmOAuth;
@@ -31,6 +32,22 @@ final class AuthController
         if (self::refuseIfOsmStopped()) {
             return;
         }
+
+        // Loop guard: a second /auth visit within a few minutes with no successful sign-in (or a
+        // "Try again here" link) shows a "Continue to OSM" button instead of going straight to OSM.
+        // The button (?go=1) always starts the normal flow below.
+        $attempts = SignInGuard::recordAttempt($_SESSION);
+        $retry = ($_GET['retry'] ?? '') === '1';
+        $go = ($_GET['go'] ?? '') === '1';
+        if (SignInGuard::shouldPause($attempts, $retry, $go)) {
+            header('Cache-Control: no-store, no-cache, must-revalidate');
+            App::render('oauth-continue.twig', [
+                'title' => 'Sign in with OSM',
+                'retry' => $retry,
+            ]);
+            return;
+        }
+
         $oauth = new OsmOAuth();
         $url = $oauth->getAuthorizationUrl();
         $state = $oauth->getState();
@@ -77,6 +94,18 @@ final class AuthController
         }
     }
 
+    /** 400 page with a "Try again here" button (to /auth/?retry=1) and the phone app tip. Never redirects. */
+    private static function renderRetry(string $title, string $message, ?string $detail): void
+    {
+        http_response_code(400);
+        header('Cache-Control: no-store, no-cache, must-revalidate');
+        App::render('oauth-retry.twig', [
+            'title' => $title,
+            'message' => $message,
+            'detail' => $detail,
+        ]);
+    }
+
     public function callback(): void
     {
         if (!Config::isConfigured()) {
@@ -85,6 +114,18 @@ final class AuthController
                 'title' => 'Setup required',
                 'missing' => Config::missingRequired(),
             ]);
+            return;
+        }
+
+        // OSM sent the leader back with an error (cancelled, refused, …): no token exchange, no redirect.
+        if (isset($_GET['error'])) {
+            OAuthState::consume(isset($_GET['state']) ? (string) $_GET['state'] : '');
+            error_log('OAuth callback: OSM returned an error');
+            self::renderRetry(
+                'OSM sign-in was cancelled or refused',
+                'Online Scout Manager didn\'t complete the sign-in, so you aren\'t signed in to OSMHelper. You can try again below.',
+                null
+            );
             return;
         }
 
@@ -102,11 +143,12 @@ final class AuthController
         $reason = OAuthState::consume($state);
         if ($reason !== 'ok') {
             error_log('OAuth state rejected: ' . $reason);
-            http_response_code(400);
-            App::render('error.twig', [
-                'title' => 'Bad request',
-                'message' => OAuthState::userMessage($reason),
-            ]);
+            // Never redirect from here (that is how a sign-in loop starts): explain and offer a button.
+            self::renderRetry(
+                'Sign-in didn\'t finish',
+                'Sign-in started in a different browser or app (for example the OSM app), so we can\'t finish it here. Please try again in this browser.',
+                OAuthState::detail($reason)
+            );
             return;
         }
 

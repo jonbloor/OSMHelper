@@ -1,0 +1,12 @@
+{% extends 'layout.twig' %}
+
+{% block body %}
+  <div class="card signin-retry">
+    <h2>{{ title }}</h2>
+    <p>{{ message }}</p>
+    <p><a class="btn" href="/auth/?retry=1">Try again here</a></p>
+    {% include '_signin_app_tip.twig' %}
+    {% if detail is defined and detail %}<p class="muted">Details: {{ detail }}</p>{% endif %}
+    <p><a class="btn btn-secondary" href="/">Back home</a></p>
+  </div>
+{% endblock %}

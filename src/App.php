@@ -261,6 +261,8 @@ final class App
         }
         $_SESSION['_startedAt'] = $now;
         $_SESSION['_lastSeen'] = $now;
+        // Signed in: the sign-in loop guard starts afresh (already gone with the wipe above; explicit for clarity).
+        \App\Http\SignInGuard::clear($_SESSION);
     }
 
     /** Unix time this session will end (absolute or idle limit, whichever is sooner), or null if not signed in. */
