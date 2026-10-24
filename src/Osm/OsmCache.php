@@ -20,11 +20,33 @@ namespace App\Osm;
  *  - File names are hashes, so they carry no section or member ids.
  *  - Cleared for the user at sign-out / session expiry; cleared for every user of a section when
  *    OSMHelper writes to that section (rank, notes, new applicant).
+ *
+ * Long-lived kinds (KIND_TTLS): Young Leaders keeps, per section and per member, ONLY the member's
+ * first name, last name, age text and the "Group: Section" names OSM lists as their other sections
+ * (no dates of birth, contact or medical details: YoungLeaders::slimMember() strips them before
+ * put()). These last 24 hours so filters and repeat views spend no OSM allowance, and are kept
+ * through sign-out (still owner-only); the page's Refresh button forgets them early.
  */
 final class OsmCache
 {
     public const TTL_SECONDS = 300;
     public const MARKER_TTL_SECONDS = 3600;
+
+    /**
+     * Kinds that live longer than TTL_SECONDS (seconds), for get() and sweep(). Keep the list short:
+     * only slimmed, low-sensitivity data belongs here (see the class comment).
+     * @var array<string, int>
+     */
+    public const KIND_TTLS = [
+        'ylsection' => 86400,
+        'ylmember' => 86400,
+    ];
+
+    /** Expiry for a kind: KIND_TTLS entry, else TTL_SECONDS. */
+    public static function ttlFor(string $kind): int
+    {
+        return self::KIND_TTLS[self::kindPart($kind)] ?? self::TTL_SECONDS;
+    }
 
     private static ?string $dirOverride = null;
     /** @var callable():int|null */
@@ -71,8 +93,9 @@ final class OsmCache
     /**
      * @return array<string, mixed>|null cached value, or null on miss/expired
      */
-    public static function get(string $kind, ?string $userId, string $scope, int $ttl = self::TTL_SECONDS): ?array
+    public static function get(string $kind, ?string $userId, string $scope, ?int $ttl = null): ?array
     {
+        $ttl ??= self::ttlFor($kind);
         if ($userId === null || $userId === '') {
             return null;
         }
@@ -111,7 +134,7 @@ final class OsmCache
      *   OSM. When given, the write is dropped if forgetScope() ran for this scope after that moment
      *   (an OSMHelper write landed while this load was in flight, so $value may be out of date).
      * @param int|null $fetchedAt when the oldest data in $value was fetched (default now): the entry
-     *   expires, and sweep() deletes it, TTL_SECONDS after this.
+     *   expires, and sweep() deletes it, ttlFor($kind) seconds after this.
      */
     public static function put(string $kind, ?string $userId, string $scope, array $value, ?float $loadStartedAt = null, ?int $fetchedAt = null): void
     {
@@ -209,11 +232,17 @@ final class OsmCache
         }
     }
 
-    /** Forget everything cached for a user (sign-out / session expiry). */
-    public static function forgetUser(?string $userId): void
+    /**
+     * Forget what is cached for a user (sign-out / session expiry). Long-lived kinds (KIND_TTLS) are
+     * kept unless $everything, so Young Leaders doesn't reload every member after each sign-in.
+     */
+    public static function forgetUser(?string $userId, bool $everything = false): void
     {
         if ($userId !== null && $userId !== '') {
             foreach (glob(self::dir() . '/*-' . self::hash('user:' . $userId) . '.json') ?: [] as $f) {
+                if (!$everything && isset(self::KIND_TTLS[self::kindOfFile($f)])) {
+                    continue;
+                }
                 @unlink($f);
             }
         }
@@ -237,7 +266,7 @@ final class OsmCache
                 continue;
             }
             $m = @filemtime($f);
-            $ttl = str_ends_with($f, '.mark') ? self::MARKER_TTL_SECONDS : self::TTL_SECONDS;
+            $ttl = str_ends_with($f, '.mark') ? self::MARKER_TTL_SECONDS : (self::KIND_TTLS[self::kindOfFile($f)] ?? self::TTL_SECONDS);
             if ($m !== false && $now - $m >= $ttl) {
                 @unlink($f);
             }
@@ -247,6 +276,14 @@ final class OsmCache
     private static function path(string $kind, string $userId, string $scope): string
     {
         return self::dir() . '/' . self::kindPart($kind) . '-' . self::hash('scope:' . $scope) . '-' . self::hash('user:' . $userId) . '.json';
+    }
+
+    /** Kind part of a cache file name (the text before the first "-"). */
+    private static function kindOfFile(string $file): string
+    {
+        $base = basename($file);
+        $dash = strpos($base, '-');
+        return $dash === false ? '' : substr($base, 0, $dash);
     }
 
     private static function kindPart(string $kind): string
