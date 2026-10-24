@@ -1200,3 +1200,21 @@ button.link-button {
   cursor: pointer;
 }
 button.link-button:hover { text-decoration: underline; }
+
+/* Young Leaders */
+.yl-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.yl-chip {
+  display: inline-block;
+  background: rgba(11, 110, 79, 0.1);
+  color: var(--accent);
+  border: 1px solid rgba(11, 110, 79, 0.25);
+  border-radius: 999px;
+  font-size: 0.85rem;
+  padding: 0.1rem 0.55rem;
+  white-space: nowrap;
+}
+.yl-chip-group { color: var(--muted); font-weight: 400; }
+.yl-progress { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin: 0.5rem 0; }
+.yl-progress progress { width: min(320px, 100%); height: 0.9rem; }
+.yl-filter { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.yl-progress[hidden], .yl-actions [hidden] { display: none; }

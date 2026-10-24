@@ -1,0 +1,199 @@
+{% extends 'layout.twig' %}
+{% block body %}
+<div class="card">
+  <h2>Young Leaders — {{ groupName }}</h2>
+  <p class="muted">See which other sections each member of a section helps in. Choose your Young Leaders section (or any section). OSMHelper keeps only names, ages and section names, for 24 hours, so searching, filtering, sorting and CSV export don’t call OSM.</p>
+  {% if sectionError %}<div class="alert alert-error">{{ sectionError }}</div>{% endif %}
+  {% if badSection %}<div class="alert alert-error">That section isn’t on your sign-in. Choose one from the list.</div>{% endif %}
+  {% if noUser %}<div class="alert alert-error">OSMHelper could not tell which OSM user you are. Sign out and sign in again before loading.</div>{% endif %}
+
+  <form method="get" action="/young-leaders/" class="yl-picker">
+    <p>
+      <label for="yl-section">Section</label>
+      <select id="yl-section" name="section" required>
+        {% if not section %}<option value="">Choose a section…</option>{% endif %}
+        {% if ylChoices %}
+        <optgroup label="Young Leaders sections">
+          {% for c in ylChoices %}<option value="{{ c.id }}" {% if section and section.id == c.id %}selected{% endif %}>{{ c.name }}{% if c.groupName %} ({{ c.groupName }}){% endif %}</option>{% endfor %}
+        </optgroup>
+        {% endif %}
+        {% if otherChoices %}
+        <optgroup label="Other sections">
+          {% for c in otherChoices %}<option value="{{ c.id }}" {% if section and section.id == c.id %}selected{% endif %}>{{ c.name }}{% if c.groupName %} ({{ c.groupName }}){% endif %}</option>{% endfor %}
+        </optgroup>
+        {% endif %}
+      </select>
+      <button class="btn" type="submit">Show</button>
+    </p>
+    {% if not ylChoices %}<p class="muted">No section on your sign-in has “Young Leader” or “YLU” in its name, so all sections are listed.</p>{% endif %}
+  </form>
+</div>
+
+{% if section and view %}
+<div class="card" id="yl-load" data-section-id="{{ section.id }}" data-total="{{ view.total }}" data-pending="{{ view.pending }}" data-list-cached="{{ view.listCached and not view.listStale ? '1' : '0' }}" data-confirm-above="{{ confirmAbove }}" data-autostart="{{ autostart ? '1' : '0' }}">
+  <h3>{{ section.name }}</h3>
+  {% if flash %}<div class="alert{% if flash.kind == 'error' %} alert-error{% endif %}" role="status">{{ flash.message }}</div>{% endif %}
+
+  {% if not view.listCached %}
+    <p>Nothing loaded yet for this section. Loading reads the member list once, then each member’s record once ({{ pauseSeconds }} second pause between requests), so a section of 20 uses about 21 OSM requests.</p>
+  {% elseif view.pending > 0 %}
+    <p>{{ view.loaded }} of {{ view.total }} members loaded{% if view.listStale or view.pending > view.total - view.loaded %} ({{ view.pending }} to refresh){% endif %}. Loading carries on from where it stopped and uses about {{ view.pending }} more OSM request{{ view.pending == 1 ? '' : 's' }}.</p>
+  {% else %}
+    <p class="muted">All {{ view.total }} members loaded{% if fetchedAtText %}, oldest copy from {{ fetchedAtText }} (UK time){% endif %}. Kept for 24 hours.</p>
+  {% endif %}
+
+  <div class="yl-progress" hidden>
+    <progress id="yl-progress" max="1" value="0" aria-describedby="yl-status"></progress>
+    <span id="yl-status" role="status" aria-live="polite"></span>
+  </div>
+  <p class="yl-actions">
+    {% if not view.listCached or view.listStale or view.pending > 0 %}
+    <button type="button" class="btn" id="yl-start">{% if view.listCached and view.loaded > 0 %}Continue loading{% else %}Load members{% endif %}</button>
+    {% endif %}
+    <button type="button" class="btn btn-secondary" id="yl-stop" hidden>Stop</button>
+  </p>
+  {% if view.listCached %}
+  <form method="post" action="/young-leaders/refresh/" class="inline-form">
+    {% include '_csrf.twig' %}
+    <input type="hidden" name="section_id" value="{{ section.id }}">
+    <button type="submit" class="btn btn-secondary btn-sm">Refresh from OSM</button>
+    <span class="muted">Reloads everyone (about {{ view.total + 1 }} OSM requests). At most once every {{ cooldownMinutes }} minutes.</span>
+  </form>
+  {% endif %}
+  <noscript><p class="alert alert-error">Loading needs JavaScript, so it can pause between requests and show progress.</p></noscript>
+</div>
+
+{% if view.rows %}
+<div class="card">
+  <h3>Members and the sections they help in</h3>
+  <p class="yl-filter">
+    <label for="yl-helping">Helping in</label>
+    <select id="yl-helping">
+      <option value="">Any section</option>
+      <option value="__none__">No other section</option>
+      {% for o in view.options %}<option value="{{ o.name }}">{{ o.name }} ({{ o.count }})</option>{% endfor %}
+    </select>
+    <span class="muted" id="yl-count" aria-live="polite"></span>
+  </p>
+  <div class="table-wrap">
+  <table class="data" id="yl-table" data-table-tools data-export-name="young-leaders-{{ section.name|lower|replace({' ': '-'}) }}">
+    <caption class="visually-hidden">Members of {{ section.name }} and the other sections they are in</caption>
+    <thead><tr><th scope="col">Name</th><th scope="col">Age</th><th scope="col">Other sections</th></tr></thead>
+    <tbody>
+    {% for r in view.rows %}
+      <tr data-section="yl" data-helping="{{ r.others|map(o => o.full)|json_encode }}" data-loaded="{{ r.loaded ? '1' : '0' }}">
+        <td data-sort="{{ r.lastname|lower }} {{ r.firstname|lower }}">{{ r.firstname }} {{ r.lastname }}</td>
+        <td data-sort="{{ r.ageMonths }}">{{ r.age }}</td>
+        <td data-sort="{{ r.others|length }}" data-export="{{ r.others|map(o => o.full)|join('; ') }}">
+          {% if not r.loaded %}<span class="muted">Not loaded yet</span>
+          {% elseif not r.others %}<span class="muted">None</span>
+          {% else %}<span class="yl-chips">{% for o in r.others %}<span class="yl-chip" title="{{ o.full }}">{% if o.group %}<span class="yl-chip-group">{{ o.group }}:</span> {% endif %}{{ o.section }}</span>{% endfor %}</span>{% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endif %}
+
+<script>
+(function () {
+  var box = document.getElementById('yl-load');
+  if (!box) return;
+  var csrf = {{ csrfToken|default('')|json_encode|raw }};
+  var start = document.getElementById('yl-start');
+  var stop = document.getElementById('yl-stop');
+  var bar = document.getElementById('yl-progress');
+  var status = document.getElementById('yl-status');
+  var stopRequested = false;
+  var calls = 0;
+
+  function show(total, loaded, text) {
+    box.querySelector('.yl-progress').hidden = false;
+    bar.max = Math.max(total, 1);
+    bar.value = Math.min(loaded, bar.max);
+    status.textContent = text || (total ? ('Loaded ' + loaded + ' of ' + total + ' members · ' + calls + ' OSM request' + (calls === 1 ? '' : 's') + ' so far') : 'Reading the member list…');
+  }
+  function finish() { window.location.reload(); }
+
+  function step(confirmed) {
+    if (stopRequested) { status.textContent = 'Stopped. Showing what has loaded…'; finish(); return; }
+    var body = new URLSearchParams();
+    body.set('_csrf', csrf);
+    body.set('section_id', box.getAttribute('data-section-id'));
+    fetch('/young-leaders/load/', { method: 'POST', body: body, credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(function (res) { return res.json(); })
+      .then(function (r) {
+        calls += r.calls || 0;
+        show(r.total || 0, r.loaded || 0, r.state === 'running' ? null : (r.message || 'Done.'));
+        if (r.state !== 'running') { finish(); return; }
+        if (r.confirm && !confirmed) {
+          var left = (r.total || 0) - (r.loaded || 0);
+          if (!window.confirm('This section has ' + left + ' members still to load. That uses ' + left + ' OSM requests (about ' + Math.ceil(left * 1.2 / 60) + ' min). Carry on?')) { finish(); return; }
+          confirmed = true;
+        }
+        window.setTimeout(function () { step(confirmed); }, 200);
+      })
+      .catch(function () {
+        // No automatic retry: one failure stops loading.
+        status.textContent = 'Loading stopped: OSMHelper did not get an answer. What has loaded is kept; reload the page to see it.';
+        stop.hidden = true;
+      });
+  }
+
+  function begin() {
+    if (!start) return;
+    var pending = parseInt(box.getAttribute('data-pending'), 10) || 0;
+    var listCached = box.getAttribute('data-list-cached') === '1';
+    var limit = parseInt(box.getAttribute('data-confirm-above'), 10) || 40;
+    var confirmed = false;
+    if (listCached && pending > limit) {
+      if (!window.confirm('Load ' + pending + ' members? That uses ' + pending + ' OSM requests.')) return;
+      confirmed = true;
+    }
+    start.disabled = true;
+    stop.hidden = false;
+    show(parseInt(box.getAttribute('data-total'), 10) || 0, (parseInt(box.getAttribute('data-total'), 10) || 0) - pending, null);
+    step(confirmed);
+  }
+  if (start) start.addEventListener('click', begin);
+  stop.addEventListener('click', function () { stopRequested = true; stop.disabled = true; status.textContent = 'Stopping after this request…'; });
+  if (box.getAttribute('data-autostart') === '1' && start) begin();
+})();
+
+(function () {
+  var table = document.getElementById('yl-table');
+  var sel = document.getElementById('yl-helping');
+  var count = document.getElementById('yl-count');
+  if (!table || !sel) return;
+  var rows = Array.prototype.slice.call(table.tBodies[0].rows);
+  function updateCount() {
+    var shown = rows.filter(function (tr) { return !tr.hidden; }).length;
+    count.textContent = 'Showing ' + shown + ' of ' + rows.length;
+  }
+  function apply() {
+    var want = sel.value;
+    rows.forEach(function (tr) {
+      var list = [];
+      try { list = JSON.parse(tr.getAttribute('data-helping') || '[]'); } catch (e) { list = []; }
+      var keep = want === '' || (want === '__none__' ? (tr.getAttribute('data-loaded') === '1' && list.length === 0) : list.indexOf(want) !== -1);
+      tr.dataset.filterHidden = keep ? '0' : '1';
+      tr.hidden = !keep;
+    });
+    // Let the table search re-apply its text filter on top of this one.
+    var search = document.querySelector('[data-table-search]');
+    if (search) search.dispatchEvent(new Event('input'));
+    updateCount();
+  }
+  sel.addEventListener('change', apply);
+  // After table-tools.js (deferred) has added its search box.
+  window.addEventListener('load', function () {
+    var search = document.querySelector('[data-table-search]');
+    if (search) search.addEventListener('input', updateCount);
+    updateCount();
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

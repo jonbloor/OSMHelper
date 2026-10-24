@@ -8,6 +8,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EquipmentController;
 use App\Http\Controllers\EventsController;
 use App\Http\Controllers\FindMemberController;
+use App\Http\Controllers\YoungLeadersController;
 use App\Http\Controllers\HelpController;
 use App\Http\Controllers\RoadmapController;
 use App\Http\Controllers\ChangelogController;
@@ -50,6 +51,7 @@ final class App
         $wl = new WaitingListController();
         $mem = new MembersController();
         $find = new FindMemberController();
+        $yl = new YoungLeadersController();
         $events = new EventsController();
         $bank = new BankTransfersController();
         $set = new SettingsController();
@@ -87,6 +89,9 @@ final class App
         $router->get('/find-member', [$find, 'index']);
         $router->post('/find-member/search', [$find, 'search']);
         $router->post('/find-member/refresh', [$find, 'refresh']);
+        $router->get('/young-leaders', [$yl, 'index']);
+        $router->post('/young-leaders/load', [$yl, 'load']);
+        $router->post('/young-leaders/refresh', [$yl, 'refresh']);
         $router->get('/events', [$events, 'index']);
         $router->post('/events/refresh', [$events, 'refresh']);
         $router->get('/events/csv', [$events, 'csv']);
