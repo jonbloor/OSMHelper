@@ -379,6 +379,20 @@ a.nav-logout:hover { border-bottom-color: #5c6570; }
     background: transparent;
   }
   .nav-sub a { border-bottom: 1px solid var(--border); }
+  /* Open group items sit two to a row, so the tallest group (People, 5) adds 3 rows, not 5,
+     and the whole menu plus Sign out still fits a 375x667 screen. */
+  .nav-group[open] > .nav-sub {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 0.75rem;
+  }
+  /* Safety net for short screens: the open menu scrolls inside itself. */
+  html.js .nav-links.is-open {
+    max-height: calc(100vh - 5.5rem);
+    max-height: calc(100dvh - 5.5rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
 
   a.nav-logout { margin-left: 0; }
 }

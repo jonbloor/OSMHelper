@@ -92,8 +92,13 @@
             if (s) s.focus();
           });
           nav.addEventListener('focusout', function (e) {
+            // On phones the open group pushes the others down. Closing it the moment focus
+            // moves to another group's heading would shift that heading before the tap lands,
+            // so leave it: opening the other group closes this one (toggle handler above).
+            var t = e.relatedTarget;
+            if (mq.matches && t && t.tagName === 'SUMMARY' && nav.contains(t)) return;
             groups.forEach(function (d) {
-              if (d.open && e.relatedTarget && !d.contains(e.relatedTarget)) d.open = false;
+              if (d.open && t && !d.contains(t)) d.open = false;
             });
           });
           btn.addEventListener('click', function () {
