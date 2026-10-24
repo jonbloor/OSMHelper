@@ -2,7 +2,7 @@
 {% block body %}
 <div class="card">
   <h2>Young Leaders — {{ groupName }}</h2>
-  <p class="muted">See which other sections each member of a section helps in. Choose your Young Leaders section (or any section). OSMHelper keeps only names, ages and section names, for 24 hours, so searching, filtering, sorting and CSV export don’t call OSM.</p>
+  <p class="muted">See which other sections each member of a section helps in. Choose your Young Leaders section (or any section). OSMHelper keeps only names, ages and section names, for up to 24 hours (deleted when you sign out), so searching, filtering, sorting and CSV export don’t call OSM.</p>
   {% if sectionError %}<div class="alert alert-error">{{ sectionError }}</div>{% endif %}
   {% if badSection %}<div class="alert alert-error">That section isn’t on your sign-in. Choose one from the list.</div>{% endif %}
   {% if noUser %}<div class="alert alert-error">OSMHelper could not tell which OSM user you are. Sign out and sign in again before loading.</div>{% endif %}
@@ -39,7 +39,7 @@
   {% elseif view.pending > 0 %}
     <p>{{ view.loaded }} of {{ view.total }} members loaded{% if view.listStale or view.pending > view.total - view.loaded %} ({{ view.pending }} to refresh){% endif %}. Loading carries on from where it stopped and uses about {{ view.pending }} more OSM request{{ view.pending == 1 ? '' : 's' }}.</p>
   {% else %}
-    <p class="muted">All {{ view.total }} members loaded{% if fetchedAtText %}, oldest copy from {{ fetchedAtText }} (UK time){% endif %}. Kept for 24 hours.</p>
+    <p class="muted">All {{ view.total }} members loaded{% if fetchedAtText %}, oldest copy from {{ fetchedAtText }} (UK time){% endif %}. Kept for up to 24 hours, deleted when you sign out.</p>
   {% endif %}
 
   <div class="yl-progress" hidden>

@@ -43,14 +43,36 @@ OsmCache::sweep();
 check(OsmCache::get('ylmember', 'u1', '10:1') !== null, 'sweep keeps a 1-hour-old Young Leaders entry');
 check(OsmCache::get('waiting', 'u1', '10') === null, 'sweep still drops 5-minute kinds');
 check(OsmCache::get('ylmember', 'u2', '10:1') === null, 'entry is owner-only');
-OsmCache::forgetUser('u1');
-check(OsmCache::get('ylmember', 'u1', '10:1') !== null, 'sign-out keeps the 24-hour Young Leaders entry');
-OsmCache::forgetUser('u1', true);
-check(OsmCache::get('ylmember', 'u1', '10:1') === null, 'forgetUser(everything) removes it');
+// Sign-out (logout, session expiry and a new sign-in all call forgetCurrentUser) clears this
+// user's Young Leaders copy, but not other users' files or other cache types.
+OsmCache::put('ylsection', 'u1', '10', ['members' => []]);
+OsmCache::put('ylmember', 'u2', '10:1', ['others' => ['A: B']]);
+OsmCache::put('ylsection', 'u2', '10', ['members' => []]);
+OsmCache::put('waiting', 'u2', '10', ['rows' => []]);
+OsmCache::forgetScope('waiting', '99');
+$marksBefore = glob(OsmCache::dir() . '/*.mark') ?: [];
+$before = count(glob(OsmCache::dir() . '/*.json') ?: []);
+$_SESSION = ['osmUserId' => 'u1'];
+OsmCache::forgetCurrentUser();
+check(OsmCache::get('ylmember', 'u1', '10:1') === null && OsmCache::get('ylsection', 'u1', '10') === null, 'sign-out deletes that user\'s Young Leaders cache (member and section)');
+check(OsmCache::get('ylmember', 'u2', '10:1') !== null && OsmCache::get('ylsection', 'u2', '10') !== null, 'sign-out leaves other users\' Young Leaders cache');
+check(OsmCache::get('waiting', 'u2', '10') !== null, 'sign-out leaves other users\' other cache types');
+check((glob(OsmCache::dir() . '/*.mark') ?: []) === $marksBefore && $marksBefore !== [], 'sign-out leaves section invalidation markers');
+check(count(glob(OsmCache::dir() . '/*.json') ?: []) === $before - 2, 'sign-out removed exactly the user\'s two files');
+$_SESSION = [];
+OsmCache::forgetUser('u2');
 OsmCache::put('ylmember', 'u1', '10:1', ['others' => []]);
 $now += 86400;
 OsmCache::sweep();
 check(glob(OsmCache::dir() . '/ylmember-*') === [], 'sweep deletes Young Leaders files after 24 hours');
+
+// --- Privacy copy names the Young Leaders copy and that sign-out deletes it ----------------
+$homeTpl = (string) file_get_contents(dirname(__DIR__) . '/templates/home.twig');
+$readme = (string) file_get_contents(dirname(__DIR__) . '/README.md');
+$helpTpl = (string) file_get_contents(dirname(__DIR__) . '/templates/help.twig');
+check(str_contains($homeTpl, 'Young Leaders keeps a copy of members’ names, ages and the names of the other sections') && str_contains($homeTpl, 'deleted 24 hours after it was fetched or when you sign out'), 'home privacy copy covers the Young Leaders copy and sign-out');
+check(str_contains($readme, 'Young Leaders copy, up to 24 hours') && str_contains($readme, 'deleted at sign-out'), 'README storage list covers the Young Leaders copy');
+check(!str_contains($helpTpl, 'kept when you sign out'), 'Help no longer says the copy survives sign-out');
 
 // --- Patrols helper ---------------------------------------------------------------------
 check(Patrols::isYoungLeader('', '-3') && Patrols::isYoungLeader('', -3), 'patrol id -3 is the Young Leaders patrol');
@@ -158,7 +180,7 @@ function freshYlUser(string $id): void
     global $calls, $sleeps;
     $_SESSION = ['osmUserId' => $id];
     OsmRateGuard::forUser($id)->reset();
-    OsmCache::forgetUser($id, true);
+    OsmCache::forgetUser($id);
     OsmApi::resetLoggedReasons();
     $calls = [];
     $sleeps = [];

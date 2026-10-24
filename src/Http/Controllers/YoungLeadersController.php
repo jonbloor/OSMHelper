@@ -105,7 +105,7 @@ final class YoungLeadersController
         }
         if ($r['state'] === 'done') {
             unset($_SESSION[self::REFRESH_SINCE][$sid]);
-            $_SESSION[self::FLASH] = ['section' => $sid, 'kind' => 'ok', 'message' => 'All ' . $r['total'] . ' members loaded. Search, Helping in, sorting and CSV use this copy (kept for 24 hours) and don’t call OSM.'];
+            $_SESSION[self::FLASH] = ['section' => $sid, 'kind' => 'ok', 'message' => 'All ' . $r['total'] . ' members loaded. Search, Helping in, sorting and CSV use this copy (kept for up to 24 hours, deleted when you sign out) and don’t call OSM.'];
         } elseif ($r['state'] === 'stopped') {
             $_SESSION[self::FLASH] = ['section' => $sid, 'kind' => 'error', 'message' => (string) $r['message'] . ' Loaded ' . $r['loaded'] . ' of ' . $r['total'] . ' members.'];
         }

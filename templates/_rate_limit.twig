@@ -1,7 +1,7 @@
 {% if authed is defined and authed %}
 <div class="rate-limit-info{% if rateLimitCritical|default(false) %} rate-limit-info--critical{% elseif rateLimitNearing|default(false) %} rate-limit-info--nearing{% endif %}">
   <p><strong>Your OSM API allowance</strong></p>
-  <p class="muted">This is <strong>per user</strong> (your OSM account), not a measure of how busy Online Scout Manager is overall. OSM caps how many API requests your login can make in a short window. Opening tools like Members, Checks, Dashboard, Waiting, Equipment, Bank, Top awards or Nights away uses that allowance. Young Leaders uses it only when you load or refresh a section (one request for the list plus one per member), then reuses that copy for 24 hours.</p>
+  <p class="muted">This is <strong>per user</strong> (your OSM account), not a measure of how busy Online Scout Manager is overall. OSM caps how many API requests your login can make in a short window. Opening tools like Members, Checks, Dashboard, Waiting, Equipment, Bank, Top awards or Nights away uses that allowance. Young Leaders uses it only when you load or refresh a section (one request for the list plus one per member), then reuses that copy for up to 24 hours (until you sign out).</p>
   <ul>
     <li>Limit: {{ rateLimit.limit ?? 'Unknown' }}</li>
     <li>Remaining: {{ rateLimit.remaining ?? 'Unknown' }}</li>

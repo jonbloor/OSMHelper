@@ -24,8 +24,9 @@ namespace App\Osm;
  * Long-lived kinds (KIND_TTLS): Young Leaders keeps, per section and per member, ONLY the member's
  * first name, last name, age text and the "Group: Section" names OSM lists as their other sections
  * (no dates of birth, contact or medical details: YoungLeaders::slimMember() strips them before
- * put()). These last 24 hours so filters and repeat views spend no OSM allowance, and are kept
- * through sign-out (still owner-only); the page's Refresh button forgets them early.
+ * put()). These last up to 24 hours while you stay signed in, so filters and repeat views spend no
+ * OSM allowance (owner-only). Like everything else here they are deleted for the user at sign-out
+ * and session expiry; the page's Refresh button forgets them early.
  */
 final class OsmCache
 {
@@ -233,16 +234,13 @@ final class OsmCache
     }
 
     /**
-     * Forget what is cached for a user (sign-out / session expiry). Long-lived kinds (KIND_TTLS) are
-     * kept unless $everything, so Young Leaders doesn't reload every member after each sign-in.
+     * Forget everything cached for a user (sign-out / session expiry / new sign-in), including the
+     * 24-hour Young Leaders kinds. Other users' files and section invalidation markers are untouched.
      */
-    public static function forgetUser(?string $userId, bool $everything = false): void
+    public static function forgetUser(?string $userId): void
     {
         if ($userId !== null && $userId !== '') {
             foreach (glob(self::dir() . '/*-' . self::hash('user:' . $userId) . '.json') ?: [] as $f) {
-                if (!$everything && isset(self::KIND_TTLS[self::kindOfFile($f)])) {
-                    continue;
-                }
                 @unlink($f);
             }
         }
