@@ -244,7 +244,7 @@ final class YoungLeaders
      *
      * @return array{listCached:bool,listStale:bool,rows:list<array<string, mixed>>,total:int,loaded:int,pending:int,options:list<array{name:string,count:int}>,fetchedAt:?int}
      */
-    public static function view(string $userId, string $sectionId, ?int $refreshSince = null): array
+    public static function view(string $userId, string $sectionId, ?float $refreshSince = null): array
     {
         $list = OsmCache::get(self::LIST_KIND, $userId, $sectionId);
         $members = is_array($list['members'] ?? null) ? $list['members'] : [];
@@ -259,7 +259,7 @@ final class YoungLeaders
             }
             $c = OsmCache::get(self::MEMBER_KIND, $userId, self::memberScope($sectionId, (string) $m['scoutid']));
             $isLoaded = is_array($c) && is_array($c['others'] ?? null);
-            $fresh = $isLoaded && ($refreshSince === null || (int) ($c['fetchedAt'] ?? 0) >= $refreshSince);
+            $fresh = $isLoaded && ($refreshSince === null || self::fetchedAtOf($c) >= $refreshSince);
             $src = $isLoaded ? $c : $m;
             $others = $isLoaded ? array_values(array_filter($c['others'], 'is_string')) : [];
             if ($isLoaded) {
@@ -291,7 +291,7 @@ final class YoungLeaders
         $listAt = is_array($list) ? (int) ($list['fetchedAt'] ?? 0) : null;
         return [
             'listCached' => $list !== null,
-            'listStale' => $list !== null && $refreshSince !== null && (int) $listAt < $refreshSince,
+            'listStale' => $list !== null && $refreshSince !== null && self::fetchedAtOf($list) < $refreshSince,
             'rows' => $rows,
             'total' => count($rows),
             'loaded' => $loaded,
@@ -299,6 +299,18 @@ final class YoungLeaders
             'options' => $options,
             'fetchedAt' => $oldest ?? $listAt,
         ];
+    }
+
+    /**
+     * When a cached entry was fetched, to the microsecond (fetchedAtF), so a Refresh pressed in the
+     * same second as a fetch still counts that entry as older. Entries from before this have only
+     * whole seconds (fetchedAt).
+     * @param array<string, mixed> $entry
+     */
+    public static function fetchedAtOf(array $entry): float
+    {
+        $f = $entry['fetchedAtF'] ?? null;
+        return is_float($f) || is_int($f) ? (float) $f : (float) (int) ($entry['fetchedAt'] ?? 0);
     }
 
     /** Pause before the next call, given when this user's previous Young Leaders call went out. */
@@ -316,7 +328,7 @@ final class YoungLeaders
      * At most ONE OSM call. Never retries.
      *
      * @param array{id:string,name:string,type:string,groupName:string,termId:mixed} $section
-     * @param array{lastCallAt:?float,refreshSince:?int,sleep:callable(int):void,now:callable():float} $ctx
+     * @param array{lastCallAt:?float,refreshSince:?float,sleep:callable(int):void,now:callable():float} $ctx
      * @return array{state:string,total:int,loaded:int,calls:int,message:?string,lastCallAt:?float,confirm:bool}
      */
     public static function step(OsmApi $api, string $token, array $section, string $userId, array $ctx): array
@@ -332,7 +344,7 @@ final class YoungLeaders
         if (!$needList) {
             foreach ($view['rows'] as $r) {
                 $c = OsmCache::get(self::MEMBER_KIND, $userId, self::memberScope($sectionId, $r['scoutid']));
-                if (!is_array($c) || ($refreshSince !== null && (int) ($c['fetchedAt'] ?? 0) < $refreshSince)) {
+                if (!is_array($c) || ($refreshSince !== null && self::fetchedAtOf($c) < $refreshSince)) {
                     $next = $r;
                     break;
                 }
@@ -386,7 +398,8 @@ final class YoungLeaders
             return ['state' => 'stopped', 'message' => $msg] + $out;
         }
 
-        $now = (int) OsmCache::currentTime();
+        $nowF = OsmCache::currentMicrotime();
+        $now = (int) $nowF;
         if ($needList) {
             if (!is_array($res) || (self::badResponseReason($res) !== null && OsmLists::items($res) === [])) {
                 return ['state' => 'stopped', 'message' => 'OSM did not return a member list for ' . $section['name'] . ', so OSMHelper stopped without trying again.'] + $out;
@@ -395,7 +408,7 @@ final class YoungLeaders
             if (count($members) > self::MAX_MEMBERS) {
                 return ['state' => 'stopped', 'total' => count($members), 'message' => $section['name'] . ' has ' . count($members) . ' members (more than ' . self::MAX_MEMBERS . '). Loading each one would use too much of your OSM allowance, so this page only works for smaller sections.'] + $out;
             }
-            OsmCache::put(self::LIST_KIND, $userId, $sectionId, ['members' => $members, 'fetchedAt' => $now], $started);
+            OsmCache::put(self::LIST_KIND, $userId, $sectionId, ['members' => $members, 'fetchedAt' => $now, 'fetchedAtF' => $nowF], $started);
             $after = self::view($userId, $sectionId, $refreshSince);
             $out['total'] = $after['total'];
             $out['loaded'] = $after['total'] - $after['pending'];
@@ -412,6 +425,7 @@ final class YoungLeaders
         $label = trim($section['groupName']) !== '' ? $section['groupName'] . ': ' . $section['name'] : '';
         $slim = self::slimMember($res, $next, $label);
         $slim['fetchedAt'] = $now;
+        $slim['fetchedAtF'] = $nowF;
         OsmCache::put(self::MEMBER_KIND, $userId, self::memberScope($sectionId, $next['scoutid']), $slim, $started);
         $out['loaded']++;
         if ($out['loaded'] >= $out['total']) {

@@ -140,16 +140,17 @@ final class YoungLeadersController
         }
         $_SESSION[self::LAST_REFRESH][$sid] = time();
         // Older copies stay on screen until each member is reloaded (nothing is lost if loading stops).
-        $_SESSION[self::REFRESH_SINCE][$sid] = OsmCache::currentTime();
+        // Microseconds, so members fetched earlier in this same second still count as older.
+        $_SESSION[self::REFRESH_SINCE][$sid] = OsmCache::currentMicrotime();
         $_SESSION[self::AUTOSTART] = $sid;
         header('Location: ' . $back, true, 303);
         exit;
     }
 
-    private static function refreshSince(string $sid): ?int
+    private static function refreshSince(string $sid): ?float
     {
         $v = $_SESSION[self::REFRESH_SINCE][$sid] ?? null;
-        return is_int($v) ? $v : null;
+        return is_int($v) || is_float($v) ? (float) $v : null;
     }
 
     private static function sectionParam(mixed $v): string

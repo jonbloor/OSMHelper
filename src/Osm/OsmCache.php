@@ -76,6 +76,12 @@ final class OsmCache
         return self::now();
     }
 
+    /** Current time with microseconds (tests: the useClock() value, which may be a float). */
+    public static function currentMicrotime(): float
+    {
+        return self::$clock !== null ? (float) (self::$clock)() : microtime(true);
+    }
+
     private static function now(): int
     {
         return self::$clock !== null ? (int) (self::$clock)() : time();

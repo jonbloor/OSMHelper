@@ -31,7 +31,7 @@ function check(bool $cond, string $msg): void
 }
 
 $now = 1_800_000_000;
-OsmCache::useClock(static function () use (&$now): int { return $now; });
+OsmCache::useClock(static function () use (&$now): int|float { return $now; });
 
 // --- OsmCache: per-kind TTL ---------------------------------------------------------------
 check(OsmCache::ttlFor('ylmember') === 86400 && OsmCache::ttlFor('ylsection') === 86400, 'Young Leaders kinds last 24 hours');
@@ -170,7 +170,7 @@ $responder = static function (RequestInterface $r, array $q) use (&$remaining, &
 };
 $sleeps = [];
 $clockF = 1000.0;
-function ctx(?float $last = null, ?int $refresh = null): array
+function ctx(?float $last = null, ?float $refresh = null): array
 {
     global $sleeps, $clockF;
     return ['lastCallAt' => $last, 'refreshSince' => $refresh, 'sleep' => static function (int $us) use (&$sleeps, &$clockF): void { $sleeps[] = $us; $clockF += $us / 1e6; }, 'now' => static function () use (&$clockF): float { return $clockF; }];
@@ -283,6 +283,21 @@ check($v['listStale'] && $v['pending'] === 6 && $v['loaded'] === 6, 'after Refre
 $calls = [];
 do { $r = YL::step(ylApi(), 'tok', $sec, '540', ctx($last, $refreshSince)); $last = $r['lastCallAt']; } while ($r['state'] === 'running');
 check($r['state'] === 'done' && count($calls) === 7, 'Refresh reloads list + each member once');
+
+// (c) Refresh pressed in the same second as the last fetch must still reload every member.
+freshYlUser('541');
+$now = 1_800_100_000.2;
+$last = null;
+do { $r = YL::step(ylApi(), 'tok', $sec, '541', ctx($last)); $last = $r['lastCallAt']; } while ($r['state'] === 'running');
+$refreshSince = 1_800_100_000.7; // same whole second as every fetch above
+check((int) $refreshSince === (int) $now, 'same-second Refresh: fetches and Refresh share one whole second');
+$v = YL::view('541', '7881', $refreshSince);
+check($v['listStale'] && $v['pending'] === 6, 'same-second Refresh: every member counts as older (none skipped)');
+$now = 1_800_100_001.1;
+$calls = [];
+do { $r = YL::step(ylApi(), 'tok', $sec, '541', ctx($last, $refreshSince)); $last = $r['lastCallAt']; } while ($r['state'] === 'running');
+check($r['state'] === 'done' && count($calls) === 7 && in_array('getIndividual 203', $calls, true), 'same-second Refresh: list + all 6 members reloaded');
+$now = 1_800_100_100;
 
 // Too-big sections are refused after the 1 list call
 freshYlUser('550');
