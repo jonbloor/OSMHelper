@@ -70,7 +70,6 @@ check(OAuthState::consume('aaa') === 'ok', 'state: matching session state → ok
 $_SESSION = [];
 check(OAuthState::consume('') === 'state_param_missing', 'state: no state from OSM → state_param_missing');
 check(OAuthState::detail('empty_session') !== null && OAuthState::detail('nonsense') === null, 'state: detail text for known reasons only');
-check(str_contains(OAuthState::userMessage('state_mismatch'), 'did not match'), 'state: userMessage still includes the detail');
 session_write_close();
 
 // ---------- HTTP: the real pages under php -S (no OSM) ----------

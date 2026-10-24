@@ -61,15 +61,6 @@ final class OAuthState
         return 'state_mismatch';
     }
 
-    public static function userMessage(string $reason): string
-    {
-        $base = 'Invalid OAuth state. Please try connecting again.';
-        $hint = ' If this keeps happening, allow cookies for osmhelper.co.uk and retry.';
-        $detail = self::detail($reason);
-
-        return $base . ($detail !== null ? ' (' . $detail . ')' : '') . $hint;
-    }
-
     /** Short plain-English reason for the retry page's "Details" line, or null. */
     public static function detail(string $reason): ?string
     {
