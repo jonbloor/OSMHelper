@@ -177,10 +177,30 @@
 
     <section class="help-section" id="privacy">
       <h3>Your data and privacy</h3>
-      <p>OSM stays the record. Your OSM access token is held only in your session on our server. Most pages fetch fresh data from OSM when you open them; the waiting list pages reuse a copy for up to 5 minutes and Young Leaders for up to 24 hours (see below). Anything a page holds for you while you work (a member list, group numbers, events or the contacts Find a member searches) stays in that session only.</p>
-      <p>Every session ends 2 hours after you sign in, or when you sign out, even if you are still using it, and its file on our server is cleaned up shortly after. The top of each page shows when your session ends (for example “Signed in until 23:40”). If it ends while you are working, sign in again and you go back to the page you were on.</p>
-      <p>Top awards results are kept for up to 2 hours so the page loads faster, then deleted. To save OSM requests, the waiting list pages keep a copy on our server: applicants’ names, dates of birth, dates joined, every one of your waiting list custom fields and the leaders’ notes, plus your section list. Only you can see that copy (it is tied to your OSM login), and it is deleted 5 minutes after it was fetched, whether or not you come back. It is also deleted when you sign out, and the waiting list copy is deleted for everyone when OSMHelper saves a change to that waiting list. <strong>Refresh from OSM</strong> on the waiting list pages fetches it again straight away. Young Leaders keeps only members’ names, ages and the names of the other sections they are in, for each section you load. Only you can see it, and it is deleted 24 hours after it was fetched or when you sign out, whichever comes first. Find a member searches, and the members you pick in Nights away, are sent privately and never appear in web addresses or server logs.</p>
-      <p>The only things saved on our server are your group settings (age cut-offs, capacity, which sections each tool uses, kit locations and your chosen waiting list fields), saved with your OSM user number so we know whose settings are whose, and, if you use the <a href="#wordpress-form">WordPress joining form</a>, an encrypted OSM access key for that form, kept until you turn the form off. We also keep a short error log to fix problems. It records what failed, the error code and which section, never OSM’s message text, names, contact details or member numbers, and entries are deleted after 30 days.</p>
+      <p>OSM stays the record. Your OSM access token is held only in your session on our server.</p>
+      <p><strong>While you work</strong></p>
+      <ul>
+        <li>Most pages fetch fresh data from OSM when you open them. The exceptions are the short-term copies below.</li>
+        <li>Anything a page holds for you (a member list, group numbers, events or the contacts Find a member searches) stays in your session only.</li>
+        <li>Every session ends 2 hours after you sign in, or when you sign out, even if you are still using it, and its file on our server is cleaned up shortly after.</li>
+        <li>The top of each page shows when your session ends (for example “Signed in until 23:40”). If it ends while you are working, sign in again and you go back to the page you were on.</li>
+        <li>Find a member searches and the members you pick in Nights away are sent privately and never appear in web addresses or server logs.</li>
+      </ul>
+      <p><strong>Short-term copies on our server</strong></p>
+      <ul>
+        <li><strong>Waiting list:</strong> to save OSM requests, the waiting list pages keep a copy of applicants’ names, dates of birth, dates joined, every one of your waiting list custom fields and the leaders’ notes, plus your section list. It is deleted 5 minutes after it was fetched, whether or not you come back, and when you sign out. It is deleted for everyone when OSMHelper saves a change to that waiting list. <strong>Refresh from OSM</strong> fetches it again straight away.</li>
+        <li><strong>Young Leaders:</strong> keeps only members’ names, ages and the names of the other sections they are in, for each section you load. It is deleted 24 hours after it was fetched or when you sign out, whichever comes first.</li>
+        <li><strong>Top awards:</strong> results are kept for up to 2 hours so the page loads faster, then deleted. Signing out deletes them sooner.</li>
+        <li>Only you can see the waiting list and Young Leaders copies. They are tied to your OSM login.</li>
+      </ul>
+      <p><strong>Kept for longer</strong></p>
+      <ul>
+        <li>Your group settings (age cut-offs, capacity, which sections each tool uses, kit locations and your chosen waiting list fields), saved with your OSM user number so we know whose settings are whose.</li>
+        <li>If you use the <a href="#wordpress-form">WordPress joining form</a>, an encrypted OSM access key for that form, kept until you turn the form off.</li>
+        <li>A few times and counts with no names, to protect your OSM allowance: how often OSM has been asked lately and, for Young Leaders, when you last loaded or pressed Refresh and the size of any section too big to load. The Young Leaders ones are kept for up to 24 hours, even after you sign out, so signing in again doesn’t skip the waits. See <a href="#osm-busy">“OSM is busy”</a>.</li>
+        <li>A short error log to fix problems. It records what failed, the error code and which section, never OSM’s message text, names, contact details or member numbers. Entries are deleted after 30 days.</li>
+      </ul>
+      <p><strong>Signing out</strong> (in the menu) ends your session straight away and deletes your waiting list and Young Leaders copies and the Top awards results you loaded. Your settings, the WordPress form key and the allowance records are kept.</p>
     </section>
 
     <section class="help-section" id="rate-limit">
