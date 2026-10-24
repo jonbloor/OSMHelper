@@ -99,6 +99,7 @@ final class YoungLeadersController
             'refreshSince' => self::refreshSince($sid),
             'sleep' => static function (int $us): void { usleep($us); },
             'now' => static fn (): float => microtime(true),
+            'confirmed' => ($_POST['confirmed'] ?? '') === '1',
         ]);
         if ($r['lastCallAt'] !== null) {
             $_SESSION[self::LAST_CALL] = $r['lastCallAt'];

@@ -337,7 +337,7 @@ final class YoungLeaders
      * At most ONE OSM call. Never retries.
      *
      * @param array{id:string,name:string,type:string,groupName:string,termId:mixed} $section
-     * @param array{lastCallAt:?float,refreshSince:?float,sleep:callable(int):void,now:callable():float} $ctx
+     * @param array{lastCallAt:?float,refreshSince:?float,sleep:callable(int):void,now:callable():float,confirmed?:bool} $ctx
      * @return array{state:string,total:int,loaded:int,calls:int,message:?string,lastCallAt:?float,confirm:bool}
      */
     public static function step(OsmApi $api, string $token, array $section, string $userId, array $ctx): array
@@ -364,6 +364,11 @@ final class YoungLeaders
             if ($next === null) {
                 $out['state'] = 'done';
                 return $out;
+            }
+            // More than CONFIRM_ABOVE members still to load: the user must have agreed (the page
+            // asks, then sends confirmed=1). Checked here too, not only in the browser. No call.
+            if ($view['pending'] > self::CONFIRM_ABOVE && !($ctx['confirmed'] ?? false)) {
+                return ['state' => 'confirm', 'confirm' => true, 'message' => $view['pending'] . ' members still to load. That uses ' . $view['pending'] . ' OSM requests, so OSMHelper needs you to confirm first.'] + $out;
             }
         }
         if ($api->isRateLow(self::RATE_LOW_REMAINING)) {

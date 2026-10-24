@@ -299,6 +299,23 @@ do { $r = YL::step(ylApi(), 'tok', $sec, '541', ctx($last, $refreshSince)); $las
 check($r['state'] === 'done' && count($calls) === 7 && in_array('getIndividual 203', $calls, true), 'same-second Refresh: list + all 6 members reloaded');
 $now = 1_800_100_100;
 
+// S3: more than CONFIRM_ABOVE to load needs confirmed=1 on the server, not only in the browser.
+freshYlUser('545');
+$mid = ['items' => []];
+for ($i = 1; $i <= YL::CONFIRM_ABOVE + 2; $i++) { $mid['items'][] = ['scoutid' => (string) (6000 + $i), 'firstname' => 'M' . $i, 'lastname' => 'L', 'patrolid' => '0', 'age' => '15 / 01']; }
+$responder3 = $responder;
+$responder = static fn (RequestInterface $r, array $q): Response => ($q['action'] ?? '') === 'getListOfMembers'
+    ? new Response(200, rlh(800), json_encode($mid))
+    : new Response(200, rlh(800), json_encode(['data' => ['firstname' => 'M', 'lastname' => 'L']]));
+$r = YL::step(ylApi(), 'tok', $sec, '545', ctx());
+check($r['state'] === 'running' && $r['confirm'] === true && count($calls) === 1, 'S3: list loaded (1 call), confirm requested');
+$calls = [];
+$r = YL::step(ylApi(), 'tok', $sec, '545', ctx($r['lastCallAt']));
+check($r['state'] === 'confirm' && $calls === [] && $r['calls'] === 0, 'S3: a member step without confirmed=1 is refused on the server, no call');
+$r = YL::step(ylApi(), 'tok', $sec, '545', ctx($r['lastCallAt']) + ['confirmed' => true]);
+check($r['state'] === 'running' && count($calls) === 1, 'S3: with confirmed=1 the next member loads (1 call)');
+$responder = $responder3;
+
 // Too-big sections are refused after the 1 list call
 freshYlUser('550');
 $big = ['items' => []];
