@@ -289,7 +289,33 @@
           <h4 class="rm-title">Badge spreadsheet upload</h4>
           <p>Upload a CSV or Excel file, match its columns, check a dry run, then save the badges to OSM.</p>
         </li>
+        <li class="rm-item rm-planned">
+          <div class="rm-head">{{ rm.status('planned') }} <span class="rm-area">Programme</span></div>
+          <h4 class="rm-title">Parent rota</h4>
+          <p>Make a parent rota for a section’s current term and print it. You can give a list of surnames to leave out.</p>
+        </li>
+        <li class="rm-item rm-planned">
+          <div class="rm-head">{{ rm.status('planned') }} <span class="rm-area">Members</span></div>
+          <h4 class="rm-title">Paper register</h4>
+          <p>A printable register for a section’s current term, sorted by first name, last name, age or six/patrol.</p>
+        </li>
+        <li class="rm-item rm-planned">
+          <div class="rm-head">{{ rm.status('planned') }} <span class="rm-area">Programme</span></div>
+          <h4 class="rm-title">Copy meetings between sections</h4>
+          <p>Copy the current term’s meetings from one section to another. This saves to OSM, so it will go at a steady pace to stay within OSM’s request limits.</p>
+        </li>
+        <li class="rm-item rm-planned">
+          <div class="rm-head">{{ rm.status('planned') }} <span class="rm-area">Members</span></div>
+          <h4 class="rm-title">Photo consent report</h4>
+          <p>A printable list of members who don’t have photo consent.</p>
+        </li>
+        <li class="rm-item rm-planned">
+          <div class="rm-head">{{ rm.status('planned') }} <span class="rm-area">Members</span></div>
+          <h4 class="rm-title">Allergies and dietary report</h4>
+          <p>A printable list of members’ allergies and dietary needs.</p>
+        </li>
       </ul>
+      <p class="muted">The last five ideas above come from the <a href="https://github.com/lukelloyd1985/osm-powershell-tools">osm-powershell-tools</a> project, which runs in Windows PowerShell. Adding them to OSMHelper means they’ll work on any computer or phone.</p>
     </section>
 
     <section class="help-section" id="later" aria-labelledby="later-h">
