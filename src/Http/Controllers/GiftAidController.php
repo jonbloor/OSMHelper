@@ -66,7 +66,7 @@ final class GiftAidController
     {
         [$choices, $sectionError] = self::choices();
         [$from, $to, $rangeError, $swapped] = self::range($query, true);
-        $charity = self::charityFrom($query);
+        $charity = GiftAidGrid::claimCharity();
         $selectedIds = self::selectedIds($choices, $query);
         $picked = LoginSections::pickedSections($choices, $selectedIds);
         $termsNote = false;
@@ -88,6 +88,7 @@ final class GiftAidController
         $people = [];
         $missing = [];
         $loadedBits = [];
+        $unreadable = 0;
         if ($from !== null && $to !== null) {
             foreach ($picked as $section) {
                 $cache = GiftAidLoader::cached((string) $section['section_id']);
@@ -95,6 +96,7 @@ final class GiftAidController
                     $missing[] = (string) $section['section_name'];
                     continue;
                 }
+                $unreadable += (int) ($cache['unreadableDates'] ?? 0);
                 foreach ($cache['declarations'] as $row) {
                     if (is_array($row)) {
                         $people[] = $row;
@@ -147,7 +149,6 @@ final class GiftAidController
             'csvQuery' => ($from !== null && $to !== null) ? http_build_query([
                 'from' => $fromUk,
                 'to' => $toUk,
-                'charity' => $charity,
                 'show' => '1',
                 'section_ids' => $selectedIds,
             ]) : '',
@@ -155,6 +156,7 @@ final class GiftAidController
             'cooldownWait' => $wait > 0 ? (int) ceil($wait / 60) : 0,
             'scopeHint' => GiftAidLoader::scopeHint(),
             'loadSections' => $picked,
+            'unreadableNote' => self::unreadableNote($unreadable),
         ];
     }
 
@@ -165,7 +167,6 @@ final class GiftAidController
     public static function handleLoad(string $token, array $post, OsmApi $api): array
     {
         [$from, $to, $rangeError] = self::range($post, true);
-        $charity = self::charityFrom($post);
         [$choices, $sectionError] = self::choices();
         $raw = $post['section_ids'] ?? [];
         if (!is_array($raw)) {
@@ -173,7 +174,7 @@ final class GiftAidController
         }
         $picked = $sectionError === null ? LoginSections::pickedSections($choices, $raw) : [];
         $ids = array_column($picked, 'section_id');
-        $query = ($from !== null && $to !== null) ? self::redirectQuery($from, $to, $charity, $ids) : self::rawQuery($post, $charity, $ids);
+        $query = ($from !== null && $to !== null) ? self::redirectQuery($from, $to, $ids) : self::rawQuery($post, $ids);
         if (GiftAidLoader::scopeHint() !== null) {
             return ['flash' => ['kind' => 'error', 'message' => GiftAidLoader::SCOPE_MESSAGE, 'scope' => true], 'query' => $query];
         }
@@ -231,11 +232,17 @@ final class GiftAidController
             }
             return ['flash' => ['kind' => 'error', 'message' => $msg . $note], 'query' => $query];
         }
+        $keptNote = self::emptyKeptNote($result['emptyKept'] ?? []);
         if ((int) $result['calls'] === 0) {
             $msg = 'No term overlaps these dates, so OSM was not called. The preview shows an empty copy for the sections you chose.';
+        } elseif ($result['loaded'] === []) {
+            $msg = $keptNote !== '' ? $keptNote : 'OSM returned no Gift Aid rows.';
         } else {
             $msg = 'Loaded ' . self::nameList($result['loaded']) . ' using ' . (int) $result['calls']
                 . ' OSM request(s). The preview and the CSV downloads use this copy and do not call OSM.';
+            if ($keptNote !== '') {
+                $msg .= ' ' . $keptNote;
+            }
         }
         return ['flash' => ['kind' => 'ok', 'message' => $msg . $note], 'query' => $query];
     }
@@ -245,11 +252,11 @@ final class GiftAidController
     {
         [$choices] = self::choices();
         [$from, $to, $rangeError] = self::range($query, false);
-        $charity = self::charityFrom($query);
+        $charity = GiftAidGrid::claimCharity();
         $selected = self::selectedIds($choices, $query + ['show' => '1']);
         $picked = LoginSections::pickedSections($choices, $selected);
         $ids = array_column($picked, 'section_id');
-        $back = ($from !== null && $to !== null) ? self::redirectQuery($from, $to, $charity, $ids) : [];
+        $back = ($from !== null && $to !== null) ? self::redirectQuery($from, $to, $ids) : [];
         if ($rangeError !== null || $from === null || $to === null) {
             return ['ok' => false, 'message' => $rangeError ?? 'Enter both dates as dd/mm/yyyy, for example 06/04/2026.', 'query' => $back];
         }
@@ -340,20 +347,28 @@ final class GiftAidController
         echo $body;
     }
 
-    /** @param array<string, mixed> $query */
-    private static function charityFrom(array $query): string
+    /** @param list<string> $names */
+    private static function emptyKeptNote(array $names): string
     {
-        $posted = is_string($query['charity'] ?? null) ? trim($query['charity']) : '';
-        if ($posted !== '') {
-            $charity = GiftAidGrid::claimCharity($posted);
-            $_SESSION['giftAidClaimCharity'] = $charity;
-            return $charity;
+        $bits = [];
+        foreach ($names as $name) {
+            $name = trim($name);
+            if ($name !== '') {
+                $bits[] = 'OSM returned no members for ' . $name . '; kept the earlier copy';
+            }
         }
-        $saved = $_SESSION['giftAidClaimCharity'] ?? null;
-        if (is_string($saved) && trim($saved) !== '') {
-            return GiftAidGrid::claimCharity($saved);
+        return implode(' ', $bits);
+    }
+
+    public static function unreadableNote(int $count): ?string
+    {
+        if ($count <= 0) {
+            return null;
         }
-        return GiftAidGrid::claimCharity(null);
+        if ($count === 1) {
+            return '1 donation column had an unreadable date and was skipped';
+        }
+        return $count . ' donation columns had an unreadable date and were skipped';
     }
 
     /**
@@ -375,21 +390,20 @@ final class GiftAidController
     }
 
     /** @param list<string> $ids @return array<string, mixed> */
-    private static function redirectQuery(string $from, string $to, string $charity, array $ids): array
+    private static function redirectQuery(string $from, string $to, array $ids): array
     {
         return [
             'show' => '1',
             'from' => GiftAidGrid::ukDate($from),
             'to' => GiftAidGrid::ukDate($to),
-            'charity' => $charity,
             'section_ids' => array_values($ids),
         ];
     }
 
     /** @param array<string, mixed> $post @param list<string> $ids @return array<string, mixed> */
-    private static function rawQuery(array $post, string $charity, array $ids): array
+    private static function rawQuery(array $post, array $ids): array
     {
-        $q = ['show' => '1', 'charity' => $charity, 'section_ids' => array_values($ids)];
+        $q = ['show' => '1', 'section_ids' => array_values($ids)];
         foreach (['from', 'to'] as $key) {
             if (isset($post[$key]) && is_string($post[$key]) && $post[$key] !== '') {
                 $q[$key] = mb_substr(trim($post[$key]), 0, 20);

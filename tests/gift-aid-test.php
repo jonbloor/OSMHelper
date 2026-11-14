@@ -107,9 +107,10 @@ check(count($parsedA) === 18 && isset($a['9001'], $a['9016']), 'parses every ite
 check($a['9001']['youthFirst'] === 'Alex' && $a['9001']['youthLast'] === 'River' && $a['9001']['title'] === 'Mrs', 'trims youth names and title');
 check($a['9001']['parentname'] === 'Mrs Jane River' && $a['9001']['address'] === '12' && $a['9001']['postcode'] === 'le65 1ab', 'trims and collapses the declarant fields');
 check($a['9001']['status'] === 'entered' && $a['9001']['charity'] === '4th Ashby Scout Group' && $a['9001']['lastupdated'] === '2025-09-01', 'trims status, charity and declaration date');
-check($a['9001']['donations'] === ['2025-10-05' => 100, '2025-10-06' => 1050], 'structure dates only; trailing-space field, "" and 0 and total and stray keys ignored');
+check($a['9001']['donations']['2025-10-05']['pence'] === 100 && $a['9001']['donations']['2025-10-06']['pence'] === 1050
+    && $a['9001']['donations']['2025-10-06']['charity'] === '4th Ashby Scout Group' && count($a['9001']['donations']) === 2, 'structure dates only; trailing-space field, "" and 0 and total and stray keys ignored');
 check($a['9015']['donations'] === [], '0, 0.00 and "" are not donations');
-check($a['9016']['youthFirst'] === 'Wynn' && $a['9016']['donations']['2025-10-06'] === 350, 'trims a spaced amount to pence');
+check($a['9016']['youthFirst'] === 'Wynn' && $a['9016']['donations']['2025-10-06']['pence'] === 350, 'trims a spaced amount to pence');
 check(GiftAidGrid::parseGrid(['items' => [], 'structure' => []]) === [], 'items:[] is an empty grid');
 check(GiftAidGrid::badResponseReason(['items' => []]) === null, 'items array is usable');
 check(GiftAidGrid::badResponseReason([], 'empty-list') === 'no gift aid list', 'literal [] is not a grid');
@@ -120,9 +121,15 @@ check(GiftAidGrid::reasonCode('error: Secret Jane') === 'osm-error' && GiftAidGr
 
 // Name split, hyphens, postcode, charity.
 $split = GiftAidGrid::splitName('Mrs', 'Mrs Jane River');
-check($split === ['first' => 'Jane', 'last' => 'River', 'flags' => []], 'a matching leading title is not part of the name');
-$badTitle = GiftAidGrid::splitName('Mr', 'Mrs Pat Example');
-check($badTitle['first'] === 'Mrs Pat' && $badTitle['last'] === 'Example' && $badTitle['flags'] === ['title-name-mismatch'], 'a conflicting title is flagged and not rewritten');
+check($split['first'] === 'Jane' && $split['last'] === 'River' && $split['flags'] === [] && $split['hmrcTitle'] === 'Mrs', 'a matching leading title is not part of the name');
+$multi = GiftAidGrid::splitName('Mrs', 'Fleur Catherine Wybraniec');
+check($multi['first'] === 'Fleur' && $multi['last'] === 'Catherine Wybraniec' && $multi['flags'] === ['name-multi-part'], 'first token is the HMRC first name; the rest is the last name');
+$badTitle = GiftAidGrid::splitName('Mr', 'Mrs Jo Smith');
+check($badTitle['first'] === 'Jo' && $badTitle['last'] === 'Smith' && $badTitle['flags'] === ['title-name-mismatch'] && $badTitle['hmrcTitle'] === 'Mr', 'a conflicting title is stripped from the name, and the title field is kept');
+$blankTitle = GiftAidGrid::splitName('', 'Mr Jo Smith');
+check($blankTitle['first'] === 'Jo' && $blankTitle['last'] === 'Smith' && $blankTitle['flags'] === [] && $blankTitle['hmrcTitle'] === 'Mr', 'a blank title takes the title word from the name');
+$dotted = GiftAidGrid::splitName('mrs.', 'MRS. Jane River');
+check($dotted['first'] === 'Jane' && $dotted['flags'] === [] && $dotted['hmrcTitle'] === 'mrs.', 'title matching ignores case and a trailing dot');
 $one = GiftAidGrid::splitName('Ms', 'Cher');
 check($one['first'] === '' && $one['last'] === 'Cher' && $one['flags'] === ['name-unsplit'], 'a single token is the last name and is flagged');
 $empty = GiftAidGrid::splitName('Mrs', '   ');
@@ -131,8 +138,8 @@ check(GiftAidGrid::normalisePostcode(' le65 1ab ') === 'LE65 1AB', 'postcode upp
 check(GiftAidGrid::normalisePostcode('LE651CD') === 'LE65 1CD' && GiftAidGrid::normalisePostcode('m1 1ae') === 'M1 1AE', 'compact postcodes gain one space');
 check(GiftAidGrid::charityKind('  4TH ashby scout group ', $claim) === 'ok', 'charity match ignores case and surrounding space');
 check(GiftAidGrid::charityKind('   ', $claim) === 'blank' && GiftAidGrid::charityKind('Ashby ESU', $claim) === 'mismatch', 'blank and other charities are not the claim charity');
-check(GiftAidGrid::claimCharity(null) === GiftAidGrid::DEFAULT_CLAIM_CHARITY, 'claim charity defaults to 4th Ashby Scout Group');
-check(GiftAidGrid::claimCharity('  Ashby ESU  ') === 'Ashby ESU', 'an explicit claim charity is trimmed');
+check(GiftAidGrid::claimCharity() === '4th Ashby Scout Group', 'the claim charity is locked to 4th Ashby Scout Group');
+check(GiftAidGrid::ukPostcode('NOT A CODE') === null && GiftAidGrid::ukPostcode(' le65 1ab ') === 'LE65 1AB', 'only a UK postcode parses');
 [$tyFrom, $tyTo] = GiftAidGrid::taxYearRange(new DateTimeImmutable('2026-11-14', new DateTimeZone('Europe/London')));
 check($tyFrom === '2026-04-06' && $tyTo === '2027-04-05', 'tax year on 14 Nov 2026 is 6 April 2026 to 5 April 2027');
 [$tyFrom, $tyTo] = GiftAidGrid::taxYearRange(new DateTimeImmutable('2026-04-05', new DateTimeZone('Europe/London')));
@@ -153,7 +160,7 @@ check($reg['9002']['status'] === 'entered' && $reg['9002']['donations'] === '3.5
 check($reg['9003']['status'] === 'entered' && $reg['9003']['declarationDate'] === '01/01/2020' && $reg['9003']['house'] === '4' && $reg['9003']['donations'] === '8.00', 'entered beats a later declined copy, whose amounts are dropped');
 check($reg['9004']['flags'] === 'charity-blank' && $reg['9005']['flags'] === 'charity-mismatch', 'blank and other charities are flagged');
 check($reg['9006']['flags'] === 'missing-postcode' && $reg['9007']['flags'] === 'missing-address', 'missing postcode and house are flagged');
-check($reg['9008']['flags'] === 'title-name-mismatch' && $reg['9008']['declarantFirst'] === 'Mrs Pat', 'title mismatch is flagged and the name is left as held');
+check($reg['9008']['flags'] === 'title-name-mismatch' && $reg['9008']['declarantFirst'] === 'Pat' && $reg['9008']['declarantLast'] === 'Example' && $reg['9008']['parentname'] === 'Mrs Pat Example' && $reg['9008']['title'] === 'Mr', 'a conflicting title is flagged, stripped from the split, and the raw name is kept');
 check($reg['9009']['flags'] === 'name-unsplit' && $reg['9009']['declarantLast'] === 'Cher' && $reg['9010']['flags'] === 'name-unsplit', 'single-token and empty names are flagged');
 check($reg['9011']['declarantLast'] === 'Shaw-Brown' && $reg['9012']['status'] === 'declined' && $reg['9012']['donations'] === '15.00', 'register keeps the hyphen and declined donations');
 check($reg['9013']['flags'] === 'title-too-long' && $reg['9015']['donations'] === '0.00' && $reg['9015']['flags'] === '', 'long title flagged; zero gifts stay on the register');
@@ -161,8 +168,6 @@ check($reg['9016']['postcode'] === 'M1 1AE' && $reg['9016']['charity'] === '4TH 
 check($reg['9017']['donations'] === '0.00' && $reg['9018']['flags'] === 'missing-declaration-date', 'a gift after the range is excluded; a blank declaration date is flagged');
 $hmrcNames = array_map(static fn (array $r): string => $r['last'] . '|' . $r['date'] . '|' . $r['amount'], $report['hmrc']);
 check($hmrcNames === [
-    'Danger|06/10/25|1.25',
-    'Example|06/10/25|9.00',
     'Long|06/10/25|1.00',
     'River|06/10/25|11.00',
     'Shaw Brown|06/10/25|12.50',
@@ -173,10 +178,10 @@ check($hmrcNames === [
     'Quill|12/01/26|3.50',
     'River|12/01/26|4.00',
 ], 'HMRC rows: ' . implode(', ', $hmrcNames));
-check($report['hmrc'][2]['title'] === 'Reve' && $report['hmrc'][4]['last'] === 'Shaw Brown' && $report['hmrc'][4]['postcode'] === 'LE65 1CD', 'title clipped to 4, hyphen becomes a space, postcode normalised');
-check($report['hmrc'][0]['item'] === 1 && $report['hmrc'][10]['item'] === 11, 'item numbers are 1-based in output order');
+check($report['hmrc'][0]['title'] === 'Reve' && $report['hmrc'][2]['last'] === 'Shaw Brown' && $report['hmrc'][2]['postcode'] === 'LE65 1CD', 'title clipped to 4, hyphen becomes a space, postcode normalised');
+check($report['hmrc'][0]['item'] === '' && $report['hmrc'][8]['item'] === '', 'the Item column is left blank for HMRC to number');
 $hmrcBlob = GiftAidGrid::hmrcCsv($report['hmrc']);
-check(!str_contains($hmrcBlob, 'Alex') && !str_contains($hmrcBlob, 'Ashby ESU') && !str_contains($hmrcBlob, 'Dee') && !str_contains($hmrcBlob, '99.00') && !str_contains($hmrcBlob, '15.00') && !str_contains($hmrcBlob, '6.50'), 'HMRC file has no youth names, no other charity, and no declined, blank-charity or no-record amounts');
+check(!str_contains($hmrcBlob, 'Alex') && !str_contains($hmrcBlob, 'Ashby ESU') && !str_contains($hmrcBlob, 'Dee') && !str_contains($hmrcBlob, '99.00') && !str_contains($hmrcBlob, '15.00') && !str_contains($hmrcBlob, '6.50') && !str_contains($hmrcBlob, 'Example') && !str_contains($hmrcBlob, '=SUM'), 'HMRC file omits youth names, other charities, declined rows, title clashes and formula-like names');
 check(!str_contains($hmrcBlob, '02/02/26') && !str_contains($hmrcBlob, '20.00') && !str_contains($hmrcBlob, ',8.00') && !str_contains($hmrcBlob, '05/10/25'), 'dates outside the inclusive range are omitted');
 $edge = GiftAidGrid::report($people, '2025-10-05', '2025-10-05', $claim);
 check(array_column($edge['hmrc'], 'amount') === ['1.00'] && $edge['hmrc'][0]['date'] === '05/10/25', 'the range includes the start day and nothing after it');
@@ -185,9 +190,9 @@ check(array_column($end['hmrc'], 'date') === ['12/01/26', '12/01/26', '12/01/26'
 $feb = GiftAidGrid::report($people, '2026-02-02', '2026-02-02', $claim);
 check(array_column($feb['hmrc'], 'amount') === ['8.00', '20.00'], 'February gifts are included only on that day, and the declined copy is not');
 $preview = $report['preview'];
-check($preview['entered'] === 17 && $preview['declined'] === 1 && $preview['noRecord'] === 1 && $preview['hmrcRows'] === 11, 'preview counts entered, declined, no_record and HMRC rows: ' . json_encode([$preview['entered'], $preview['declined'], $preview['noRecord']]));
+check($preview['entered'] === 17 && $preview['declined'] === 1 && $preview['noRecord'] === 1 && $preview['hmrcRows'] === 9, 'preview counts entered, declined, no_record and HMRC rows: ' . json_encode([$preview['entered'], $preview['declined'], $preview['noRecord'], $preview['hmrcRows']]));
 check($preview['charityBlank'] === 1 && $preview['charityMismatch'] === 1 && $preview['titleMismatch'] === 1 && $preview['missingPostcode'] === 1 && $preview['missingAddress'] === 1, 'preview problem counts');
-check($preview['warnSplit'] === false, '11 rows do not ask for a split claim');
+check($preview['warnSplit'] === false, '9 rows do not ask for a split claim');
 $charityNames = array_column($preview['charities'], 'name');
 check(in_array('(blank)', $charityNames, true) && in_array('Ashby ESU', $charityNames, true) && in_array('4th Ashby Scout Group', $charityNames, true), 'charity breakdown lists blank, the other charity and the claim charity');
 check($preview['problems'] !== [] && !isset($preview['problems'][0]['postcode']) && !isset($preview['problems'][0]['house']), 'problem rows carry flags, not addresses');
@@ -201,15 +206,15 @@ check(count(array_filter($two['register'], static fn (array $r): bool => $r['sco
 $hmrc = GiftAidGrid::hmrcCsv($report['hmrc']);
 $hmrcHeader = "\xEF\xBB\xBF" . 'Item,Title,"First name or initial","Last name","House name or number",Postcode,"Aggregated donations","Sponsored event","Donation date",Amount' . "\n";
 check(str_starts_with($hmrc, $hmrcHeader), 'HMRC header with UTF-8 BOM');
-check(str_contains($hmrc, "4,Mrs,Jane,River,12,\"LE65 1AB\",,,06/10/25,11.00\n"), 'HMRC row: DD/MM/YY, 2dp, blank aggregated and sponsored columns');
-check(str_contains($hmrc, "1,Mr,'=SUM(A1),Danger,7,\"LE65 1EF\",,,06/10/25,1.25\n"), 'csvSafe prefixes a leading =');
-check(str_contains($hmrc, '5,Mrs,Rita,"Shaw Brown",3,"LE65 1CD",,,06/10/25,12.50' . "\n"), 'hyphenated last name and compact postcode in the HMRC file');
+check(str_contains($hmrc, ",Mrs,Jane,River,12,\"LE65 1AB\",,,06/10/25,11.00\n"), 'HMRC row: blank Item, DD/MM/YY, 2dp, blank aggregated and sponsored columns');
+check(!str_contains($hmrc, "'="), 'the HMRC file does not prefix a quote onto a formula-like cell');
+check(str_contains($hmrc, ',Mrs,Rita,"Shaw Brown",3,"LE65 1CD",,,06/10/25,12.50' . "\n"), 'hyphenated last name and compact postcode in the HMRC file');
 $regCsv = GiftAidGrid::declarationsCsv($report['register']);
 $regHeader = "\xEF\xBB\xBF" . 'Group,Section,"Youth first name","Youth last name",Status,"Declaration date (dd/mm/yyyy)","Declarant title","Declarant name as held in OSM","Declarant first name","Declarant last name","House name or number",Postcode,"Charity name","Donations in range (2dp)",Flags' . "\n";
 check(str_starts_with($regCsv, $regHeader), 'register header with UTF-8 BOM');
 check(str_contains($regCsv, '"4th Ashby",Cubs,Alex,River,entered,01/02/2026,Mrs,"Mrs Jane River",Jane,River,12,"LE65 1AB","4th Ashby Scout Group",15.00,' . "\n"), 'register row uses dd/mm/yyyy and 2dp');
 check(str_contains($regCsv, ",'=Alex,Equals,"), 'csvSafe guards a youth name that starts with =');
-check(str_contains($regCsv, 'charity-blank') && str_contains($regCsv, 'charity-mismatch') && str_contains($regCsv, 'name-unsplit'), 'register flags are written out');
+check(str_contains($regCsv, 'charity-blank') && str_contains($regCsv, 'charity-mismatch') && str_contains($regCsv, 'name-unsplit') && str_contains($regCsv, 'title-name-mismatch') && str_contains($regCsv, ",'=SUM(A1),"), 'register keeps csvSafe and the title-mismatch flag');
 foreach (['=1+1', '+1', '-1', '@SUM(A1)', "\tx", ' =1+1', "  @x", "\u{00A0}=1", "\n-2", "\r=1"] as $v) {
     check(GiftAidGrid::csvSafe($v) === "'" . $v, 'csvSafe guards ' . json_encode($v));
 }
@@ -222,7 +227,7 @@ check(!str_contains(GiftAidGrid::csvFilename('hmrc', '2026-04-06', '2027-04-05')
 $manyDon = [];
 $day = new DateTimeImmutable('2020-01-01');
 for ($i = 0; $i < 1001; $i++) {
-    $manyDon[$day->format('Y-m-d')] = 100;
+    $manyDon[$day->format('Y-m-d')] = ['pence' => 100, 'charity' => $claim];
     $day = $day->modify('+1 day');
 }
 $many = GiftAidGrid::report([[
@@ -265,7 +270,7 @@ $by = [];
 foreach ($loaded['completed'][0]['declarations'] as $row) {
     $by[$row['scoutid']] = $row;
 }
-check($by['9001']['donations']['2025-10-06'] === 1100 && $by['9003']['status'] === 'entered' && !isset($by['9003']['donations']['2026-02-02']), 'loader merge matches the pure rules');
+check($by['9001']['donations']['2025-10-06']['pence'] === 1100 && $by['9003']['status'] === 'entered' && !isset($by['9003']['donations']['2026-02-02']), 'loader merge matches the pure rules');
 
 // Bad 200 does not replace a good copy. Personal text stays out of the log and the message.
 GiftAidLoader::store($loaded['completed'][0], 1_800_000_000);
@@ -558,10 +563,104 @@ PHP);
 putenv('GA_METHOD');
 check($head['out'] === '' && str_contains($head['headers'], 'text/csv') && str_contains($head['headers'], 'gift-aid-declarations-20260406-to-20270405.csv'), 'HEAD declarations.csv sends headers and no body');
 
+// S1–S3 and L1–L6: name parts, titles, locked charity, postcode, per-term charity, bad dates, empty grid, HMRC cells.
+$fleur = GiftAidGrid::report([[
+    'group' => '4th Ashby', 'section' => 'Cubs', 'sectionId' => '10', 'scoutid' => '1',
+    'youthFirst' => 'A', 'youthLast' => 'B', 'title' => 'Mrs', 'parentname' => 'Fleur Catherine Wybraniec',
+    'address' => '1', 'postcode' => 'LE65 1AB', 'lastupdated' => '2026-01-01', 'status' => 'entered',
+    'charity' => '4th Ashby Scout Group', 'donations' => ['2026-01-12' => ['pence' => 250, 'charity' => '4th Ashby Scout Group']],
+]], '2026-01-01', '2026-01-31', $claim);
+check($fleur['register'][0]['declarantFirst'] === 'Fleur' && $fleur['register'][0]['declarantLast'] === 'Catherine Wybraniec'
+    && $fleur['register'][0]['parentname'] === 'Fleur Catherine Wybraniec' && $fleur['register'][0]['flags'] === 'name-multi-part'
+    && $fleur['hmrc'][0]['first'] === 'Fleur' && $fleur['hmrc'][0]['last'] === 'Catherine Wybraniec', 'a multi-part name is split on the first word and flagged');
+$clash = GiftAidGrid::report([[
+    'group' => '4th Ashby', 'section' => 'Cubs', 'sectionId' => '10', 'scoutid' => '2',
+    'youthFirst' => 'A', 'youthLast' => 'B', 'title' => 'Mr', 'parentname' => 'Mrs Jo Smith',
+    'address' => '2', 'postcode' => 'LE65 1AB', 'lastupdated' => '2026-01-01', 'status' => 'entered',
+    'charity' => '4th Ashby Scout Group', 'donations' => ['2026-01-12' => ['pence' => 300, 'charity' => '4th Ashby Scout Group']],
+]], '2026-01-01', '2026-01-31', $claim);
+check($clash['hmrc'] === [] && $clash['register'][0]['flags'] === 'title-name-mismatch' && $clash['register'][0]['declarantFirst'] === 'Jo', 'a conflicting title is excluded from the HMRC file');
+$inferred = GiftAidGrid::report([[
+    'group' => '4th Ashby', 'section' => 'Cubs', 'sectionId' => '10', 'scoutid' => '3',
+    'youthFirst' => 'A', 'youthLast' => 'B', 'title' => '', 'parentname' => 'Mr Jo Smith',
+    'address' => '3', 'postcode' => 'LE65 1AB', 'lastupdated' => '2026-01-01', 'status' => 'entered',
+    'charity' => '4th Ashby Scout Group', 'donations' => ['2026-01-12' => ['pence' => 400, 'charity' => '4th Ashby Scout Group']],
+]], '2026-01-01', '2026-01-31', $claim);
+check($inferred['hmrc'][0]['title'] === 'Mr' && $inferred['hmrc'][0]['first'] === 'Jo' && $inferred['register'][0]['title'] === '' && $inferred['register'][0]['flags'] === '', 'a blank title uses the title word from the name');
+$abroad = GiftAidGrid::report([[
+    'group' => '4th Ashby', 'section' => 'Cubs', 'sectionId' => '10', 'scoutid' => '4',
+    'youthFirst' => 'A', 'youthLast' => 'B', 'title' => 'Mrs', 'parentname' => 'Ann Abroad',
+    'address' => '4', 'postcode' => 'OVERSEAS', 'lastupdated' => '2026-01-01', 'status' => 'entered',
+    'charity' => '4th Ashby Scout Group', 'donations' => ['2026-01-12' => ['pence' => 500, 'charity' => '4th Ashby Scout Group']],
+]], '2026-01-01', '2026-01-31', $claim);
+check($abroad['hmrc'] === [] && $abroad['register'][0]['flags'] === 'postcode-unrecognised', 'a non-UK postcode is flagged and left out of the HMRC file');
+$older = [
+    'group' => '4th Ashby', 'section' => 'Cubs', 'sectionId' => '10', 'scoutid' => '5',
+    'youthFirst' => 'A', 'youthLast' => 'B', 'title' => 'Mrs', 'parentname' => 'Ann Older',
+    'address' => '5', 'postcode' => 'LE65 1AB', 'lastupdated' => '2025-01-01', 'status' => 'entered',
+    'charity' => 'Ashby ESU', 'donations' => ['2025-10-06' => ['pence' => 500, 'charity' => 'Ashby ESU']],
+];
+$newer = $older;
+$newer['lastupdated'] = '2026-02-01';
+$newer['charity'] = '4th Ashby Scout Group';
+$newer['donations'] = ['2026-01-12' => ['pence' => 700, 'charity' => '4th Ashby Scout Group']];
+$perTerm = GiftAidGrid::report(GiftAidGrid::mergePeople([$older, $newer]), '2025-10-01', '2026-02-01', $claim);
+check(array_column($perTerm['hmrc'], 'amount') === ['7.00'] && str_contains($perTerm['register'][0]['flags'], 'charity-mismatch') && $perTerm['register'][0]['donations'] === '12.00', 'each donation keeps the charity of its own term');
+check(GiftAidGrid::unreadableDateColumns(['structure' => [['field' => '2025-10-06'], ['field' => 'not-a-date'], ['field' => '']]]) === 1, 'an unreadable date column is counted');
+$_SESSION[GiftAidLoader::REFRESH_KEY] = [];
+$api = mockApi([new Response(200, $hdr, json_encode(['items' => [[
+    'scoutid' => '1', 'firstname' => 'Ann', 'lastname' => 'Older', 'title' => 'Mrs', 'parentname' => 'Ann Older',
+    'address' => '5', 'postcode' => 'LE65 1AB', 'lastupdated' => '2026-01-01', 'status' => 'entered', 'charity_name' => '4th Ashby Scout Group', '2026-01-12' => 1,
+]], 'structure' => [['field' => '2026-01-12'], ['field' => 'Autumn term']]]))], $h);
+$dated = GiftAidLoader::load($api, 'tok', [sectionRow('78', 'Beavers', 'beavers', [['id' => '501', 'start' => '2025-09-01', 'end' => '2026-04-30']], '501')], '2026-01-01', '2026-01-31');
+check(($dated['completed'][0]['unreadableDates'] ?? -1) === 1, 'the load remembers how many date columns were skipped');
+GiftAidLoader::store($dated['completed'][0]);
+$_SESSION['grantedScopes'] = Config::OAUTH_SCOPES;
+LoginSections::remember([[
+    'section_id' => '78', 'section_name' => 'Beavers', 'section_type' => 'beavers', 'group_name' => '4th Ashby', 'current_term_id' => 501,
+    'terms' => [['term_id' => 501, 'startdate' => '2025-09-01', 'enddate' => '2026-04-30']],
+]]);
+$dateView = GiftAidController::viewData(['from' => '01/01/2026', 'to' => '31/01/2026', 'show' => '1', 'section_ids' => ['78']]);
+check($dateView['unreadableNote'] === '1 donation column had an unreadable date and was skipped', 'the page says how many date columns were skipped');
+check(GiftAidController::unreadableNote(3) === '3 donation columns had an unreadable date and were skipped', 'the plural note has no personal data');
+$_SESSION[GiftAidLoader::REFRESH_KEY] = [];
+GiftAidLoader::store([
+    'sectionId' => '79', 'sectionName' => 'Scouts', 'declarations' => [[
+        'group' => '4th Ashby', 'section' => 'Scouts', 'sectionId' => '79', 'scoutid' => '9',
+        'youthFirst' => 'Kept', 'youthLast' => 'Copy', 'title' => 'Mrs', 'parentname' => 'Ada Copy',
+        'address' => '1', 'postcode' => 'LE65 1AB', 'lastupdated' => '2026-01-01', 'status' => 'entered',
+        'charity' => $claim, 'donations' => [],
+    ]],
+    'loadedFrom' => '2026-01-01', 'loadedTo' => '2026-01-31',
+]);
+$api = mockApi([new Response(200, $hdr, '{"items":[],"structure":[]}')], $h);
+$noMembers = GiftAidLoader::load($api, 'tok', [sectionRow('79', 'Scouts', 'scouts', [['id' => '501', 'start' => '2025-09-01', 'end' => '2026-04-30']], '501')], '2026-01-01', '2026-01-31');
+check($noMembers['completed'] === [] && $noMembers['emptyKept'] === ['Scouts'] && (GiftAidLoader::cached('79')['declarations'][0]['youthFirst'] ?? '') === 'Kept', 'an empty items list does not replace a stored copy');
+$_SESSION[GiftAidLoader::REFRESH_KEY] = [];
+LoginSections::remember([[
+    'section_id' => '79', 'section_name' => 'Scouts', 'section_type' => 'scouts', 'group_name' => '4th Ashby', 'current_term_id' => 501,
+    'terms' => [['term_id' => 501, 'startdate' => '2025-09-01', 'enddate' => '2026-04-30']],
+]]);
+$api = mockApi([new Response(200, $hdr, '{"items":[],"structure":[]}')], $h);
+$noMembersPage = GiftAidController::handleLoad('tok', ['section_ids' => ['79'], 'from' => '01/01/2026', 'to' => '31/01/2026'], $api);
+check($noMembersPage['flash']['message'] === 'OSM returned no members for Scouts; kept the earlier copy' && (GiftAidLoader::cached('79')['declarations'][0]['youthFirst'] ?? '') === 'Kept', 'the page says the earlier copy was kept');
+$dash = GiftAidGrid::report([[
+    'group' => '4th Ashby', 'section' => 'Cubs', 'sectionId' => '10', 'scoutid' => '8',
+    'youthFirst' => 'A', 'youthLast' => 'B', 'title' => 'Mrs', 'parentname' => 'Ann House',
+    'address' => '-12', 'postcode' => 'LE65 1AB', 'lastupdated' => '2026-01-01', 'status' => 'entered',
+    'charity' => '4th Ashby Scout Group', 'donations' => ['2026-01-12' => ['pence' => 100, 'charity' => '4th Ashby Scout Group']],
+]], '2026-01-01', '2026-01-31', $claim);
+check($dash['hmrc'] === [] && $dash['register'][0]['flags'] === 'unsafe-leading-character' && str_contains(GiftAidGrid::declarationsCsv($dash['register']), "'-12"), 'a leading hyphen is excluded from HMRC and quoted on the register');
+$page = (string) file_get_contents(dirname(__DIR__) . '/templates/gift-aid.twig');
+$gridSrc = (string) file_get_contents(dirname(__DIR__) . '/src/GiftAid/GiftAidGrid.php');
+check(!str_contains($page, 'name="charity"') && !str_contains($gridSrc, 'gift_aid_charity') && str_contains($page, 'Claim charity:'), 'the charity box and the settings override are gone');
+
 // Help and the template say the required things, in UK spelling, and the problem table is not a generic export.
 $help = (string) file_get_contents($root . '/templates/help.twig');
 $tpl = (string) file_get_contents($root . '/templates/gift-aid.twig');
-check(str_contains($help, 'R68GAD_V1_00_0_EN') && str_contains($help, 'Do not rename the tab') && str_contains($help, '.ods'), 'help explains the HMRC paste steps');
+check(str_contains($help, 'R68GAD_V1_00_0_EN') && str_contains($help, 'Paste the values only, starting at the Title column') && str_contains($help, 'Do not rename the tab') && str_contains($help, '.ods'), 'help explains the HMRC paste steps');
+check(str_contains($help, 'HMRC uses X for overseas donors'), 'help mentions HMRC’s X for overseas donors');
+check(str_contains($help, 'session copy') && str_contains($help, 'cleared when you sign out or after 2 hours'), 'the privacy paragraph names the session copy and when it is cleared');
 check(str_contains($help, 'sign out and in again to use date ranges across terms'), 'help mentions the old-session note');
 check(str_contains($help, 'not written to disk') && str_contains($tpl, 'sign-in only'), 'help and the page describe the session-only copy');
 check(!str_contains($tpl, 'data-table-tools'), 'the on-screen problem list has no generic table export');

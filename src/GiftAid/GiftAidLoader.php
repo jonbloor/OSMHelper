@@ -125,6 +125,7 @@ final class GiftAidLoader
         $completed = [];
         $loaded = [];
         $skipped = [];
+        $emptyKept = [];
         $stop = null;
         $scopeDenied = false;
         $calls = 0;
@@ -152,6 +153,7 @@ final class GiftAidLoader
             self::markRefreshed((string) $section['section_id']);
             $parsed = [];
             $sectionCalls = 0;
+            $unreadable = 0;
             $failed = false;
             foreach ($plan['termIds'] as $termId) {
                 if ($sectionCalls > 0 && $api->isRateLow(self::RATE_LOW_REMAINING)) {
@@ -207,6 +209,7 @@ final class GiftAidLoader
                     $failed = true;
                     break;
                 }
+                $unreadable += GiftAidGrid::unreadableDateColumns($res);
                 foreach (GiftAidGrid::parseGrid($res) as $row) {
                     $parsed[] = $row;
                 }
@@ -215,7 +218,13 @@ final class GiftAidLoader
                 $skipped[] = $name;
                 continue;
             }
-            $completed[] = self::payload($section, $fromIso, $toIso, self::withSection(GiftAidGrid::mergePeople($parsed), $section), $sectionCalls, $plan['fallback']);
+            $people = self::withSection(GiftAidGrid::mergePeople($parsed), $section);
+            $previous = self::cached((string) $section['section_id']);
+            if ($people === [] && is_array($previous) && ($previous['declarations'] ?? []) !== []) {
+                $emptyKept[] = $name;
+                continue;
+            }
+            $completed[] = self::payload($section, $fromIso, $toIso, $people, $sectionCalls, $plan['fallback'], $unreadable);
             $loaded[] = $name;
         }
         return [
@@ -226,6 +235,7 @@ final class GiftAidLoader
             'rateUnknown' => $rateUnknown,
             'loaded' => $loaded,
             'skipped' => $skipped,
+            'emptyKept' => $emptyKept,
         ];
     }
 
@@ -251,7 +261,7 @@ final class GiftAidLoader
      * @param list<array<string, mixed>> $declarations
      * @return array<string, mixed>
      */
-    private static function payload(array $section, string $from, string $to, array $declarations, int $calls, bool $fallback): array
+    private static function payload(array $section, string $from, string $to, array $declarations, int $calls, bool $fallback, int $unreadable = 0): array
     {
         return [
             'sectionId' => (string) ($section['section_id'] ?? ''),
@@ -262,6 +272,7 @@ final class GiftAidLoader
             'loadedTo' => $to,
             'termsFallback' => $fallback,
             'calls' => $calls,
+            'unreadableDates' => $unreadable,
             'declarations' => $declarations,
         ];
     }

@@ -18,11 +18,8 @@
       <input type="text" id="ga-to" name="to" value="{{ toRaw }}" placeholder="dd/mm/yyyy" inputmode="numeric" pattern="\d{1,2}/\d{1,2}/\d{4}" maxlength="10" size="12" required aria-describedby="ga-date-help">
       <p class="muted" id="ga-date-help">Dates are dd/mm/yyyy and include the start and end day. The suggestion is the current UK tax year, 6 April to 5 April. A range may cover more than one OSM term.</p>
     </fieldset>
-    <p>
-      <label for="ga-charity">Claim charity</label>
-      <input type="text" id="ga-charity" name="charity" value="{{ charity }}" maxlength="120" size="40" autocomplete="organization" aria-describedby="ga-charity-help">
-    </p>
-    <p class="muted" id="ga-charity-help">Only declarations for this charity go into the HMRC file. Matching ignores capital letters and extra spaces. A blank charity name, or any other charity, is left out and flagged. The default is {{ defaultCharity }}.</p>
+    <p id="ga-charity">Claim charity: <strong>{{ charity }}</strong></p>
+    <p class="muted">The HMRC file includes only {{ charity }}. Matching ignores capital letters and extra spaces. A blank charity name, or any other charity, is left out and flagged.</p>
     {% if rangeError %}<div class="alert alert-error" role="status">{{ rangeError }}</div>{% endif %}
     {% if rangeNote %}<div class="alert" role="status">{{ rangeNote }}</div>{% endif %}
     {% for g in groups %}
@@ -50,7 +47,6 @@
     {% include '_csrf.twig' %}
     <input type="hidden" name="from" value="{{ from }}">
     <input type="hidden" name="to" value="{{ to }}">
-    <input type="hidden" name="charity" value="{{ charity }}">
     {% for s in loadSections %}
     <input type="hidden" name="section_ids[]" value="{{ s.section_id }}">
     {% endfor %}
@@ -77,9 +73,12 @@
     <div><dt>No record</dt><dd>{{ preview.noRecord }}</dd></div>
     {% if preview.other > 0 %}<div><dt>Other status</dt><dd>{{ preview.other }}</dd></div>{% endif %}
     <div><dt>Missing postcode</dt><dd>{{ preview.missingPostcode }}</dd></div>
+    <div><dt>Postcode not recognised</dt><dd>{{ preview.postcodeUnrecognised }}</dd></div>
     <div><dt>Missing house</dt><dd>{{ preview.missingAddress }}</dd></div>
     <div><dt>Title and name don’t match</dt><dd>{{ preview.titleMismatch }}</dd></div>
     <div><dt>Name not split</dt><dd>{{ preview.nameUnsplit }}</dd></div>
+    <div><dt>Name has extra parts</dt><dd>{{ preview.nameMultiPart }}</dd></div>
+    <div><dt>Unsafe leading character</dt><dd>{{ preview.unsafeLeading }}</dd></div>
     <div><dt>Charity blank</dt><dd>{{ preview.charityBlank }}</dd></div>
     <div><dt>Other charity</dt><dd>{{ preview.charityMismatch }}</dd></div>
     <div><dt>No declaration date</dt><dd>{{ preview.missingDeclarationDate }}</dd></div>
@@ -97,8 +96,9 @@
   {% if preview.warnSplit %}
   <div class="alert alert-error" role="status">This HMRC file has {{ preview.hmrcRows }} rows. HMRC’s schedule holds 1,000 donations per claim, so split the claim before you paste it.</div>
   {% endif %}
+  {% if unreadableNote %}<div class="alert" role="status">{{ unreadableNote }}</div>{% endif %}
   <h4>Problems</h4>
-  <p class="muted">Rows that need a look before you claim. This is not the full address list, and it has no spreadsheet export: use the downloads below. Flags: title-name-mismatch, missing-postcode, missing-address, name-unsplit, charity-blank, charity-mismatch, missing-declaration-date, title-too-long.</p>
+  <p class="muted">Rows that need a look before you claim. This is not the full address list, and it has no spreadsheet export: use the downloads below. Flags: title-name-mismatch, missing-postcode, missing-address, postcode-unrecognised, name-unsplit, name-multi-part, charity-blank, charity-mismatch, missing-declaration-date, title-too-long, unsafe-leading-character.</p>
   {% if preview.problems %}
   <div class="table-wrap">
   <table class="data">
@@ -126,7 +126,7 @@
     <a class="btn btn-secondary" href="/gift-aid/declarations.csv?{{ csvQuery }}">Download declarations register</a>
     <a class="btn btn-secondary" href="/gift-aid/hmrc.csv?{{ csvQuery }}">Download HMRC donations</a>
   </p>
-  <p class="muted">The register is one row per young person per section, including declined and no record. The HMRC file is one row per donation (not combined), entered declarations for {{ preview.claimCharity }} only, with dates as DD/MM/YY. Paste those rows into HMRC’s schedule on the tab R68GAD_V1_00_0_EN. Do not rename that tab, and save the spreadsheet as .ods. Names, addresses and amounts from this page are kept in your sign-in only. They are not saved on the server and not put in the file names.</p>
+  <p class="muted">The register is one row per young person per section, including declined and no record. The HMRC file is one row per donation (not combined), for {{ preview.claimCharity }} only, with dates as DD/MM/YY. Paste the values only, starting at the Title column, into HMRC’s schedule on the tab R68GAD_V1_00_0_EN. Leave Item blank. Do not rename that tab, and save the spreadsheet as .ods. Names, addresses and amounts from this page are kept in your sign-in only. They are not saved on the server and not put in the file names.</p>
 </div>
 {% elseif nothingLoaded %}
 <div class="card">

@@ -1,7 +1,6 @@
 <?php
 declare(strict_types=1);
 namespace App\GiftAid;
-use App\Store\SettingsStore;
 use DateTimeImmutable;
 use DateTimeZone;
 
@@ -15,10 +14,8 @@ use DateTimeZone;
  */
 final class GiftAidGrid
 {
-    /** Claim charity when settings have not overridden it. Matched case-insensitively after trim. */
+    /** The only charity included in the HMRC file. Matched case-insensitively after trim. */
     public const DEFAULT_CLAIM_CHARITY = '4th Ashby Scout Group';
-    /** settings.json key. Not donor data. Empty or missing uses DEFAULT_CLAIM_CHARITY. */
-    public const CLAIM_CHARITY_SETTING = 'gift_aid_charity';
     public const HMRC_ROW_WARN = 1000;
     public const TITLE_MAX = 4;
     public const NAME_MAX = 35;
@@ -29,26 +26,32 @@ final class GiftAidGrid
         'title-name-mismatch',
         'missing-postcode',
         'missing-address',
+        'postcode-unrecognised',
         'name-unsplit',
+        'name-multi-part',
         'charity-blank',
         'charity-mismatch',
         'missing-declaration-date',
         'title-too-long',
+        'unsafe-leading-character',
     ];
 
-    /** These flags mean the donation cannot go on the HMRC schedule. */
+    /**
+     * These flags keep the whole person off the HMRC schedule. Charity is judged per donation,
+     * because two entered terms can name different charities.
+     */
     private const BLOCKING_FLAGS = [
+        'title-name-mismatch',
         'missing-postcode',
         'missing-address',
+        'postcode-unrecognised',
         'name-unsplit',
-        'charity-blank',
-        'charity-mismatch',
+        'unsafe-leading-character',
     ];
 
     /** @var list<string> */
     private const TITLE_WORDS = [
-        'mr', 'mrs', 'ms', 'miss', 'mx', 'dr', 'rev', 'prof', 'sir', 'lady', 'lord', 'dame',
-        'capt', 'col', 'maj', 'master',
+        'mr', 'mrs', 'ms', 'miss', 'mx', 'dr', 'rev', 'revd', 'prof', 'sir', 'lady', 'lord',
     ];
 
     /**
@@ -133,7 +136,7 @@ final class GiftAidGrid
                 }
                 $pence = self::pence($raw);
                 if ($pence !== null) {
-                    $donations[$iso] = $pence;
+                    $donations[$iso] = ['pence' => $pence, 'charity' => self::text($item['charity_name'] ?? '')];
                 }
             }
             $out[] = [
@@ -181,14 +184,38 @@ final class GiftAidGrid
     }
 
     /**
+     * Structure columns whose field is not a date. Empty columns are ignored. The count has no names.
+     *
+     * @param array<string, mixed> $res
+     */
+    public static function unreadableDateColumns(array $res): int
+    {
+        $structure = $res['structure'] ?? ($res['data']['structure'] ?? null);
+        if (!is_array($structure)) {
+            return 0;
+        }
+        $n = 0;
+        foreach ($structure as $col) {
+            if (!is_array($col)) {
+                continue;
+            }
+            $field = self::plain($col['field'] ?? $col['name'] ?? '');
+            if ($field !== '' && self::isoDate($field) === null) {
+                $n++;
+            }
+        }
+        return $n;
+    }
+
+    /**
      * One row per scoutid. Status wins first (entered, then declined, then no_record), then the
      * latest declaration date. Donations are taken only from copies with that winning status, so a
      * declined term cannot add a claim, and the winning copy's amount is kept when the same date
-     * appears twice. Dates that only the other same-status copy has are kept: a term grid may only
-     * contain that term's dates.
+     * appears twice. Each donation keeps the charity of the term copy it came from. Dates that only
+     * the other same-status copy has are kept: a term grid may only contain that term's dates.
      *
-     * @param list<array{scoutid:string,youthFirst:string,youthLast:string,title:string,parentname:string,address:string,postcode:string,lastupdated:?string,status:string,charity:string,donations:array<string,int>}> $rows
-     * @return list<array{scoutid:string,youthFirst:string,youthLast:string,title:string,parentname:string,address:string,postcode:string,lastupdated:?string,status:string,charity:string,donations:array<string,int>}>
+     * @param list<array{scoutid:string,youthFirst:string,youthLast:string,title:string,parentname:string,address:string,postcode:string,lastupdated:?string,status:string,charity:string,donations:array<string,array{pence:int,charity:string}>}> $rows
+     * @return list<array{scoutid:string,youthFirst:string,youthLast:string,title:string,parentname:string,address:string,postcode:string,lastupdated:?string,status:string,charity:string,donations:array<string,array{pence:int,charity:string}>}>
      */
     public static function mergePeople(array $rows): array
     {
@@ -209,14 +236,14 @@ final class GiftAidGrid
                 if ($row['status'] !== $winner['status']) {
                     continue;
                 }
-                foreach ($row['donations'] as $date => $pence) {
+                foreach ($row['donations'] as $date => $gift) {
                     if (!isset($donations[$date])) {
-                        $donations[$date] = $pence;
+                        $donations[$date] = self::giftOf($gift, (string) $row['charity']);
                     }
                 }
             }
-            foreach ($winner['donations'] as $date => $pence) {
-                $donations[$date] = $pence;
+            foreach ($winner['donations'] as $date => $gift) {
+                $donations[$date] = self::giftOf($gift, (string) $winner['charity']);
             }
             ksort($donations);
             $winner['donations'] = $donations;
@@ -238,6 +265,21 @@ final class GiftAidGrid
         return ($candidate['lastupdated'] ?? '') > ($current['lastupdated'] ?? '');
     }
 
+    /**
+     * @return array{pence:int,charity:string}
+     */
+    private static function giftOf(mixed $gift, string $charity): array
+    {
+        if (is_int($gift)) {
+            return ['pence' => $gift, 'charity' => $charity];
+        }
+        if (is_array($gift) && is_int($gift['pence'] ?? null)) {
+            $own = array_key_exists('charity', $gift) ? self::text($gift['charity']) : $charity;
+            return ['pence' => $gift['pence'], 'charity' => $own];
+        }
+        return ['pence' => 0, 'charity' => $charity];
+    }
+
     public static function statusRank(string $status): int
     {
         return match ($status) {
@@ -249,46 +291,61 @@ final class GiftAidGrid
     }
 
     /**
-     * Last token is the last name; the rest is the first name. A matching leading title is not part
-     * of the name. A conflicting title is left in the name and flagged: it is never rewritten.
-     * One token, or no tokens, is name-unsplit (the single token becomes the last name).
+     * A leading title word is removed before the split. The first remaining token is the first name
+     * and the rest is the last name, so a middle name stays in the last name and is flagged
+     * name-multi-part. One remaining token is name-unsplit. A blank title field takes the stripped
+     * word as the HMRC title. A different title field is title-name-mismatch and is not rewritten.
      *
-     * @return array{first:string,last:string,flags:list<string>}
+     * @return array{first:string,last:string,flags:list<string>,hmrcTitle:string}
      */
     public static function splitName(string $title, string $parentname): array
     {
         $name = self::text($parentname);
+        $title = self::text($title);
         $flags = [];
+        $hmrcTitle = $title;
         if ($name === '') {
-            return ['first' => '', 'last' => '', 'flags' => ['name-unsplit']];
+            return ['first' => '', 'last' => '', 'flags' => ['name-unsplit'], 'hmrcTitle' => $hmrcTitle];
         }
         $tokens = explode(' ', $name);
-        $titleNorm = self::normTitle($title);
         $leading = self::normTitle($tokens[0]);
-        if (self::isTitleWord($leading) && $titleNorm !== '') {
-            if ($leading !== $titleNorm) {
+        if (self::isTitleWord($leading)) {
+            $stripped = rtrim(self::text($tokens[0]), '.');
+            array_shift($tokens);
+            if (self::normTitle($title) === '') {
+                $hmrcTitle = $stripped;
+            } elseif (self::normTitle($title) !== $leading) {
                 $flags[] = 'title-name-mismatch';
-            } else {
-                array_shift($tokens);
             }
         }
         if ($tokens === [] || count($tokens) === 1) {
             $flags[] = 'name-unsplit';
-            return ['first' => '', 'last' => $tokens[0] ?? '', 'flags' => $flags];
+            return ['first' => '', 'last' => $tokens[0] ?? '', 'flags' => $flags, 'hmrcTitle' => $hmrcTitle];
         }
-        $last = (string) array_pop($tokens);
-        return ['first' => implode(' ', $tokens), 'last' => $last, 'flags' => $flags];
+        $first = (string) array_shift($tokens);
+        if (count($tokens) > 1) {
+            $flags[] = 'name-multi-part';
+        }
+        return ['first' => $first, 'last' => implode(' ', $tokens), 'flags' => $flags, 'hmrcTitle' => $hmrcTitle];
+    }
+
+    /** A UK postcode in upper case with one space, or null when $postcode is not one. */
+    public static function ukPostcode(string $postcode): ?string
+    {
+        $compact = str_replace(' ', '', strtoupper(self::text($postcode)));
+        if ($compact === '') {
+            return null;
+        }
+        if (preg_match('/^([A-Z]{1,2}\d[A-Z\d]?)(\d[A-Z]{2})$/', $compact, $m)) {
+            return $m[1] . ' ' . $m[2];
+        }
+        return null;
     }
 
     /** Upper case, and a single space before the inward code when it is a UK postcode. */
     public static function normalisePostcode(string $postcode): string
     {
-        $postcode = strtoupper(self::text($postcode));
-        $compact = str_replace(' ', '', $postcode);
-        if (preg_match('/^([A-Z]{1,2}\d[A-Z\d]?)(\d[A-Z]{2})$/', $compact, $m)) {
-            return $m[1] . ' ' . $m[2];
-        }
-        return $postcode;
+        return self::ukPostcode($postcode) ?? strtoupper(self::text($postcode));
     }
 
     /** @return 'ok'|'blank'|'mismatch' */
@@ -305,24 +362,10 @@ final class GiftAidGrid
         return 'ok';
     }
 
-    /**
-     * The claim charity: an explicit value, otherwise settings.json gift_aid_charity, otherwise
-     * 4th Ashby Scout Group. Blank means "use the default", not "match nothing".
-     */
-    public static function claimCharity(?string $override = null): string
+    /** The HMRC file claims only 4th Ashby Scout Group. */
+    public static function claimCharity(): string
     {
-        $v = $override !== null ? trim($override) : '';
-        if ($v === '') {
-            $stored = SettingsStore::get(self::CLAIM_CHARITY_SETTING, self::DEFAULT_CLAIM_CHARITY);
-            $v = is_string($stored) ? trim($stored) : '';
-        }
-        if ($v === '') {
-            $v = self::DEFAULT_CLAIM_CHARITY;
-        }
-        if (mb_strlen($v) > 120) {
-            $v = mb_substr($v, 0, 120);
-        }
-        return $v;
+        return self::DEFAULT_CLAIM_CHARITY;
     }
 
     /** Current UK tax year, 6 April to 5 April, in Europe/London. @return array{0:string,1:string} */
@@ -445,11 +488,9 @@ final class GiftAidGrid
                 <=> [$b['iso'], $b['sortLast'], $b['sortFirst'], $b['section'], $b['scoutid'], $b['pence']];
         });
         $hmrcRows = [];
-        $n = 0;
         foreach ($hmrc as $row) {
-            $n++;
             $hmrcRows[] = [
-                'item' => $n,
+                'item' => '',
                 'title' => $row['title'],
                 'first' => $row['first'],
                 'last' => $row['last'],
@@ -524,6 +565,9 @@ final class GiftAidGrid
             'charityMismatch' => $flagCounts['charity-mismatch'],
             'missingDeclarationDate' => $flagCounts['missing-declaration-date'],
             'titleTooLong' => $flagCounts['title-too-long'],
+            'postcodeUnrecognised' => $flagCounts['postcode-unrecognised'],
+            'nameMultiPart' => $flagCounts['name-multi-part'],
+            'unsafeLeading' => $flagCounts['unsafe-leading-character'],
             'hmrcRows' => count($hmrc),
             'hmrcTotal' => self::money($pence),
             'warnSplit' => self::warnSplit(count($hmrc)),
@@ -546,12 +590,30 @@ final class GiftAidGrid
         $address = self::text($person['address'] ?? '');
         $charity = self::text($person['charity'] ?? '');
         $status = (string) ($person['status'] ?? 'no_record');
+        $ukPostcode = self::ukPostcode($postcode);
+        $postcodeOut = $ukPostcode ?? ($postcode === '' ? '' : strtoupper($postcode));
+        $hmrcTitle = $split['hmrcTitle'];
+        $first = $split['first'];
+        if (mb_strlen($first) > self::NAME_MAX) {
+            $first = mb_substr($first, 0, self::NAME_MAX);
+        }
+        $last = self::text(str_replace('-', ' ', $split['last']));
+        if (mb_strlen($last) > self::NAME_MAX) {
+            $last = mb_substr($last, 0, self::NAME_MAX);
+        }
+        $house = $address;
+        if (mb_strlen($house) > self::HOUSE_MAX) {
+            $house = mb_substr($house, 0, self::HOUSE_MAX);
+        }
+        $titleForHmrc = mb_strlen($hmrcTitle) > self::TITLE_MAX ? mb_substr($hmrcTitle, 0, self::TITLE_MAX) : $hmrcTitle;
         $flags = [];
         if (in_array('title-name-mismatch', $split['flags'], true)) {
             $flags[] = 'title-name-mismatch';
         }
         if ($postcode === '') {
             $flags[] = 'missing-postcode';
+        } elseif ($ukPostcode === null) {
+            $flags[] = 'postcode-unrecognised';
         }
         if ($address === '') {
             $flags[] = 'missing-address';
@@ -559,20 +621,47 @@ final class GiftAidGrid
         if (in_array('name-unsplit', $split['flags'], true)) {
             $flags[] = 'name-unsplit';
         }
-        $kind = self::charityKind($charity, $claimCharity);
-        if ($kind === 'blank') {
-            $flags[] = 'charity-blank';
-        } elseif ($kind === 'mismatch') {
-            $flags[] = 'charity-mismatch';
+        if (in_array('name-multi-part', $split['flags'], true)) {
+            $flags[] = 'name-multi-part';
         }
         $declared = isset($person['lastupdated']) && is_string($person['lastupdated']) ? $person['lastupdated'] : null;
         if ($declared === null || $declared === '') {
             $flags[] = 'missing-declaration-date';
         }
-        if (mb_strlen($title) > self::TITLE_MAX) {
+        if (mb_strlen($title) > self::TITLE_MAX || mb_strlen($hmrcTitle) > self::TITLE_MAX) {
             $flags[] = 'title-too-long';
         }
-        $blocked = $status !== 'entered';
+        $unsafe = self::unsafeLeading($titleForHmrc) || self::unsafeLeading($first) || self::unsafeLeading($last)
+            || self::unsafeLeading($house) || self::unsafeLeading($postcodeOut);
+        if ($unsafe) {
+            $flags[] = 'unsafe-leading-character';
+        }
+        $donations = is_array($person['donations'] ?? null) ? $person['donations'] : [];
+        $inRange = [];
+        foreach ($donations as $iso => $gift) {
+            if (!is_string($iso) || $iso < $from || $iso > $to) {
+                continue;
+            }
+            $part = self::giftOf($gift, $charity);
+            if ($part['pence'] <= 0) {
+                continue;
+            }
+            $inRange[] = $part + ['iso' => $iso];
+            $giftKind = self::charityKind($part['charity'], $claimCharity);
+            if ($giftKind === 'blank' && !in_array('charity-blank', $flags, true)) {
+                $flags[] = 'charity-blank';
+            } elseif ($giftKind === 'mismatch' && !in_array('charity-mismatch', $flags, true)) {
+                $flags[] = 'charity-mismatch';
+            }
+        }
+        $declKind = self::charityKind($charity, $claimCharity);
+        if ($declKind === 'blank' && !in_array('charity-blank', $flags, true)) {
+            $flags[] = 'charity-blank';
+        } elseif ($declKind === 'mismatch' && !in_array('charity-mismatch', $flags, true)) {
+            $flags[] = 'charity-mismatch';
+        }
+        $flags = self::orderFlags($flags);
+        $blocked = $status !== 'entered' || $split['first'] === '' || $split['last'] === '';
         if (!$blocked) {
             foreach (self::BLOCKING_FLAGS as $flag) {
                 if (in_array($flag, $flags, true)) {
@@ -581,50 +670,28 @@ final class GiftAidGrid
                 }
             }
         }
-        if ($split['first'] === '' || $split['last'] === '') {
-            $blocked = true;
-        }
         $gifts = [];
         $sum = 0;
-        $donations = is_array($person['donations'] ?? null) ? $person['donations'] : [];
-        foreach ($donations as $iso => $pence) {
-            if (!is_string($iso) || !is_int($pence) || $pence <= 0) {
+        foreach ($inRange as $part) {
+            $sum += $part['pence'];
+            if ($blocked || self::charityKind($part['charity'], $claimCharity) !== 'ok') {
                 continue;
             }
-            if ($iso < $from || $iso > $to) {
+            $date = self::hmrcDate($part['iso']);
+            $amount = self::money($part['pence']);
+            if (!preg_match('/^\d{2}\/\d{2}\/\d{2}$/', $date) || !preg_match('/^\d+\.\d{2}$/', $amount)) {
                 continue;
-            }
-            $sum += $pence;
-            if ($blocked) {
-                continue;
-            }
-            $hmrcTitle = $title;
-            if (mb_strlen($hmrcTitle) > self::TITLE_MAX) {
-                $hmrcTitle = mb_substr($hmrcTitle, 0, self::TITLE_MAX);
-            }
-            $first = $split['first'];
-            if (mb_strlen($first) > self::NAME_MAX) {
-                $first = mb_substr($first, 0, self::NAME_MAX);
-            }
-            $last = str_replace('-', ' ', $split['last']);
-            $last = self::text($last);
-            if (mb_strlen($last) > self::NAME_MAX) {
-                $last = mb_substr($last, 0, self::NAME_MAX);
-            }
-            $house = $address;
-            if (mb_strlen($house) > self::HOUSE_MAX) {
-                $house = mb_substr($house, 0, self::HOUSE_MAX);
             }
             $gifts[] = [
-                'iso' => $iso,
-                'title' => $hmrcTitle,
+                'iso' => $part['iso'],
+                'title' => $titleForHmrc,
                 'first' => $first,
                 'last' => $last,
                 'house' => $house,
-                'postcode' => self::normalisePostcode($postcode),
-                'date' => self::hmrcDate($iso),
-                'amount' => self::money($pence),
-                'pence' => $pence,
+                'postcode' => $postcodeOut,
+                'date' => $date,
+                'amount' => $amount,
+                'pence' => $part['pence'],
             ];
         }
         return [
@@ -641,7 +708,7 @@ final class GiftAidGrid
             'declarantFirst' => $split['first'],
             'declarantLast' => $split['last'],
             'house' => $address,
-            'postcode' => self::normalisePostcode($postcode),
+            'postcode' => $postcodeOut,
             'charity' => $charity,
             'donations' => self::money($sum),
             'flagList' => $flags,
@@ -692,18 +759,20 @@ final class GiftAidGrid
             'Aggregated donations', 'Sponsored event', 'Donation date', 'Amount',
         ], ',', '"', '');
         foreach ($rows as $row) {
-            fputcsv($fh, array_map([self::class, 'csvSafe'], [
-                (string) $row['item'],
-                (string) $row['title'],
-                (string) $row['first'],
-                (string) $row['last'],
-                (string) $row['house'],
-                (string) $row['postcode'],
-                '',
-                '',
-                (string) $row['date'],
-                (string) $row['amount'],
-            ]), ',', '"', '');
+            $date = (string) $row['date'];
+            $amount = (string) $row['amount'];
+            $text = [(string) $row['title'], (string) $row['first'], (string) $row['last'], (string) $row['house'], (string) $row['postcode']];
+            $unsafe = false;
+            foreach ($text as $cell) {
+                if (self::unsafeLeading($cell)) {
+                    $unsafe = true;
+                    break;
+                }
+            }
+            if ($unsafe || !preg_match('/^\d{2}\/\d{2}\/\d{2}$/', $date) || !preg_match('/^\d+\.\d{2}$/', $amount)) {
+                continue;
+            }
+            fputcsv($fh, ['', $text[0], $text[1], $text[2], $text[3], $text[4], '', '', $date, $amount], ',', '"', '');
         }
         return self::csvString($fh);
     }
@@ -727,13 +796,28 @@ final class GiftAidGrid
         return "\xEF\xBB\xBF" . $out;
     }
 
-    /** Leading quote for cells a spreadsheet could run as a formula, including after leading whitespace. */
+    /** Leading quote for cells a spreadsheet could run as a formula, including after leading whitespace. Used on the register only. */
     public static function csvSafe(string $v): string
     {
-        if (preg_match('/^[\s\x{00A0}]*[=+\-@]/u', $v) || preg_match('/^[\t\r]/', $v)) {
-            return "'" . $v;
+        return self::unsafeLeading($v) ? "'" . $v : $v;
+    }
+
+    /** True when a spreadsheet might treat the cell as a formula. The HMRC file excludes these rows. */
+    public static function unsafeLeading(string $v): bool
+    {
+        return preg_match('/^[\s\x{00A0}]*[=+\-@]/u', $v) === 1 || preg_match('/^[\t\r]/', $v) === 1;
+    }
+
+    /** @param list<string> $flags @return list<string> */
+    private static function orderFlags(array $flags): array
+    {
+        $out = [];
+        foreach (self::FLAG_ORDER as $flag) {
+            if (in_array($flag, $flags, true)) {
+                $out[] = $flag;
+            }
         }
-        return $v;
+        return $out;
     }
 
     /** gift-aid-hmrc-20260406-to-20270405.csv. Dates only: no names and no section. */
