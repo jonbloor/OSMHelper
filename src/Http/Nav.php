@@ -40,6 +40,7 @@ final class Nav
             ]],
             ['type' => 'group', 'key' => 'finance', 'label' => 'Finance', 'icon' => 'finance', 'items' => [
                 ['label' => 'Bank accounts', 'href' => '/bank-transfers/'],
+                ['label' => 'Gift Aid', 'href' => '/gift-aid/'],
                 ['label' => 'All transfers', 'href' => '/bank-transfers/all/'],
             ]],
             ['type' => 'link', 'key' => 'settings', 'label' => 'Settings', 'href' => '/settings/', 'icon' => 'settings'],

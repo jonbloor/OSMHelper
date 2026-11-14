@@ -1,0 +1,67 @@
+{
+  "identifier": "scoutid",
+  "label": "name",
+  "structure": [
+    {"name": "2025-10-06", "field": "2025-10-06", "editable": true},
+    {"name": "2026-01-12", "field": "2026-01-12", "editable": true},
+    {"name": "2026-02-02", "field": "2026-02-02", "editable": true}
+  ],
+  "items": [
+    {
+      "scoutid": "9001 ",
+      "firstname": "Alex",
+      "lastname": "River",
+      "title": "Mrs",
+      "parentname": "Mrs Jane River",
+      "address": "12",
+      "postcode": "LE65 1AB",
+      "lastupdated": "2026-02-01",
+      "status": "entered",
+      "charity_name": "4th Ashby Scout Group",
+      "2025-10-06": "11.00",
+      "2026-01-12": "4.00",
+      "2026-02-02": "8.00",
+      "total": 23
+    },
+    {
+      "scoutid": "9002",
+      "firstname": "Sam",
+      "lastname": "Quill",
+      "title": "Mr",
+      "parentname": "Pat Quill",
+      "address": "Oak House",
+      "postcode": "LE65 1AB",
+      "lastupdated": "2026-02-01",
+      "status": "entered",
+      "charity_name": "4th Ashby Scout Group",
+      "2026-01-12": "3.50"
+    },
+    {
+      "scoutid": "9003",
+      "firstname": "Jo",
+      "lastname": "Pines",
+      "title": "Dr",
+      "parentname": "Robin Pines",
+      "address": "99 Later",
+      "postcode": "LE65 2AB",
+      "lastupdated": "2026-03-01",
+      "status": "declined",
+      "charity_name": "4th Ashby Scout Group",
+      "2026-01-12": "99.00",
+      "2026-02-02": "1.00"
+    },
+    {
+      "scoutid": "9017",
+      "firstname": "Wynn",
+      "lastname": "Spring",
+      "title": "Mrs",
+      "parentname": "June Spring",
+      "address": "20",
+      "postcode": "LE65 1JK",
+      "lastupdated": "2026-02-01",
+      "status": "entered",
+      "charity_name": "4th Ashby Scout Group",
+      "2026-02-02": "20.00"
+    }
+  ]
+}

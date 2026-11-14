@@ -67,14 +67,14 @@ check($byLabel['People'] === ['Group numbers', 'Member list', 'Find a member', '
 check($byLabel['Joining'] === ['Waiting list', 'Joining form'], 'Joining items');
 check($byLabel['Badges'] === ['Events', 'Nights away', 'Top awards'], 'Badges items (label stays Badges)');
 check($byLabel['Equipment'] === ['Equipment list', 'Add an item', 'Locations'], 'Equipment items');
-check($byLabel['Finance'] === ['Bank accounts', 'All transfers'], 'Finance items');
+check($byLabel['Finance'] === ['Bank accounts', 'Gift Aid', 'All transfers'], 'Finance items');
 check(!in_array('/roadmap/', Nav::hrefs($nav), true), 'Roadmap is not in the signed-in menu');
 check(!in_array('/roadmap/', Nav::hrefs(Nav::public()), true), 'Roadmap is not in the public menu');
 
 // Every pre-existing menu route is still in the menu (no route lost), plus Young Leaders.
 $before = ['/dashboard/', '/membership-dashboard/', '/members/', '/find-member/', '/events/', '/member-checks/',
     '/young-leaders/', '/waiting-list/', '/wordpress-form/', '/top-awards/', '/nights-away/', '/equipment/',
-    '/bank-transfers/', '/bank-transfers/all/', '/settings/', '/help/', '/logout/'];
+    '/bank-transfers/', '/gift-aid/', '/bank-transfers/all/', '/settings/', '/help/', '/logout/'];
 $hrefs = Nav::hrefs($nav);
 foreach ($before as $h) {
     check(in_array($h, $hrefs, true), "still in the menu: $h");
@@ -92,6 +92,9 @@ $cases = [
     '/members/' => ['Member list'],
     '/members' => ['Member list'],
     '/bank-transfers/all/' => ['All transfers'],
+    '/gift-aid/' => ['Gift Aid'],
+    '/gift-aid/hmrc.csv' => ['Gift Aid'],
+    '/gift-aid/declarations.csv' => ['Gift Aid'],
     '/bank-transfers/' => ['Bank accounts'],
     '/bank-transfers/?account=5' => ['Bank accounts'],
     '/waiting-list/rank/?section=1' => ['Waiting list'],

@@ -1,0 +1,136 @@
+{% extends 'layout.twig' %}
+{% block body %}
+<div class="card">
+  <h2>Gift Aid — {{ groupName }}</h2>
+  <p class="muted">Build a declarations register and an HMRC Gift Aid schedule for a date range. Choose the sections and dates, check how many OSM requests the load will make, then load once. Changing the dates afterwards, the preview and both CSV downloads use that copy and do not call OSM.</p>
+  {% if flash and not (flash.scope is defined and flash.scope and scopeHint) %}<div class="alert{% if flash.kind == 'error' %} alert-error{% endif %}" role="status">{{ flash.message }}</div>{% endif %}
+  {% if scopeHint %}<div class="alert alert-error" role="status">{{ scopeHint }} <a href="/logout/">Sign out</a>, then choose Connect with OSM on the home page.{% if preview %} Your earlier copy is still shown.{% endif %}</div>{% endif %}
+  {% if sectionError %}<div class="alert alert-error">{{ sectionError }}</div>{% endif %}
+
+  {% if choiceCount > 0 %}
+  <form method="get" action="/gift-aid/" class="gift-aid-form">
+    <input type="hidden" name="show" value="1">
+    <fieldset class="events-range">
+      <legend>Dates</legend>
+      <label for="ga-from">From</label>
+      <input type="text" id="ga-from" name="from" value="{{ fromRaw }}" placeholder="dd/mm/yyyy" inputmode="numeric" pattern="\d{1,2}/\d{1,2}/\d{4}" maxlength="10" size="12" required aria-describedby="ga-date-help">
+      <label for="ga-to">to</label>
+      <input type="text" id="ga-to" name="to" value="{{ toRaw }}" placeholder="dd/mm/yyyy" inputmode="numeric" pattern="\d{1,2}/\d{1,2}/\d{4}" maxlength="10" size="12" required aria-describedby="ga-date-help">
+      <p class="muted" id="ga-date-help">Dates are dd/mm/yyyy and include the start and end day. The suggestion is the current UK tax year, 6 April to 5 April. A range may cover more than one OSM term.</p>
+    </fieldset>
+    <p>
+      <label for="ga-charity">Claim charity</label>
+      <input type="text" id="ga-charity" name="charity" value="{{ charity }}" maxlength="120" size="40" autocomplete="organization" aria-describedby="ga-charity-help">
+    </p>
+    <p class="muted" id="ga-charity-help">Only declarations for this charity go into the HMRC file. Matching ignores capital letters and extra spaces. A blank charity name, or any other charity, is left out and flagged. The default is {{ defaultCharity }}.</p>
+    {% if rangeError %}<div class="alert alert-error" role="status">{{ rangeError }}</div>{% endif %}
+    {% if rangeNote %}<div class="alert" role="status">{{ rangeNote }}</div>{% endif %}
+    {% for g in groups %}
+    <div class="member-section-group">
+      {% if multiGroup %}<h3>{{ g.name }}</h3>{% endif %}
+      <div class="filter-chips">
+        {% for s in g.sections %}
+        <label class="filter-chip">
+          <input type="checkbox" name="section_ids[]" value="{{ s.id }}" {% if s.id in selectedIds %}checked{% endif %}>
+          {{ s.name }} <span class="muted">{{ s.typeLabel }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+    <p class="member-section-actions">
+      <button class="btn btn-secondary" type="submit">Update</button>
+      <span class="muted">Update only refreshes this page. It does not call OSM.</span>
+    </p>
+  </form>
+  {% if termsNote %}<div class="alert" role="status">{{ termsNote }}</div>{% endif %}
+  {% if emptyTermsNote %}<p class="muted">{{ emptyTermsNote }}</p>{% endif %}
+  <p><strong>{{ requestNote }}</strong></p>
+  <form method="post" action="/gift-aid/load/">
+    {% include '_csrf.twig' %}
+    <input type="hidden" name="from" value="{{ from }}">
+    <input type="hidden" name="to" value="{{ to }}">
+    <input type="hidden" name="charity" value="{{ charity }}">
+    {% for s in loadSections %}
+    <input type="hidden" name="section_ids[]" value="{{ s.section_id }}">
+    {% endfor %}
+    <p>
+      <button class="btn" type="submit" {% if cooldownWait > 0 or scopeHint or rangeError %}disabled{% endif %}>Load Gift Aid</button>
+      {% if cooldownWait > 0 %}<span class="muted">You can load again in {{ cooldownWait }} min.</span>{% endif %}
+    </p>
+    <p class="muted">Load uses the sections and dates shown above (choose Update after you change them). It reads one Gift Aid grid per overlapping term, never the old giftaid.php address, and stops at the first error, block or low allowance. Each section can be loaded once every {{ cooldownMinutes }} minutes. Nothing is written back to OSM, and the copy stays in this sign-in only.</p>
+  </form>
+  {% elseif not sectionError %}
+  <p class="alert">No sections on this login that Gift Aid can use. Sign out and connect again, or check your OSM role.</p>
+  {% endif %}
+</div>
+
+{% if preview %}
+<div class="card">
+  <h3>Check before you download</h3>
+  {% if loadedNote %}<p class="muted">{{ loadedNote }}</p>{% endif %}
+  {% if missingNote %}<div class="alert" role="status">{{ missingNote }}</div>{% endif %}
+  <dl class="gift-aid-counts">
+    <div><dt>Declarations</dt><dd>{{ preview.declarations }}</dd></div>
+    <div><dt>Entered</dt><dd>{{ preview.entered }}</dd></div>
+    <div><dt>Declined</dt><dd>{{ preview.declined }}</dd></div>
+    <div><dt>No record</dt><dd>{{ preview.noRecord }}</dd></div>
+    {% if preview.other > 0 %}<div><dt>Other status</dt><dd>{{ preview.other }}</dd></div>{% endif %}
+    <div><dt>Missing postcode</dt><dd>{{ preview.missingPostcode }}</dd></div>
+    <div><dt>Missing house</dt><dd>{{ preview.missingAddress }}</dd></div>
+    <div><dt>Title and name don’t match</dt><dd>{{ preview.titleMismatch }}</dd></div>
+    <div><dt>Name not split</dt><dd>{{ preview.nameUnsplit }}</dd></div>
+    <div><dt>Charity blank</dt><dd>{{ preview.charityBlank }}</dd></div>
+    <div><dt>Other charity</dt><dd>{{ preview.charityMismatch }}</dd></div>
+    <div><dt>No declaration date</dt><dd>{{ preview.missingDeclarationDate }}</dd></div>
+    <div><dt>Title longer than 4 characters</dt><dd>{{ preview.titleTooLong }}</dd></div>
+    <div><dt>HMRC rows</dt><dd>{{ preview.hmrcRows }} ({{ preview.hmrcTotal }})</dd></div>
+  </dl>
+  {% if preview.charities %}
+  <h4>Charity names on the register</h4>
+  <ul>
+    {% for c in preview.charities %}
+    <li>{{ c.name }}: {{ c.count }}{% if c.included %} (included in the HMRC file){% else %} (left out of the HMRC file){% endif %}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  {% if preview.warnSplit %}
+  <div class="alert alert-error" role="status">This HMRC file has {{ preview.hmrcRows }} rows. HMRC’s schedule holds 1,000 donations per claim, so split the claim before you paste it.</div>
+  {% endif %}
+  <h4>Problems</h4>
+  <p class="muted">Rows that need a look before you claim. This is not the full address list, and it has no spreadsheet export: use the downloads below. Flags: title-name-mismatch, missing-postcode, missing-address, name-unsplit, charity-blank, charity-mismatch, missing-declaration-date, title-too-long.</p>
+  {% if preview.problems %}
+  <div class="table-wrap">
+  <table class="data">
+    <caption class="visually-hidden">Gift Aid rows to check</caption>
+    <thead><tr><th scope="col">Section</th><th scope="col">Young person</th><th scope="col">Status</th><th scope="col">Charity</th><th scope="col">Flags</th></tr></thead>
+    <tbody>
+    {% for row in preview.problems %}
+      <tr>
+        <td>{{ row.section }}</td>
+        <td>{{ row.youth }}</td>
+        <td>{{ row.status }}</td>
+        <td>{{ row.charity }}</td>
+        <td>{{ row.flags }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p>No problems on the loaded sections for these dates.</p>
+  {% endif %}
+  <h4>Downloads</h4>
+  <p>The files include only the sections loaded for these dates. Youth names are on the register. They are not in the HMRC file.</p>
+  <p>
+    <a class="btn btn-secondary" href="/gift-aid/declarations.csv?{{ csvQuery }}">Download declarations register</a>
+    <a class="btn btn-secondary" href="/gift-aid/hmrc.csv?{{ csvQuery }}">Download HMRC donations</a>
+  </p>
+  <p class="muted">The register is one row per young person per section, including declined and no record. The HMRC file is one row per donation (not combined), entered declarations for {{ preview.claimCharity }} only, with dates as DD/MM/YY. Paste those rows into HMRC’s schedule on the tab R68GAD_V1_00_0_EN. Do not rename that tab, and save the spreadsheet as .ods. Names, addresses and amounts from this page are kept in your sign-in only. They are not saved on the server and not put in the file names.</p>
+</div>
+{% elseif nothingLoaded %}
+<div class="card">
+  <p class="alert">Gift Aid is not loaded for these sections and dates yet. Check the request count, then choose Load Gift Aid.</p>
+</div>
+{% endif %}
+{% endblock %}

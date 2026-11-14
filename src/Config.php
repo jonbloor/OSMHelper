@@ -19,6 +19,8 @@ final class Config
      * Events: section:event:read for the Events list (/ext/events/summary/). Without it OSM
      * answers 200 with "You do not have access to this resource."; sessions signed in before
      * this scope was added must sign out and in again (EventList::scopeHint() checks this).
+     * Finance: section:finance:read is already requested for Bank accounts. Gift Aid uses the
+     * same scope (GiftAidLoader::scopeHint()). Do not add another finance scope.
      */
     public const OAUTH_SCOPES = 'section:member:write section:quartermaster:write section:finance:read section:badge:write section:event:read';
 
