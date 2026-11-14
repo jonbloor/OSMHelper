@@ -37,7 +37,7 @@ $raw = [
         'section_type' => 'beavers',
         'group_name' => '4th Ashby',
         'terms' => [
-            ['term_id' => 1, 'startdate' => '2020-01-01', 'enddate' => '2020-06-01'],
+            ['term_id' => 1, 'name' => 'Spring 2020', 'startdate' => '2020-01-01', 'enddate' => '2020-06-01'],
             ['term_id' => 99, 'startdate' => '2026-09-01', 'enddate' => '2027-01-31'],
         ],
     ],
@@ -80,7 +80,12 @@ check(count($groups) === 2 && $groups[0]['name'] === 'A Group' && count($groups[
 $picked = LoginSections::pickedSections($choices, ['2', '999', '2', '']);
 check(count($picked) === 1 && $picked[0]['section_id'] === '2' && $picked[0]['section_type'] === 'scouts', 'ignores ids that were not on the login list');
 check($picked[0]['current_term_id'] === 8, 'keeps the term id for the member fetch');
+check(array_key_exists('terms', $picked[0]) && $picked[0]['terms'] === null, 'a picked section with no stored terms stays null');
 check(LoginSections::pickedSections($choices, []) === [], 'empty selection picks nothing');
+$withTerms = $choices;
+$withTerms[2]['terms'] = [['id' => '8', 'start' => '2026-01-01', 'end' => '2026-04-01', 'name' => 'dropped by the caller']];
+$pickedTerms = LoginSections::pickedSections($withTerms, ['2']);
+check($pickedTerms[0]['terms'] === $withTerms[2]['terms'], 'picked sections keep the term list for Gift Aid');
 
 $dash = LoginSections::dashboardChoices([
     ['section_id' => '2', 'section_name' => 'Troop', 'section_type' => 'scouts', 'group_name' => 'B Group'],
@@ -96,10 +101,27 @@ check(array_column($dash, 'id') === ['6', '1', '2'], 'group numbers skips waitin
 $_SESSION = [];
 check(LoginSections::fromSession() === null, 'missing session key means the list was not stored yet');
 $stored = LoginSections::remember($normalised);
+check($stored[0]['terms'] === [
+    ['id' => '1', 'start' => '2020-01-01', 'end' => '2020-06-01'],
+    ['id' => '99', 'start' => '2026-09-01', 'end' => '2027-01-31'],
+], 'slim keeps term id, start and end only');
+check(array_keys($stored[0]['terms'][0]) === ['id', 'start', 'end'], 'term rows do not keep other OSM fields');
+check(!array_key_exists('terms', $stored[1]), 'a section with no terms list is left without a terms key');
 check(LoginSections::fromSession() === $stored, 'remember round-trips through the session');
 check(($_SESSION['_sections_count'] ?? null) === 2, 'section count matches the stored list');
 $_SESSION[LoginSections::SESSION_KEY] = [];
 check(LoginSections::fromSession() === [], 'an empty stored list is kept and not treated as missing');
+$_SESSION[LoginSections::SESSION_KEY] = [[
+    'section_id' => '11',
+    'section_name' => 'Pack',
+    'section_type' => 'cubs',
+    'group_name' => '4th Ashby',
+    'current_term_id' => 5,
+]];
+$old = LoginSections::fromSession();
+check(is_array($old) && !array_key_exists('terms', $old[0]), 'a session saved before term dates keeps no terms key');
+$oldChoices = LoginSections::memberListChoices($old);
+check($oldChoices[0]['terms'] === null, 'member choices expose a missing term list as null');
 
 echo "$passed passed, $failed failed\n";
 exit($failed > 0 ? 1 : 0);

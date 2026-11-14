@@ -8,6 +8,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EquipmentController;
 use App\Http\Controllers\EventsController;
 use App\Http\Controllers\FindMemberController;
+use App\Http\Controllers\GiftAidController;
 use App\Http\Controllers\YoungLeadersController;
 use App\Http\Controllers\HelpController;
 use App\Http\Controllers\RoadmapController;
@@ -53,6 +54,7 @@ final class App
         $find = new FindMemberController();
         $yl = new YoungLeadersController();
         $events = new EventsController();
+        $gift = new GiftAidController();
         $bank = new BankTransfersController();
         $set = new SettingsController();
         $help = new HelpController();
@@ -95,6 +97,10 @@ final class App
         $router->get('/events', [$events, 'index']);
         $router->post('/events/refresh', [$events, 'refresh']);
         $router->get('/events/csv', [$events, 'csv']);
+        $router->get('/gift-aid', [$gift, 'index']);
+        $router->post('/gift-aid/load', [$gift, 'load']);
+        $router->get('/gift-aid/declarations.csv', [$gift, 'declarationsCsv']);
+        $router->get('/gift-aid/hmrc.csv', [$gift, 'hmrcCsv']);
         $router->get('/nights-away', [$nightsAway, 'index']);
         $router->post('/nights-away/select', [$nightsAway, 'select']);
         $router->get('/bank-transfers', [$bank, 'index']);

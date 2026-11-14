@@ -52,7 +52,9 @@ Also sends `access_type=offline` (same as Node) if OSM issues refresh tokens.
 
 ### Session privacy
 
-The server session stores your OSM access token (and refresh token when OSM sends one), your name, email, OSM user number, group, and the section list from sign-in. Anything a page loads for you (member list, group numbers, events, Find a member contacts, the Nights away selection) stays in that session only.
+The server session stores your OSM access token (and refresh token when OSM sends one), your name, email, OSM user number, group, and the section list from sign-in (including each section’s term id, start date and end date, so Gift Aid can cover more than one term). Anything a page loads for you (member list, group numbers, events, Find a member contacts, the Nights away selection, Gift Aid declarations) stays in that session only.
+
+Gift Aid (names, addresses, postcodes, declaration details and amounts) is session-only. It is not written to `storage/`, `OsmCache` or the error log, it is not put in web addresses or download file names, and it is cleared when you sign out or when the session expires (the same 2-hour limit). The page only reads OSM. The HMRC file is one row per donation for 4th Ashby Scout Group; the declarations register is one row per young person per section. The Gift Aid session copy is cleared when you sign out or after 2 hours.
 
 - **Session length:** every session ends `SESSION_ABSOLUTE_SECONDS` after sign-in (default 7200 = 2 hours), even while in use, or at sign-out (`session_destroy()`). `SESSION_IDLE_SECONDS` (default 7200) is an extra idle limit. Both are optional `.env` values (300 to 86400). Cookie lifetime and `session.gc_maxlifetime` are never shorter than the limit. Session files live in `storage/sessions/` (0700). Sign-out deletes the file straight away. An abandoned session's file stays until PHP's session GC runs (probability 1/50 per session start), so on a quiet site that can be well after it expires. Sign-in gets a fresh session ID (`session_regenerate_id(true)`), and after re-signing in you go back to the GET page you were on (same-site paths only). Each page shows “Signed in until HH:MM (UK time)”.
 - **No member data in URLs:** Find a member search terms and Nights away member selections are POSTed and kept in the session, never in URLs or the access log.
@@ -85,6 +87,10 @@ Scout names and dates of birth are not stored long-term: the only copies outside
 | GET | `/wordpress-form/download` | Auth required; streams `downloads/osm-for-wordpress.zip` (refresh with `deploy/refresh-wordpress-plugin.sh`) |
 | POST | `/wordpress-form/save` | Auth + CSRF; save waiting list, create/regenerate/remove site key, clear OSM block (old `/settings/update-wordpress-waiting-list` still works) |
 | POST | `/api/waiting-list/submit` | WordPress plugin intake; `X-Osmhelper-Site-Key` header required (401 without) |
+| GET | `/gift-aid` | Auth required; date range and sections. Reads the session copy only (no OSM call) |
+| POST | `/gift-aid/load` | Auth + CSRF; one Gift Aid grid per overlapping term, rate-limited, session only |
+| GET | `/gift-aid/declarations.csv` | Auth required; declarations register from the session copy (no OSM call). Supports HEAD |
+| GET | `/gift-aid/hmrc.csv` | Auth required; HMRC donation rows from the session copy (no OSM call). Supports HEAD |
 
 ## CloudPanel deploy
 

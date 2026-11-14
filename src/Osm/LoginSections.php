@@ -27,7 +27,7 @@ final class LoginSections
 
     /**
      * @param list<array<string, mixed>> $sections normalised resource sections
-     * @return list<array{section_id:string,section_name:string,section_type:string,group_name:string,current_term_id:mixed}>
+     * @return list<array{section_id:string,section_name:string,section_type:string,group_name:string,current_term_id:mixed,terms?:list<array{id:string,start:?string,end:?string}>}>
      */
     public static function remember(array $sections): array
     {
@@ -40,7 +40,7 @@ final class LoginSections
     /**
      * null when this session has not stored sections yet (signed in before they were kept).
      *
-     * @return list<array{section_id:string,section_name:string,section_type:string,group_name:string,current_term_id:mixed}>|null
+     * @return list<array{section_id:string,section_name:string,section_type:string,group_name:string,current_term_id:mixed,terms?:list<array{id:string,start:?string,end:?string}>}>|null
      */
     public static function fromSession(): ?array
     {
@@ -53,7 +53,7 @@ final class LoginSections
     /**
      * The login list, or one /oauth/resource read when an older session does not have it yet.
      *
-     * @return list<array{section_id:string,section_name:string,section_type:string,group_name:string,current_term_id:mixed}>
+     * @return list<array{section_id:string,section_name:string,section_type:string,group_name:string,current_term_id:mixed,terms?:list<array{id:string,start:?string,end:?string}>}>
      */
     public static function ensure(string $token): array
     {
@@ -69,7 +69,8 @@ final class LoginSections
      * matching the previous "load every section" behaviour.
      *
      * @param list<array<string, mixed>> $sections
-     * @return list<array{id:string,name:string,type:string,typeLabel:string,groupName:string,termId:mixed}>
+     *         `terms` is null when this sign-in was stored before term dates were kept.
+     * @return list<array{id:string,name:string,type:string,typeLabel:string,groupName:string,termId:mixed,terms:list<array{id:string,start:?string,end:?string}>|null}>
      */
     public static function memberListChoices(array $sections): array
     {
@@ -97,6 +98,9 @@ final class LoginSections
                 'typeLabel' => Config::FRIENDLY_SECTION_TYPES[$type] ?? $type,
                 'groupName' => trim((string) ($sec['group_name'] ?? '')),
                 'termId' => $sec['current_term_id'] ?? -1,
+                'terms' => !array_key_exists('terms', $sec) || $sec['terms'] === null
+                    ? null
+                    : (is_array($sec['terms']) ? $sec['terms'] : []),
             ];
         }
         usort($out, static function (array $a, array $b): int {
@@ -150,7 +154,7 @@ final class LoginSections
      *
      * @param list<array{id:string,name:string,type:string,typeLabel:string,groupName:string,termId:mixed}> $choices
      * @param list<mixed> $ids
-     * @return list<array{section_id:string,section_name:string,section_type:string,group_name:string,current_term_id:mixed}>
+     * @return list<array{section_id:string,section_name:string,section_type:string,group_name:string,current_term_id:mixed,terms:list<array{id:string,start:?string,end:?string}>|null}>
      */
     public static function pickedSections(array $choices, array $ids): array
     {
@@ -175,14 +179,20 @@ final class LoginSections
                 'section_type' => $choice['type'],
                 'group_name' => $choice['groupName'],
                 'current_term_id' => $choice['termId'],
+                'terms' => !array_key_exists('terms', $choice) || $choice['terms'] === null
+                    ? null
+                    : (is_array($choice['terms']) ? $choice['terms'] : []),
             ];
         }
         return $out;
     }
 
     /**
+     * `terms` is omitted when the source row has none, so a session saved before term dates
+     * were kept still looks different from a section OSM returned with an empty term list.
+     *
      * @param list<array<string, mixed>> $sections
-     * @return list<array{section_id:string,section_name:string,section_type:string,group_name:string,current_term_id:mixed}>
+     * @return list<array{section_id:string,section_name:string,section_type:string,group_name:string,current_term_id:mixed,terms?:list<array{id:string,start:?string,end:?string}>}>
      */
     private static function slim(array $sections): array
     {
@@ -197,14 +207,68 @@ final class LoginSections
                 continue;
             }
             $seen[$id] = true;
-            $out[] = [
+            $row = [
                 'section_id' => $id,
                 'section_name' => (string) ($sec['section_name'] ?? $sec['name'] ?? ''),
                 'section_type' => (string) ($sec['section_type'] ?? 'unknown'),
                 'group_name' => (string) ($sec['group_name'] ?? ''),
                 'current_term_id' => $sec['current_term_id'] ?? -1,
             ];
+            if (array_key_exists('terms', $sec)) {
+                $row['terms'] = self::slimTerms($sec['terms']);
+            }
+            $out[] = $row;
         }
         return $out;
+    }
+
+    /**
+     * Id plus start and end only. Anything else OSM sent on the term (names, counts) is dropped.
+     *
+     * @return list<array{id:string,start:?string,end:?string}>
+     */
+    private static function slimTerms(mixed $terms): array
+    {
+        if (!is_array($terms)) {
+            return [];
+        }
+        $out = [];
+        $seen = [];
+        foreach ($terms as $term) {
+            if (!is_array($term)) {
+                continue;
+            }
+            $id = trim((string) ($term['id'] ?? $term['term_id'] ?? $term['termid'] ?? ''));
+            if ($id === '' || isset($seen[$id])) {
+                continue;
+            }
+            $seen[$id] = true;
+            $out[] = [
+                'id' => $id,
+                'start' => self::termDate($term['start'] ?? $term['startdate'] ?? null),
+                'end' => self::termDate($term['end'] ?? $term['enddate'] ?? null),
+            ];
+        }
+        return $out;
+    }
+
+    /** yyyy-mm-dd from yyyy-mm-dd or dd/mm/yyyy, or null when it is not a real date. */
+    private static function termDate(mixed $value): ?string
+    {
+        if (!is_scalar($value)) {
+            return null;
+        }
+        $v = trim((string) $value);
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})/', $v, $m)) {
+            [$y, $mo, $d] = [(int) $m[1], (int) $m[2], (int) $m[3]];
+        } elseif (preg_match('#^(\d{1,2})/(\d{1,2})/(\d{4})$#', $v, $m)) {
+            [$d, $mo, $y] = [(int) $m[1], (int) $m[2], (int) $m[3]];
+        } else {
+            return null;
+        }
+        if ($y < 1900 || !checkdate($mo, $d, $y)) {
+            return null;
+        }
+        return sprintf('%04d-%02d-%02d', $y, $mo, $d);
     }
 }

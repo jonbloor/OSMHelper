@@ -1212,6 +1212,13 @@ fieldset.member-section-group legend { font-weight: 600; padding: 0; margin-bott
 .events-range p { flex-basis: 100%; margin: 0.25rem 0 0; }
 .badge-archived { background: #e6e6e6; color: #333; }
 
+/* Gift Aid */
+.gift-aid-form p { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.gift-aid-counts { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: 0.35rem 1rem; margin: 0.5rem 0 1rem; }
+.gift-aid-counts div { margin: 0; }
+.gift-aid-counts dt { font-size: 0.85rem; color: var(--muted); }
+.gift-aid-counts dd { margin: 0; font-weight: 600; }
+
 /* "Signed in until 23:40": plain text, no script (CSP-safe). */
 .session-ends {
   margin: 0 0 0.75rem;
